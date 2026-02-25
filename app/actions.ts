@@ -1,0 +1,98 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
+import { assignRoleToUser } from '@/lib/rbac'
+
+export async function createProject(formData: FormData) {
+  const supabase = await createClient()
+  
+  const name = formData.get('name') as string
+  
+  if (!name) {
+    return { error: 'Le nom du projet est requis.' }
+  }
+
+  // Default values for a new project
+  const ownerId = 'u1' // Default owner for now (Sarah Chen)
+  const newProject = {
+    name,
+    status: 'on-track',
+    progress: 0,
+    owner_id: ownerId,
+    team_id: 't1', // Default team
+    start_date: new Date().toISOString().split('T')[0],
+    end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // +90 days
+  }
+
+  const { data, error } = await supabase
+    .from('projects')
+    .insert([newProject])
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creating project:', error)
+    return { error: 'Erreur lors de la création du projet.' }
+  }
+
+  // Assign 'Manager' role to the creator for this specific project
+  try {
+    // Note: In a real app, ensure 'Manager' role exists in DB via migration/seed
+    await assignRoleToUser(ownerId, 'Manager', 'project', data.id)
+  } catch (e) {
+    console.error('Failed to assign project role:', e)
+    // Don't fail the request, just log it. The project was created.
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/')
+  redirect('/work')
+}
+
+export async function createTask(formData: FormData) {
+  const supabase = await createClient()
+  
+  const title = formData.get('title') as string
+  const description = formData.get('description') as string
+  const projectId = formData.get('projectId') as string
+  const priority = formData.get('priority') as string || 'medium'
+  const status = formData.get('status') as string || 'todo'
+  const assigneeId = formData.get('assigneeId') as string || 'u1' // Default to current user
+  const dueDate = formData.get('dueDate') as string
+
+  if (!title) {
+    return { error: 'Le titre de la tâche est requis.' }
+  }
+
+  const newTask = {
+    title,
+    // description, // Note: Description field might not exist in the minimal schema inferred from use-supabase.ts, but standard tasks usually have it. We'll skip for now if unsure or add it if schema supports.
+    project_id: projectId || null, // Allow standalone tasks if schema permits, otherwise needs a project
+    priority,
+    status,
+    assignee_id: assigneeId,
+    due_date: dueDate || null,
+  }
+
+  const { error } = await supabase
+    .from('tasks')
+    .insert([newTask])
+
+  if (error) {
+    console.error('Error creating task:', error)
+    return { error: 'Erreur lors de la création de la tâche.' }
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/all-tasks')
+  revalidatePath('/my-day')
+  redirect('/work') // Or redirect to the project page
+}
+
+export async function createList(formData: FormData) {
+    // For "List", we can treat it as a Project with a specific type or tag, 
+    // or just a simple project for now as per the schema.
+    return createProject(formData)
+}

@@ -1,0 +1,27 @@
+# Next.js
+.next/
+out/
+build/
+
+# Production
+.env.production
+.env.local
+.env
+
+# Supabase
+supabase/.temp
+supabase/auth
+.supabase/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Runtime
+node_modules/
+.DS_Store
+*.local
+__v0_*
+.history/
