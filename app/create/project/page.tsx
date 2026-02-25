@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createProject } from "@/app/actions"
+import { toast } from "sonner"
 import {
   FolderKanban,
   ChevronRight,
@@ -25,8 +26,25 @@ export default function CreateProjectPage() {
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
-    await createProject(formData)
-    setLoading(false)
+    try {
+      const result = await createProject(formData)
+      if (result?.error) {
+        toast.error(result.error)
+      } else {
+        toast.success("Projet créé avec succès !")
+      }
+    } catch (e) {
+      // In Next.js 14+, redirect() throws an error that is handled by the framework.
+      // If we catch it, we might break the redirect. 
+      // But we check for it.
+      if (e instanceof Error && e.message === "NEXT_REDIRECT") {
+        throw e;
+      }
+      console.error(e)
+      toast.error("Une erreur inattendue est survenue.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { AppShell } from '@/components/app-shell'
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
 import './globals.css'
 
 const _inter = Inter({ subsets: ["latin"] })
@@ -34,6 +35,7 @@ export default function RootLayout({
           <AppShell>
             {children}
           </AppShell>
+          <Toaster />
           <Analytics />
         </ThemeProvider>
       </body>

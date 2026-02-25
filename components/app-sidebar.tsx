@@ -36,9 +36,12 @@ import { ThemeToggle } from "@/components/theme-toggle"
 const navItems = [
   { href: "/create", label: "Créer", icon: PlusCircle },
   { href: "/", label: "Accueil", icon: Home },
+  { href: "/strategy", label: "Stratégie & OKR", icon: Target },
+  { href: "/work", label: "Projets & Travail", icon: FolderKanban },
   { href: "/calendar", label: "Calendrier global", icon: CalendarDays },
   { href: "/my-day", label: "Ma journée", icon: Sun },
   { href: "/all-tasks", label: "Toutes les tâches", icon: Layers },
+  { href: "/performance", label: "Performance & KPI", icon: BarChart3 },
   { href: "/search", label: "Recherche", icon: Search },
   { href: "/inbox", label: "Boîte de réception", icon: Inbox },
   { href: "/chats", label: "Chats", icon: MessageSquare },

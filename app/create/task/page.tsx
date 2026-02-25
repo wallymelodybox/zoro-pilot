@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createTask } from "@/app/actions"
+import { toast } from "sonner"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import {
   FolderKanban,
@@ -37,16 +38,22 @@ export default function CreateTaskPage() {
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
-    // Append manually managed states if not in form via name attribute
-    // Actually, passing them as hidden inputs or relying on name attributes is better.
-    // We'll use name attributes on the inputs/selects where possible.
-    // For Select component, we need to ensure it updates a hidden input or we append to formData.
-    
-    // Since Shadcn Select doesn't natively work with FormData easily without a hidden input, 
-    // we'll manually append or just use a hidden input.
-    
-    await createTask(formData)
-    setLoading(false)
+    try {
+      const result = await createTask(formData)
+      if (result?.error) {
+        toast.error(result.error)
+      } else {
+        toast.success("Tâche créée avec succès !")
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message === "NEXT_REDIRECT") {
+        throw e;
+      }
+      console.error(e)
+      toast.error("Une erreur inattendue est survenue.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -153,9 +160,13 @@ export default function CreateTaskPage() {
                    </div>
                 </div>
                 
+                {/* Hidden Inputs for Select values to work with FormData */}
+                <input type="hidden" name="projectId" value={projectId} />
+                <input type="hidden" name="priority" value={priority} />
+
                 {/* Hidden Inputs for defaults */}
                 <input type="hidden" name="status" value="todo" />
-                <input type="hidden" name="assigneeId" value="u1" />
+                <input type="hidden" name="assigneeId" value="a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d" />
 
              </div>
           </div>

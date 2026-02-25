@@ -4,12 +4,21 @@ import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { RAGBadge } from "@/components/rag-badge"
 import { UserAvatar } from "@/components/user-avatar"
 import {
@@ -31,6 +40,12 @@ import {
   TrendingUp,
   Calendar,
   MessageSquare,
+  Globe,
+  Network,
+  GitMerge,
+  ArrowDownWideNarrow,
+  PlusCircle,
+  FileText
 } from "lucide-react"
 
 function KRCard({ kr }: { kr: KeyResult }) {
@@ -219,21 +234,144 @@ function ObjectiveCard({ objective }: { objective: Objective }) {
   )
 }
 
+function StrategyMap() {
+  return (
+    <div className="space-y-12 py-6">
+      {/* Vision Layer */}
+      <div className="flex flex-col items-center text-center space-y-4">
+        <div className="p-3 rounded-full bg-primary/10 text-primary animate-pulse">
+          <Globe className="h-8 w-8" />
+        </div>
+        <div className="space-y-1">
+          <Badge variant="outline" className="uppercase tracking-widest text-[10px] font-bold py-0">Vision</Badge>
+          <h2 className="text-3xl font-bold tracking-tight">Devenir le leader mondial du pilotage stratégique</h2>
+        </div>
+      </div>
+
+      {/* Pillars Layer */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+        <div className="absolute inset-0 -top-12 flex justify-center -z-10 pointer-events-none">
+          <div className="w-px h-12 bg-border border-dashed border-l" />
+        </div>
+        {pillars.map(pillar => (
+          <div key={pillar.id} className="relative group">
+            <Card className="border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors">
+              <CardContent className="p-6 text-center">
+                <div className="h-10 w-10 rounded-xl bg-background border mx-auto mb-4 flex items-center justify-center text-primary shadow-sm">
+                  <Network className="h-5 w-5" />
+                </div>
+                <h3 className="font-bold text-lg">{pillar.name}</h3>
+                <p className="text-xs text-muted-foreground mt-2 uppercase tracking-wider font-semibold">Pilier Stratégique</p>
+              </CardContent>
+            </Card>
+            
+            {/* Connection Lines to Objectives */}
+            <div className="mt-8 space-y-4">
+              {objectives.filter(o => o.pillarId === pillar.id).map(obj => (
+                <div key={obj.id} className="relative pl-6 border-l-2 border-dashed border-border group-hover:border-primary/30 transition-colors">
+                  <div className="absolute top-1/2 left-0 w-4 h-px bg-border border-dashed border-t -translate-y-1/2" />
+                  <Card className="bg-card/50 hover:bg-card transition-all cursor-pointer border-white/5 shadow-sm hover:shadow-md">
+                    <CardContent className="p-3 flex items-center justify-between gap-3">
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">OKR</span>
+                        <span className="text-xs font-semibold truncate">{obj.title}</span>
+                      </div>
+                      <Badge className="h-6 w-10 justify-center bg-primary/10 text-primary border-none text-[10px] font-bold">
+                        {obj.progress}%
+                      </Badge>
+                    </CardContent>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Dependency Legend */}
+      <div className="pt-8 border-t flex items-center justify-center gap-8 text-xs font-medium text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <GitMerge className="h-4 w-4 text-primary" />
+          <span>Alignement Vertical (Cascade)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <ArrowDownWideNarrow className="h-4 w-4 text-muted-foreground" />
+          <span>Dépendances inter-équipes</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function StrategyPage() {
+  const [isCheckinOpen, setIsCheckinOpen] = useState(false)
+
   return (
     <div className="p-6 lg:p-8">
       {/* En-tete */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-foreground font-sans tracking-tight text-balance">
-          {"Strategie"}
-        </h1>
-        <p className="text-muted-foreground font-sans mt-1">
-          {"Arbre OKR avec Resultats cles, check-ins et projets lies"}
-        </p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground font-sans tracking-tight text-balance">
+            Stratégie & OKR
+          </h1>
+          <p className="text-muted-foreground font-sans mt-1">
+            Alignement stratégique, cascade d'objectifs et suivi des résultats clés.
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="gap-2">
+            <FileText className="h-4 w-4" />
+            Exporter
+          </Button>
+          <Dialog open={isCheckinOpen} onOpenChange={setIsCheckinOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 shadow-lg shadow-primary/20">
+                <PlusCircle className="h-4 w-4" />
+                Nouveau Check-in
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Effectuer un Check-in Hebdomadaire</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-6 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Sélectionner un Key Result</label>
+                  <select className="w-full p-2 rounded-md border bg-background">
+                    {objectives.flatMap(o => o.keyResults).map(kr => (
+                      <option key={kr.id} value={kr.id}>{kr.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Progression (%)</label>
+                  <Input type="number" placeholder="Ex: 75" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Niveau de confiance</label>
+                  <div className="flex gap-2">
+                    <Button variant="outline" className="flex-1 text-success border-success/20 bg-success/5">Sain</Button>
+                    <Button variant="outline" className="flex-1 text-warning border-warning/20 bg-warning/5">Risqué</Button>
+                    <Button variant="outline" className="flex-1 text-destructive border-destructive/20 bg-destructive/5">Critique</Button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Notes & Commentaires</label>
+                  <textarea className="w-full p-3 rounded-md border bg-background h-24" placeholder="Quels sont les progrès de cette semaine ?" />
+                </div>
+                <Button className="w-full" onClick={() => setIsCheckinOpen(false)}>Enregistrer le check-in</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Tabs defaultValue="objectives" className="w-full">
         <TabsList className="mb-6">
+          <TabsTrigger value="map" className="font-sans">
+            <Network className="h-4 w-4 mr-1.5" />
+            Strategy Map
+          </TabsTrigger>
           <TabsTrigger value="objectives" className="font-sans">
             <Target className="h-4 w-4 mr-1.5" />
             Objectifs
@@ -243,6 +381,10 @@ export default function StrategyPage() {
             Par pilier
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="map">
+          <StrategyMap />
+        </TabsContent>
 
         <TabsContent value="objectives">
           <div className="flex flex-col gap-6">

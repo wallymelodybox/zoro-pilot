@@ -15,13 +15,14 @@ export async function createProject(formData: FormData) {
   }
 
   // Default values for a new project
-  const ownerId = 'u1' // Default owner for now (Sarah Chen)
+  // Using Marc Dubois (manager) and Team Produit from seed-data.sql
+  const ownerId = 'a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d' 
   const newProject = {
     name,
     status: 'on-track',
     progress: 0,
     owner_id: ownerId,
-    team_id: 't1', // Default team
+    team_id: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e',
     start_date: new Date().toISOString().split('T')[0],
     end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // +90 days
   }
@@ -59,7 +60,7 @@ export async function createTask(formData: FormData) {
   const projectId = formData.get('projectId') as string
   const priority = formData.get('priority') as string || 'medium'
   const status = formData.get('status') as string || 'todo'
-  const assigneeId = formData.get('assigneeId') as string || 'u1' // Default to current user
+  const assigneeId = formData.get('assigneeId') as string || 'a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d' // Marc Dubois
   const dueDate = formData.get('dueDate') as string
 
   if (!title) {
@@ -88,11 +89,55 @@ export async function createTask(formData: FormData) {
   revalidatePath('/work')
   revalidatePath('/all-tasks')
   revalidatePath('/my-day')
-  redirect('/work') // Or redirect to the project page
+  
+  const redirectPath = formData.get('redirectPath') as string
+  if (redirectPath) {
+    redirect(redirectPath)
+  } else {
+    redirect('/work')
+  }
 }
 
 export async function createList(formData: FormData) {
     // For "List", we can treat it as a Project with a specific type or tag, 
     // or just a simple project for now as per the schema.
     return createProject(formData)
+}
+
+export async function updateTaskStatus(taskId: string, status: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('tasks')
+    .update({ status })
+    .eq('id', taskId)
+
+  if (error) {
+    console.error('Error updating task status:', error)
+    return { error: 'Erreur lors de la mise à jour du statut.' }
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/all-tasks')
+  revalidatePath('/my-day')
+  return { success: true }
+}
+
+export async function deleteTask(taskId: string) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('tasks')
+    .delete()
+    .eq('id', taskId)
+
+  if (error) {
+    console.error('Error deleting task:', error)
+    return { error: 'Erreur lors de la suppression de la tâche.' }
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/all-tasks')
+  revalidatePath('/my-day')
+  return { success: true }
 }

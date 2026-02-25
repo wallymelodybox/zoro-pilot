@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createProject } from "@/app/actions"
+import { toast } from "sonner"
 import {
   Calendar,
   Home,
@@ -17,8 +18,22 @@ export default function CreateCalendarPage() {
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
-    await createProject(formData)
-    setLoading(false)
+    try {
+      const result = await createProject(formData)
+      if (result?.error) {
+        toast.error(result.error)
+      } else {
+        toast.success("Calendrier créé avec succès !")
+      }
+    } catch (e) {
+      if (e instanceof Error && e.message === "NEXT_REDIRECT") {
+        throw e;
+      }
+      console.error(e)
+      toast.error("Une erreur inattendue est survenue.")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

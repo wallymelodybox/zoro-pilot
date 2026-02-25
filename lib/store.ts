@@ -203,6 +203,47 @@ export const objectives: Objective[] = [
       { id: "kr8", objectiveId: "o3", title: "Former 15 managers au leadership", type: "metric", target: 15, current: 12, unit: "managers", weight: 50, confidence: "on-track", ownerId: "u1" },
     ],
   },
+  {
+    id: "o4",
+    title: "Améliorer l'efficacité opérationnelle",
+    pillarId: "p2",
+    ownerId: "u1",
+    period: "T1 2026",
+    progress: 55,
+    confidence: "on-track",
+    keyResults: [],
+  },
+]
+
+export interface KPI {
+  id: string
+  name: string
+  value: number
+  target: number
+  unit: string
+  trend: "up" | "down" | "stable"
+  category: "finance" | "marketing" | "product" | "sales"
+}
+
+export const kpis: KPI[] = [
+  { id: "k1", name: "MRR", value: 75000, target: 100000, unit: "€", trend: "up", category: "finance" },
+  { id: "k2", name: "Churn Rate", value: 2.4, target: 2.0, unit: "%", trend: "down", category: "marketing" },
+  { id: "k3", name: "NPS", value: 45, target: 50, unit: "score", trend: "up", category: "product" },
+]
+
+export interface Integration {
+  id: string
+  name: string
+  icon: string
+  status: "connected" | "disconnected"
+  description: string
+}
+
+export const integrations: Integration[] = [
+  { id: "i1", name: "Slack", icon: "Slack", status: "connected", description: "Notifications et check-ins via Slack" },
+  { id: "i2", name: "Microsoft Teams", icon: "Teams", status: "disconnected", description: "Collaboration Teams intégrée" },
+  { id: "i3", name: "Jira", icon: "Jira", status: "connected", description: "Synchronisation des tickets et tâches" },
+  { id: "i4", name: "Asana", icon: "Asana", status: "disconnected", description: "Importation de projets et tâches" },
 ]
 
 export const projects: Project[] = [

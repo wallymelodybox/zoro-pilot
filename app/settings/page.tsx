@@ -31,8 +31,14 @@ import {
   KeyRound,
   Shield,
   Palette,
-  MoreHorizontal
+  MoreHorizontal,
+  Database,
+  Chrome,
+  Github,
+  Slack,
+  ExternalLink
 } from "lucide-react"
+import { integrations } from "@/lib/store"
 
 // --- MOCK DATA ---
 const currentUser = {
@@ -69,6 +75,7 @@ export default function SettingsPage() {
       items: [
         { id: "organization", icon: Building, label: organization.name, sub: `${organization.role}` },
         { id: "members", icon: Users, label: "Membres & Groupes" },
+        { id: "integrations", icon: Database, label: "Intégrations" },
         { id: "billing", icon: CreditCard, label: "Abonnement" },
         { id: "permissions", icon: Lock, label: "Permissions" },
       ]
@@ -89,6 +96,8 @@ export default function SettingsPage() {
         return <ThemeSettings />
       case "security":
         return <SecuritySettings />
+      case "integrations":
+        return <IntegrationsSettings />
       case "billing":
         return (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
@@ -351,6 +360,44 @@ function SecuritySettings() {
              <Button variant="outline">Activer</Button>
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function IntegrationsSettings() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Intégrations</h2>
+        <p className="text-muted-foreground">Connectez vos outils externes pour synchroniser vos données.</p>
+      </div>
+      <Separator />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {integrations.map(integration => (
+          <Card key={integration.id} className="border-white/5 bg-card/50">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
+                  {integration.name === 'Slack' && <Slack className="h-6 w-6 text-[#4A154B]" />}
+                  {integration.name === 'Jira' && <Github className="h-6 w-6 text-primary" />}
+                  {integration.name === 'Microsoft Teams' && <Mail className="h-6 w-6 text-blue-500" />}
+                  {integration.name === 'Asana' && <Chrome className="h-6 w-6 text-rose-500" />}
+                </div>
+                <Badge className={integration.status === 'connected' ? "bg-success/10 text-success border-none" : "bg-muted text-muted-foreground border-none"}>
+                  {integration.status === 'connected' ? 'Connecté' : 'Déconnecté'}
+                </Badge>
+              </div>
+              <h3 className="font-bold text-lg">{integration.name}</h3>
+              <p className="text-sm text-muted-foreground mt-1 mb-6">{integration.description}</p>
+              <Button variant={integration.status === 'connected' ? "outline" : "default"} className="w-full gap-2">
+                {integration.status === 'connected' ? 'Gérer' : 'Connecter'}
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   )
