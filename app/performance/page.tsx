@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useSupabaseData } from "@/hooks/use-supabase"
+import { cn } from "@/lib/utils"
 import { 
   BarChart3, 
   TrendingUp, 
@@ -17,7 +18,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { kpis, projects, objectives, formatNumber } from "@/lib/store"
+import { Button } from "@/components/ui/button"
+import { kpis, formatNumber } from "@/lib/store"
 import {
   LineChart,
   Line,
@@ -32,7 +34,7 @@ import {
 } from "recharts"
 
 export default function PerformancePage() {
-  const { loading } = useSupabaseData()
+  const { projects, objectives, loading } = useSupabaseData()
 
   const chartData = [
     { name: "Jan", mrr: 62000, nps: 38 },
@@ -40,13 +42,13 @@ export default function PerformancePage() {
     { name: "Mar", mrr: 75000, nps: 45 },
   ]
 
-  const portfolioData = projects.map(p => ({
-    name: p.name,
-    progress: p.progress,
-    status: p.status
-  }))
-
-  if (loading) return <div className="p-8">Chargement...</div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 lg:p-10 space-y-10 bg-background min-h-screen">
@@ -147,6 +149,9 @@ export default function PerformancePage() {
                   <Progress value={project.progress} className="h-1.5" />
                 </div>
               ))}
+              {projects.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">Aucun projet en cours.</p>
+              )}
             </div>
             <Button variant="ghost" className="w-full mt-6 text-xs text-muted-foreground hover:text-foreground">
               Voir tous les projets
@@ -186,6 +191,9 @@ export default function PerformancePage() {
                 </div>
               </div>
             ))}
+            {objectives.length === 0 && (
+              <p className="text-sm text-muted-foreground col-span-full text-center py-4">Aucun objectif défini.</p>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -11,12 +11,15 @@ import {
   CheckCircle2, 
   PlusCircle, 
   CalendarDays,
+  Filter,
+  TrendingUp,
 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { UserAvatar } from "@/components/user-avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 import { WidgetHub } from "@/components/widget-hub"
 import {
@@ -27,6 +30,9 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
+  DragOverlay,
+  defaultDropAnimationSideEffects,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -90,6 +96,7 @@ function DraggableWidget({ id, children, className }: DraggableWidgetProps) {
 export default function DashboardPage() {
   const { projects, loading } = useSupabaseData()
   const [isWidgetHubOpen, setIsWidgetHubOpen] = React.useState(false)
+  const [activeId, setActiveId] = React.useState<string | null>(null)
   const [widgetOrder, setWidgetOrder] = React.useState([
     'projects-widget',
     'status-widgets',
@@ -108,8 +115,13 @@ export default function DashboardPage() {
     })
   )
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
+    setActiveId(null)
 
     if (over && active.id !== over.id) {
       setWidgetOrder((items) => {
@@ -127,11 +139,11 @@ export default function DashboardPage() {
      return <div className="flex items-center justify-center h-screen text-muted-foreground">Chargement...</div>
   }
 
-  const renderWidget = (id: string) => {
-    switch (id) {
-      case 'projects-widget':
-        return (
-          <DraggableWidget key={id} id={id} className="col-span-12 lg:col-span-5">
+  const renderWidget = (id: string, isOverlay = false) => {
+    const content = () => {
+      switch (id) {
+        case 'projects-widget':
+          return (
             <div className="bg-card/50 border rounded-3xl p-6 h-150 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Projets</h2>
@@ -170,45 +182,99 @@ export default function DashboardPage() {
                 </div>
               </ScrollArea>
             </div>
-          </DraggableWidget>
-        )
-      case 'status-widgets':
-        return (
-          <DraggableWidget key={id} id={id} className="col-span-12 lg:col-span-4 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Ma journée */}
-              <div className="bg-card/50 border rounded-3xl p-6 flex flex-col items-center justify-center gap-4 text-center h-44">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ma journée</h3>
-                <div className="h-20 w-20 rounded-full border-4 border-blue-500/30 flex items-center justify-center relative">
-                   <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent -rotate-45" />
-                   <CheckCircle2 className="h-6 w-6 text-blue-500" />
+          )
+        case 'status-widgets':
+          return (
+            <div className="space-y-6 h-full">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Ma journée */}
+                <div className="bg-card/50 border rounded-3xl p-6 flex flex-col items-center justify-center gap-4 text-center h-44">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ma journée</h3>
+                  <div className="h-20 w-20 rounded-full border-4 border-blue-500/30 flex items-center justify-center relative">
+                     <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent -rotate-45" />
+                     <CheckCircle2 className="h-6 w-6 text-blue-500" />
+                  </div>
+                </div>
+                {/* Ma semaine */}
+                <div className="bg-card/50 border rounded-3xl p-6 flex flex-col items-center justify-center gap-4 text-center h-44">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ma semaine</h3>
+                  <div className="h-20 w-20 rounded-full border-4 border-blue-500/30 flex items-center justify-center relative">
+                     <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent border-r-transparent rotate-90" />
+                     <CheckCircle2 className="h-6 w-6 text-blue-500" />
+                  </div>
                 </div>
               </div>
-              {/* Ma semaine */}
-              <div className="bg-card/50 border rounded-3xl p-6 flex flex-col items-center justify-center gap-4 text-center h-44">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ma semaine</h3>
-                <div className="h-20 w-20 rounded-full border-4 border-blue-500/30 flex items-center justify-center relative">
-                   <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent border-r-transparent rotate-90" />
-                   <CheckCircle2 className="h-6 w-6 text-blue-500" />
-                </div>
-              </div>
-            </div>
 
-            {/* État d'avancement Chart */}
-            <div className="bg-card/50 border rounded-3xl p-6 h-82.5 flex flex-col">
-              <h2 className="text-sm font-semibold mb-10">État d'avancement des tâches par projet</h2>
-              <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-30 gap-3">
-                 <div className="h-24 w-32 border-b-2 border-l-2 border-current relative">
-                    <div className="absolute bottom-4 left-2 right-4 h-12 border-t-2 border-r-2 border-current rounded-tr-lg" />
-                 </div>
-                 <span className="text-xs font-medium uppercase tracking-widest">Aucun résultat</span>
+              {/* État d'avancement Chart */}
+              <div className="bg-card/50 border rounded-3xl p-6 h-82.5 flex flex-col">
+                <h2 className="text-sm font-semibold mb-10">État d'avancement des tâches par projet</h2>
+                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-30 gap-3">
+                   <div className="h-24 w-32 border-b-2 border-l-2 border-current relative">
+                      <div className="absolute bottom-4 left-2 right-4 h-12 border-t-2 border-r-2 border-current rounded-tr-lg" />
+                   </div>
+                   <span className="text-xs font-medium uppercase tracking-widest">Aucun résultat</span>
+                </div>
               </div>
             </div>
-          </DraggableWidget>
-        )
-      case 'calendar-widget':
-        return (
-          <DraggableWidget key={id} id={id} className="col-span-12 lg:col-span-3">
+          )
+        case 'progress-widget':
+          return (
+            <div className="bg-card/50 border rounded-3xl p-6 h-80 flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500">
+                    <TrendingUp className="h-5 w-5" />
+                  </div>
+                  <h2 className="text-lg font-semibold">Progression Globale des Objectifs</h2>
+                </div>
+                <Badge variant="outline" className="bg-orange-500/5 text-orange-500 border-orange-500/20">
+                  T1 2026
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="space-y-4">
+                  <div className="flex justify-between text-sm font-medium">
+                    <span className="text-muted-foreground">Croissance</span>
+                    <span>65%</span>
+                  </div>
+                  <Progress value={65} className="h-2" />
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-sm font-medium">
+                    <span className="text-muted-foreground">Excellence Produit</span>
+                    <span>45%</span>
+                  </div>
+                  <Progress value={45} className="h-2" />
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-sm font-medium">
+                    <span className="text-muted-foreground">Équipe & Culture</span>
+                    <span>78%</span>
+                  </div>
+                  <Progress value={78} className="h-2" />
+                </div>
+              </div>
+
+              <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    3 Objectifs sains
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
+                    1 Objectif à risque
+                  </span>
+                </div>
+                <Button variant="link" size="sm" className="h-auto p-0 text-primary" asChild>
+                  <Link href="/strategy">Voir la Strategy Map</Link>
+                </Button>
+              </div>
+            </div>
+          )
+        case 'calendar-widget':
+          return (
             <div className="bg-card/50 border rounded-3xl p-6 h-150 flex flex-col">
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-lg font-semibold">Jour</h2>
@@ -243,11 +309,39 @@ export default function DashboardPage() {
                  </div>
               </div>
             </div>
-          </DraggableWidget>
-        )
-      default:
-        return null
+          )
+        default:
+          return null
+      }
     }
+
+    if (isOverlay) {
+      return (
+        <div className={cn(
+          id === 'projects-widget' ? "col-span-5" : 
+          id === 'status-widgets' ? "col-span-4" : 
+          id === 'progress-widget' ? "col-span-12" : 
+          "col-span-3"
+        )}>
+          {content()}
+        </div>
+      )
+    }
+
+    return (
+      <DraggableWidget 
+        key={id} 
+        id={id} 
+        className={cn(
+          id === 'projects-widget' ? "col-span-12 lg:col-span-5" : 
+          id === 'status-widgets' ? "col-span-12 lg:col-span-4" : 
+          id === 'progress-widget' ? "col-span-12 lg:col-span-12" : 
+          "col-span-12 lg:col-span-3"
+        )}
+      >
+        {content()}
+      </DraggableWidget>
+    )
   }
 
   return (
@@ -292,6 +386,7 @@ export default function DashboardPage() {
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             modifiers={[restrictToWindowEdges]}
           >
@@ -303,6 +398,22 @@ export default function DashboardPage() {
                 {widgetOrder.map(id => renderWidget(id))}
               </div>
             </SortableContext>
+
+            <DragOverlay dropAnimation={{
+              sideEffects: defaultDropAnimationSideEffects({
+                styles: {
+                  active: {
+                    opacity: '0.4',
+                  },
+                },
+              }),
+            }}>
+              {activeId ? (
+                <div className="w-full h-full opacity-90 scale-105 transition-transform pointer-events-none">
+                  {renderWidget(activeId, true)}
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         </div>
       </div>

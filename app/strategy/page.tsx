@@ -1,6 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useSupabaseData } from "@/hooks/use-supabase"
+import { createOKRCheckin } from "@/app/actions"
+import { toast } from "sonner"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
@@ -22,14 +25,14 @@ import {
 import { RAGBadge } from "@/components/rag-badge"
 import { UserAvatar } from "@/components/user-avatar"
 import {
-  objectives,
-  pillars,
   getUserById,
-  getProjectsByObjective,
-  getCheckinsByKR,
   formatNumber,
   type KeyResult,
   type Objective,
+  type Pillar,
+  type OKRCheckin,
+  type Project,
+  users,
 } from "@/lib/store"
 import {
   Target,
@@ -48,10 +51,10 @@ import {
   FileText
 } from "lucide-react"
 
-function KRCard({ kr }: { kr: KeyResult }) {
+function KRCard({ kr, checkins }: { kr: KeyResult, checkins: OKRCheckin[] }) {
   const [expanded, setExpanded] = useState(false)
-  const owner = getUserById(kr.ownerId)
-  const checkins = getCheckinsByKR(kr.id)
+  const owner = users.find(u => u.id === kr.ownerId)
+  const krCheckins = checkins.filter(ci => ci.keyResultId === kr.id)
   const progressPercent = kr.type === "metric"
     ? Math.round((kr.current / kr.target) * 100)
     : kr.current
@@ -96,11 +99,11 @@ function KRCard({ kr }: { kr: KeyResult }) {
         <CollapsibleContent>
           <div className="mt-3 ml-7 border-t border-border pt-3">
             <p className="text-xs font-medium text-muted-foreground font-sans mb-2 flex items-center gap-1.5">
-              <Activity className="h-3 w-3" /> Check-ins recents
+              <Activity className="h-3 w-3" /> Check-ins récents
             </p>
-            {checkins.length > 0 ? (
+            {krCheckins.length > 0 ? (
               <div className="flex flex-col gap-2">
-                {checkins.slice(0, 3).map((ci) => (
+                {krCheckins.slice(0, 3).map((ci) => (
                   <div key={ci.id} className="rounded-md bg-muted/50 p-2.5">
                     <div className="flex items-center gap-2 mb-1">
                       <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -132,10 +135,10 @@ function KRCard({ kr }: { kr: KeyResult }) {
   )
 }
 
-function ObjectiveCard({ objective }: { objective: Objective }) {
+function ObjectiveCard({ objective, pillars, checkins, projects }: { objective: Objective, pillars: Pillar[], checkins: OKRCheckin[], projects: Project[] }) {
   const [expanded, setExpanded] = useState(true)
-  const owner = getUserById(objective.ownerId)
-  const linkedProjects = getProjectsByObjective(objective.id)
+  const owner = users.find(u => u.id === objective.ownerId)
+  const linkedProjects = projects.filter(p => p.linkedObjectiveIds?.includes(objective.id))
   const pillar = pillars.find((p) => p.id === objective.pillarId)
 
   return (
@@ -185,25 +188,25 @@ function ObjectiveCard({ objective }: { objective: Objective }) {
         </CardHeader>
         <CollapsibleContent>
           <CardContent className="pt-0">
-            {/* Resultats Cles */}
+            {/* Résultats Clés */}
             <div className="flex flex-col gap-3 mb-4">
               <p className="text-xs font-medium text-muted-foreground font-sans uppercase tracking-wider">
-                {"Resultats cles"} ({objective.keyResults.length})
+                {"Résultats clés"} ({objective.keyResults.length})
               </p>
               {objective.keyResults.map((kr) => (
-                <KRCard key={kr.id} kr={kr} />
+                <KRCard key={kr.id} kr={kr} checkins={checkins} />
               ))}
             </div>
 
-            {/* Projets lies */}
+            {/* Projets liés */}
             {linkedProjects.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground font-sans uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Link2 className="h-3 w-3" /> {"Projets lies"}
+                  <Link2 className="h-3 w-3" /> {"Projets liés"}
                 </p>
                 <div className="flex flex-col gap-2">
                   {linkedProjects.map((proj) => {
-                    const projOwner = getUserById(proj.ownerId)
+                    const projOwner = users.find(u => u.id === proj.ownerId)
                     return (
                       <div key={proj.id} className="flex items-center gap-3 rounded-md border border-border p-2.5 bg-secondary/20">
                         <div className="flex-1">
@@ -234,7 +237,7 @@ function ObjectiveCard({ objective }: { objective: Objective }) {
   )
 }
 
-function StrategyMap() {
+function StrategyMap({ pillars, objectives }: { pillars: Pillar[], objectives: Objective[] }) {
   return (
     <div className="space-y-12 py-6">
       {/* Vision Layer */}
@@ -305,10 +308,40 @@ function StrategyMap() {
 
 export default function StrategyPage() {
   const [isCheckinOpen, setIsCheckinOpen] = useState(false)
+  const { objectives, pillars, checkins, projects, loading } = useSupabaseData()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  async function handleCheckin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setIsSubmitting(true)
+    const formData = new FormData(e.currentTarget)
+    
+    try {
+      const result = await createOKRCheckin(formData)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success("Check-in enregistré !")
+        setIsCheckinOpen(false)
+      }
+    } catch (err) {
+      toast.error("Une erreur est survenue")
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 lg:p-8">
-      {/* En-tete */}
+      {/* En-tête */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-foreground font-sans tracking-tight text-balance">
@@ -330,37 +363,56 @@ export default function StrategyPage() {
                 Nouveau Check-in
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-125">
               <DialogHeader>
                 <DialogTitle>Effectuer un Check-in Hebdomadaire</DialogTitle>
               </DialogHeader>
-              <div className="space-y-6 py-4">
+              <form onSubmit={handleCheckin} className="space-y-6 py-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Sélectionner un Key Result</label>
-                  <select className="w-full p-2 rounded-md border bg-background">
+                  <label htmlFor="kr-select" className="text-sm font-medium">Sélectionner un Key Result</label>
+                  <select 
+                    id="kr-select"
+                    name="krId" 
+                    className="w-full p-2 rounded-md border bg-background" 
+                    required
+                    title="Sélectionner un Key Result"
+                  >
                     {objectives.flatMap(o => o.keyResults).map(kr => (
                       <option key={kr.id} value={kr.id}>{kr.title}</option>
                     ))}
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Progression (%)</label>
-                  <Input type="number" placeholder="Ex: 75" />
+                  <label htmlFor="progress-delta" className="text-sm font-medium">Progression (+ Delta)</label>
+                  <Input id="progress-delta" name="progressDelta" type="number" step="0.1" placeholder="Ex: 5" required />
+                  <p className="text-[10px] text-muted-foreground">Valeur à ajouter à la progression actuelle.</p>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Niveau de confiance</label>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="flex-1 text-success border-success/20 bg-success/5">Sain</Button>
-                    <Button variant="outline" className="flex-1 text-warning border-warning/20 bg-warning/5">Risqué</Button>
-                    <Button variant="outline" className="flex-1 text-destructive border-destructive/20 bg-destructive/5">Critique</Button>
-                  </div>
+                  <label htmlFor="confidence-select" className="text-sm font-medium">Niveau de confiance</label>
+                  <select 
+                    id="confidence-select"
+                    name="confidence" 
+                    className="w-full p-2 rounded-md border bg-background" 
+                    defaultValue="on-track"
+                    title="Niveau de confiance"
+                  >
+                    <option value="on-track">Sain (On Track)</option>
+                    <option value="at-risk">Risqué (At Risk)</option>
+                    <option value="off-track">Critique (Off Track)</option>
+                  </select>
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Notes & Commentaires</label>
-                  <textarea className="w-full p-3 rounded-md border bg-background h-24" placeholder="Quels sont les progrès de cette semaine ?" />
+                  <textarea name="note" className="w-full p-3 rounded-md border bg-background h-24" placeholder="Quels sont les progrès de cette semaine ?" required />
                 </div>
-                <Button className="w-full" onClick={() => setIsCheckinOpen(false)}>Enregistrer le check-in</Button>
-              </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Blocages (Optionnel)</label>
+                  <Input name="blocker" placeholder="Qu'est-ce qui vous ralentit ?" />
+                </div>
+                <Button className="w-full" type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Enregistrement..." : "Enregistrer le check-in"}
+                </Button>
+              </form>
             </DialogContent>
           </Dialog>
         </div>
@@ -383,13 +435,13 @@ export default function StrategyPage() {
         </TabsList>
 
         <TabsContent value="map">
-          <StrategyMap />
+          <StrategyMap pillars={pillars} objectives={objectives} />
         </TabsContent>
 
         <TabsContent value="objectives">
           <div className="flex flex-col gap-6">
             {objectives.map((obj) => (
-              <ObjectiveCard key={obj.id} objective={obj} />
+              <ObjectiveCard key={obj.id} objective={obj} pillars={pillars} checkins={checkins} projects={projects} />
             ))}
           </div>
         </TabsContent>
@@ -413,7 +465,7 @@ export default function StrategyPage() {
                   </div>
                   <div className="flex flex-col gap-4 ml-5 border-l-2 border-border pl-4">
                     {pillarObjectives.map((obj) => (
-                      <ObjectiveCard key={obj.id} objective={obj} />
+                      <ObjectiveCard key={obj.id} objective={obj} pillars={pillars} checkins={checkins} projects={projects} />
                     ))}
                   </div>
                 </div>

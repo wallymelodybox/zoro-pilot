@@ -239,6 +239,50 @@ export interface Integration {
   description: string
 }
 
+export interface GmailMessage {
+  id: string
+  threadId: string
+  subject: string
+  snippet: string
+  from: string
+  date: string
+  isRead: boolean
+  labels: string[]
+}
+
+export const mockGmailMessages: GmailMessage[] = [
+  { 
+    id: "gm1", 
+    threadId: "t1", 
+    subject: "Re: Mise à jour du projet Pilot", 
+    snippet: "Salut Menann, j'ai bien reçu les dernières specs. On peut se voir demain pour en discuter ?", 
+    from: "Sarah Chen <sarah@example.com>", 
+    date: "2026-02-25T10:30:00Z", 
+    isRead: false, 
+    labels: ["INBOX", "IMPORTANT"] 
+  },
+  { 
+    id: "gm2", 
+    threadId: "t2", 
+    subject: "Facture Février 2026", 
+    snippet: "Veuillez trouver ci-joint votre facture pour le mois de février. Le montant total est de...", 
+    from: "Comptabilité <billing@cloud-services.com>", 
+    date: "2026-02-24T15:45:00Z", 
+    isRead: true, 
+    labels: ["INBOX"] 
+  },
+  { 
+    id: "gm3", 
+    threadId: "t3", 
+    subject: "Nouveau commentaire sur votre tâche", 
+    snippet: "Marc Dubois a commenté: 'On a un petit retard sur le module auth, mais ça devrait aller.'", 
+    from: "Zoro Notifications <no-reply@zoropilot.com>", 
+    date: "2026-02-25T08:15:00Z", 
+    isRead: false, 
+    labels: ["INBOX", "ZORO"] 
+  }
+]
+
 export const integrations: Integration[] = [
   { id: "i1", name: "Slack", icon: "Slack", status: "connected", description: "Notifications et check-ins via Slack" },
   { id: "i2", name: "Microsoft Teams", icon: "Teams", status: "disconnected", description: "Collaboration Teams intégrée" },

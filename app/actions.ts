@@ -91,6 +91,12 @@ export async function createTask(formData: FormData) {
   revalidatePath('/my-day')
   
   const redirectPath = formData.get('redirectPath') as string
+  const noRedirect = formData.get('noRedirect') === 'true'
+
+  if (noRedirect) {
+    return { success: true }
+  }
+
   if (redirectPath) {
     redirect(redirectPath)
   } else {
@@ -120,6 +126,166 @@ export async function updateTaskStatus(taskId: string, status: string) {
   revalidatePath('/work')
   revalidatePath('/all-tasks')
   revalidatePath('/my-day')
+  return { success: true }
+}
+
+// --- GMAIL INTEGRATION (SIMULATED) ---
+
+export async function connectGmail() {
+  // In a real app, this would start the Google OAuth flow
+  // For the demo, we'll simulate a successful connection
+  revalidatePath('/inbox')
+  return { success: true, email: 'menannzoro@gmail.com' }
+}
+
+export async function fetchGmailMessages() {
+  // Simulating API call delay
+  await new Promise(resolve => setTimeout(resolve, 500))
+  const { mockGmailMessages } = await import('@/lib/store')
+  return { messages: mockGmailMessages }
+}
+
+// --- OKR ACTIONS ---
+
+export async function createObjective(formData: FormData) {
+  const supabase = await createClient()
+  
+  const title = formData.get('title') as string
+  const pillarId = formData.get('pillarId') as string
+  const period = formData.get('period') as string || 'T1 2026'
+  const ownerId = formData.get('ownerId') as string || 'a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d' // Marc Dubois
+
+  if (!title) return { error: 'Le titre de l\'objectif est requis.' }
+
+  const { error } = await supabase
+    .from('objectives')
+    .insert([{ title, pillar_id: pillarId, period, owner_id: ownerId, confidence: 'on-track', progress: 0 }])
+
+  if (error) {
+    console.error('Error creating objective:', error)
+    return { error: 'Erreur lors de la création de l\'objectif.' }
+  }
+
+  revalidatePath('/strategy')
+  return { success: true }
+}
+
+export async function createKeyResult(formData: FormData) {
+  const supabase = await createClient()
+  
+  const objectiveId = formData.get('objectiveId') as string
+  const title = formData.get('title') as string
+  const type = formData.get('type') as string || 'metric'
+  const targetValue = parseFloat(formData.get('targetValue') as string || '100')
+  const unit = formData.get('unit') as string || '%'
+  const weight = parseInt(formData.get('weight') as string || '1')
+  const ownerId = formData.get('ownerId') as string || 'a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d'
+
+  if (!title || !objectiveId) return { error: 'Le titre et l\'objectif sont requis.' }
+
+  const { error } = await supabase
+    .from('key_results')
+    .insert([{ 
+      objective_id: objectiveId, 
+      title, 
+      type, 
+      target_value: targetValue, 
+      current_value: 0, 
+      unit, 
+      weight, 
+      confidence: 'on-track',
+      owner_id: ownerId 
+    }])
+
+  if (error) {
+    console.error('Error creating KR:', error)
+    return { error: 'Erreur lors de la création du résultat clé.' }
+  }
+
+  revalidatePath('/strategy')
+  return { success: true }
+}
+
+export async function createOKRCheckin(formData: FormData) {
+  const supabase = await createClient()
+  
+  const krId = formData.get('krId') as string
+  const progressDelta = parseFloat(formData.get('progressDelta') as string || '0')
+  const confidence = formData.get('confidence') as string || 'on-track'
+  const note = formData.get('note') as string
+  const blocker = formData.get('blocker') as string
+
+  if (!krId) return { error: 'Le résultat clé est requis.' }
+
+  // 1. Create the check-in
+  const { error: checkinError } = await supabase
+    .from('okr_checkins')
+    .insert([{ 
+      key_result_id: krId, 
+      progress_delta: progressDelta, 
+      confidence, 
+      note, 
+      blocker 
+    }])
+
+  if (checkinError) {
+    console.error('Error creating check-in:', checkinError)
+    return { error: 'Erreur lors de l\'enregistrement du check-in.' }
+  }
+
+  // 2. Update the Key Result current value
+  // Note: For simplicity, we'll just increment the current_value. 
+  // In a more robust system, you might sum all check-ins or use the absolute value from the check-in.
+  const { data: krData } = await supabase
+    .from('key_results')
+    .select('current_value, target_value')
+    .eq('id', krId)
+    .single()
+
+  if (krData) {
+    const newValue = Number(krData.current_value) + progressDelta
+    await supabase
+      .from('key_results')
+      .update({ current_value: newValue, confidence })
+      .eq('id', krId)
+
+    // 3. Recalculate Objective Progress (Weighted average of KRs)
+    // This could be done via a DB trigger for better consistency, but let's do it here for now.
+    const { data: objectiveIdData } = await supabase
+      .from('key_results')
+      .select('objective_id')
+      .eq('id', krId)
+      .single()
+
+    if (objectiveIdData) {
+      const { data: krs } = await supabase
+        .from('key_results')
+        .select('current_value, target_value, weight')
+        .eq('objective_id', objectiveIdData.objective_id)
+
+      if (krs && krs.length > 0) {
+        let totalWeight = 0
+        let weightedProgress = 0
+        
+        krs.forEach(kr => {
+          const progress = Math.min(100, (Number(kr.current_value) / Number(kr.target_value)) * 100)
+          weightedProgress += progress * kr.weight
+          totalWeight += kr.weight
+        })
+        
+        const objectiveProgress = Math.round(weightedProgress / totalWeight)
+        
+        await supabase
+          .from('objectives')
+          .update({ progress: objectiveProgress })
+          .eq('id', objectiveIdData.objective_id)
+      }
+    }
+  }
+
+  revalidatePath('/strategy')
+  revalidatePath('/performance')
+  revalidatePath('/')
   return { success: true }
 }
 

@@ -10,9 +10,10 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { createTask, updateTaskStatus } from "@/app/actions"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 export default function MyDayPage() {
-  const { tasks, loading } = useSupabaseData()
+  const { tasks, loading, refresh } = useSupabaseData()
   const [isAdding, setIsAdding] = React.useState(false)
   const [newTaskTitle, setNewTaskTitle] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
@@ -30,25 +31,36 @@ export default function MyDayPage() {
     formData.append('dueDate', today)
     formData.append('priority', 'medium')
     formData.append('status', 'todo')
-    formData.append('redirectPath', '/my-day')
+    formData.append('noRedirect', 'true')
 
-    const result = await createTask(formData)
-    
-    if (result?.error) {
-      toast.error(result.error)
-    } else {
-      setNewTaskTitle("")
-      setIsAdding(false)
-      toast.success("Tâche ajoutée à Ma journée")
+    try {
+      const result = await createTask(formData)
+      if (result?.error) {
+        toast.error(result.error)
+      } else {
+        setNewTaskTitle("")
+        setIsAdding(false)
+        toast.success("Tâche ajoutée à Ma journée")
+        refresh()
+      }
+    } catch (err) {
+      toast.error("Erreur lors de l'ajout")
+    } finally {
+      setIsSubmitting(false)
     }
-    setIsSubmitting(false)
   }
 
   const handleToggleTask = async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'done' ? 'todo' : 'done'
-    const result = await updateTaskStatus(taskId, newStatus)
-    if (result?.error) {
-      toast.error(result.error)
+    try {
+      const result = await updateTaskStatus(taskId, newStatus)
+      if (result?.error) {
+        toast.error(result.error)
+      } else {
+        refresh()
+      }
+    } catch (err) {
+      toast.error("Erreur de mise à jour")
     }
   }
 
