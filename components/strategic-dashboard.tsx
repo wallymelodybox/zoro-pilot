@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import styles from "./strategic-dashboard.module.css";
 import {
   Home,
   Target,
@@ -101,8 +102,8 @@ function ProgressNeon({ value }: { value: number }) {
     <div className="w-full">
       <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
         <div
-          className="h-full rounded-full bg-linear-to-r from-cyan-400 via-sky-500 to-fuchsia-500 shadow-[0_0_18px_rgba(56,189,248,0.45)]"
-          style={{ width: `${clamped}%` } as React.CSSProperties}
+          className={`h-full rounded-full bg-linear-to-r from-cyan-400 via-sky-500 to-fuchsia-500 shadow-[0_0_18px_rgba(56,189,248,0.45)] ${styles.progressBar}`}
+          style={{"--progress": `${clamped}%`} as React.CSSProperties}
         />
       </div>
       <div className="mt-1 flex items-center justify-between text-[11px] text-white/60">

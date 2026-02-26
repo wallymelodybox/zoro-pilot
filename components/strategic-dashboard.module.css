@@ -1,0 +1,5 @@
+/* ProgressNeon bar with CSS variable for dynamic width */
+.progressBar {
+  width: var(--progress, 0%);
+  transition: width 500ms ease-out;
+}
