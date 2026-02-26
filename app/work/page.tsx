@@ -350,15 +350,138 @@ export default function WorkPage() {
 
         {/* Right Board Area */}
         <main className="flex-1 flex flex-col min-w-0 bg-muted/10 p-6 overflow-hidden">
-          {currentView === "kanban" ? (
-             <KanbanBoard projectTasks={projectTasks} canEdit={canEditProject} />
-          ) : (
-             <div className="flex items-center justify-center h-full text-muted-foreground">
-               Vue {currentView} en cours de developpement
-             </div>
+          {currentView === "kanban" && (
+            <KanbanBoard projectTasks={projectTasks} canEdit={canEditProject} />
+          )}
+          {currentView === "list" && (
+            <ProjectTaskList projectTasks={projectTasks} onCanEdit={canEditProject} />
+          )}
+          {currentView === "calendar" && (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              Vue calendrier détaillée en cours d&apos;amélioration (les échéances restent visibles dans la
+              vue Calendrier globale).
+            </div>
+          )}
+          {currentView === "gantt" && (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              Vue Gantt en cours de développement.
+            </div>
+          )}
+          {currentView === "table" && (
+            <ProjectTaskTable projectTasks={projectTasks} />
           )}
         </main>
       </div>
+    </div>
+  )
+}
+
+function ProjectTaskList({ projectTasks, onCanEdit }: { projectTasks: Task[]; onCanEdit: boolean }) {
+  return (
+    <ScrollArea className="h-full pr-4">
+      <div className="space-y-2">
+        {projectTasks.map((task) => {
+          const assignee = getUserById(task.assigneeId)
+          return (
+            <div
+              key={task.id}
+              className={cn(
+                "flex items-center justify-between p-3 bg-card border rounded-lg hover:shadow-sm transition-all",
+                !onCanEdit && "opacity-80",
+              )}
+            >
+              <div className="flex items-center gap-4 flex-1 min-w-0">
+                <CheckCircle2
+                  className={cn(
+                    "h-5 w-5 cursor-pointer transition-colors",
+                    task.status === "done" ? "text-green-500" : "text-muted-foreground/30",
+                  )}
+                />
+                <div className="flex flex-col min-w-0">
+                  <span
+                    className={cn(
+                      "font-medium truncate",
+                      task.status === "done" ? "line-through text-muted-foreground" : "text-foreground",
+                    )}
+                  >
+                    {task.title}
+                  </span>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{getTaskStatusLabel(task.status)}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 min-w-30">
+                  {assignee ? (
+                    <>
+                      <UserAvatar name={assignee.name} fallback={assignee.avatar} className="h-6 w-6" />
+                      <span className="text-xs text-muted-foreground truncate max-w-20">
+                        {assignee.name.split(" ")[0]}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic flex items-center gap-1">
+                      <UserIcon className="h-3 w-3" />
+                      Non assigné
+                    </span>
+                  )}
+                </div>
+                <Badge className={cn("w-20 justify-center", getPriorityColor(task.priority))} variant="secondary">
+                  {getPriorityLabel(task.priority)}
+                </Badge>
+              </div>
+            </div>
+          )
+        })}
+        {projectTasks.length === 0 && (
+          <div className="flex items-center justify-center h-full text-muted-foreground opacity-60">
+            Aucune tâche dans ce projet.
+          </div>
+        )}
+      </div>
+    </ScrollArea>
+  )
+}
+
+function ProjectTaskTable({ projectTasks }: { projectTasks: Task[] }) {
+  return (
+    <div className="h-full bg-card border rounded-xl overflow-hidden flex flex-col">
+      <div className="px-4 py-3 border-b bg-muted/5 text-xs font-medium text-muted-foreground grid grid-cols-[2fr_1fr_1fr_1fr] gap-2">
+        <span>Tâche</span>
+        <span>Statut</span>
+        <span>Responsable</span>
+        <span>Priorité</span>
+      </div>
+      <ScrollArea className="flex-1">
+        <div className="divide-y">
+          {projectTasks.map((task) => {
+            const assignee = getUserById(task.assigneeId)
+            return (
+              <div
+                key={task.id}
+                className="px-4 py-2 text-sm grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 items-center hover:bg-muted/20"
+              >
+                <span className={cn("truncate", task.status === "done" && "line-through text-muted-foreground")}>
+                  {task.title}
+                </span>
+                <span className="text-xs text-muted-foreground">{getTaskStatusLabel(task.status)}</span>
+                <span className="text-xs text-muted-foreground">
+                  {assignee ? assignee.name.split(" ")[0] : "Non assigné"}
+                </span>
+                <Badge className={cn("justify-center", getPriorityColor(task.priority))} variant="secondary">
+                  {getPriorityLabel(task.priority)}
+                </Badge>
+              </div>
+            )
+          })}
+          {projectTasks.length === 0 && (
+            <div className="flex items-center justify-center py-10 text-muted-foreground text-sm">
+              Aucune tâche à afficher.
+            </div>
+          )}
+        </div>
+      </ScrollArea>
     </div>
   )
 }

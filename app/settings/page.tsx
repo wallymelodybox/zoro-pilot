@@ -52,10 +52,19 @@ const organization = {
   name: "L'organisation de Menann Zoro",
   role: "Propriétaire de l'organisation",
   plan: "Gratuit",
-  membersCount: 1
+  membersCount: 1,
 }
 
-type SettingsSection = "account" | "notifications" | "organization" | "members" | "billing" | "theme" | "security"
+type SettingsSection =
+  | "account"
+  | "notifications"
+  | "organization"
+  | "members"
+  | "billing"
+  | "theme"
+  | "security"
+  | "integrations"
+  | "permissions"
 
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>("members")
@@ -98,6 +107,8 @@ export default function SettingsPage() {
         return <SecuritySettings />
       case "integrations":
         return <IntegrationsSettings />
+      case "permissions":
+        return <PermissionsSettings />
       case "billing":
         return (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
@@ -501,6 +512,24 @@ function MembersSettings() {
              ))}
           </div>
        </div>
+    </div>
+  )
+}
+
+function PermissionsSettings() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Permissions</h2>
+        <p className="text-muted-foreground">
+          Vue de synthèse des rôles et des droits sur l&apos;organisation (démo).
+        </p>
+      </div>
+      <Separator />
+      <div className="text-sm text-muted-foreground">
+        La logique métier RBAC détaillée est gérée côté back-end et reflétée dans l&apos;application via les
+        hooks de permissions.
+      </div>
     </div>
   )
 }
