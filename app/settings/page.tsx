@@ -271,7 +271,7 @@ function NotificationSettings() {
 }
 
 function ThemeSettings() {
-  const { theme, setTheme } = useTheme()
+  const { setTheme } = useTheme()
 
   const [dashboardTheme, setDashboardTheme] = useState<string>("command-center")
 
@@ -280,7 +280,11 @@ function ThemeSettings() {
     const value = stored || "command-center"
     setDashboardTheme(value)
     document.documentElement.dataset.dashboardTheme = value
-  }, [])
+
+    // Le thème visuel global est piloté par les options 1/2/3.
+    // On verrouille le mode dark pour éviter les variantes clair/sombre/système.
+    setTheme("dark")
+  }, [setTheme])
 
   const applyDashboardTheme = (value: string) => {
     setDashboardTheme(value)
@@ -296,52 +300,7 @@ function ThemeSettings() {
       </div>
       <Separator />
       
-      <div className="grid grid-cols-3 gap-4 max-w-2xl">
-        <div 
-          onClick={() => setTheme("light")}
-          className={`space-y-2 cursor-pointer group transition-all ${theme === "light" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
-        >
-          <div className={`h-32 rounded-lg border-2 p-2 shadow-sm flex flex-col gap-2 bg-white ${theme === "light" ? "border-primary" : "border-transparent ring-1 ring-border"}`}>
-            <div className="h-4 w-3/4 bg-slate-100 rounded-md" />
-            <div className="flex-1 bg-slate-50 rounded-md border border-dashed border-slate-200" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className={`h-4 w-4 rounded-full border ${theme === "light" ? "border-primary bg-primary" : "border-muted-foreground"}`} />
-            <span className="text-sm font-medium">Clair</span>
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setTheme("dark")}
-          className={`space-y-2 cursor-pointer group transition-all ${theme === "dark" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
-        >
-          <div className={`h-32 rounded-lg border-2 p-2 shadow-sm flex flex-col gap-2 bg-slate-950 ${theme === "dark" ? "border-primary" : "border-transparent ring-1 ring-border"}`}>
-            <div className="h-4 w-3/4 bg-slate-800 rounded-md" />
-            <div className="flex-1 bg-slate-900 rounded-md border border-dashed border-slate-800" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className={`h-4 w-4 rounded-full border ${theme === "dark" ? "border-primary bg-primary" : "border-muted-foreground"}`} />
-            <span className="text-sm font-medium">Sombre</span>
-          </div>
-        </div>
-
-        <div 
-          onClick={() => setTheme("system")}
-          className={`space-y-2 cursor-pointer group transition-all ${theme === "system" ? "opacity-100" : "opacity-60 hover:opacity-100"}`}
-        >
-          <div className={`h-32 rounded-lg border-2 p-2 shadow-sm flex flex-col gap-2 relative overflow-hidden bg-slate-100 ${theme === "system" ? "border-primary" : "border-transparent ring-1 ring-border"}`}>
-            <div className="absolute inset-0 bg-linear-to-tr from-background to-slate-950/20" />
-            <div className="h-4 w-3/4 bg-muted rounded-md relative z-10" />
-            <div className="flex-1 bg-muted/20 rounded-md border border-dashed relative z-10" />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className={`h-4 w-4 rounded-full border ${theme === "system" ? "border-primary bg-primary" : "border-muted-foreground"}`} />
-            <span className="text-sm font-medium">Système</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-3 pt-4">
+      <div className="space-y-3">
         <h3 className="text-sm font-semibold">Style du tableau de bord</h3>
         <p className="text-xs text-muted-foreground">
           Choisissez une ambiance visuelle pour la page d&apos;accueil et les rapports.
