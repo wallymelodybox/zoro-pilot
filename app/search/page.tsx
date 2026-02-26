@@ -14,7 +14,7 @@ export default function SearchPage() {
       <div className="max-w-4xl w-full mx-auto p-8 flex flex-col h-full gap-8">
         {/* Header Search */}
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-fuchsia-500/30 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+          <div className="absolute -inset-1 bg-linear-to-r from-primary/30 to-fuchsia-500/30 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000"></div>
           <div className="relative flex items-center bg-card/60 backdrop-blur-xl border border-border/40 rounded-2xl p-2 shadow-2xl">
             <Search className="h-6 w-6 ml-3 text-muted-foreground" />
             <Input 

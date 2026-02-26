@@ -49,10 +49,12 @@ import {
   GanttChart,
   TableProperties,
   UserPlus,
-  Settings2
+  Settings2,
+  CheckCircle2
 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 
 // --- TYPES & HELPERS ---
 
