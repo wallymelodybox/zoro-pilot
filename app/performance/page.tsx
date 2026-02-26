@@ -51,7 +51,7 @@ export default function PerformancePage() {
   }
 
   return (
-    <div className="p-6 lg:p-10 space-y-10 bg-background min-h-screen">
+    <div className="p-6 lg:p-10 space-y-10 bg-transparent min-h-screen">
       <header className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Performance & KPI</h1>
         <p className="text-muted-foreground">Suivi consolidé de la performance opérationnelle et stratégique.</p>

@@ -8,6 +8,8 @@ import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { UserAvatar } from "@/components/user-avatar"
 import { Switch } from "@/components/ui/switch"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import {
   Bell,
   User,
@@ -39,6 +41,7 @@ import {
   ExternalLink
 } from "lucide-react"
 import { integrations } from "@/lib/store"
+import { useThemeVariant, type ThemeVariant } from "@/components/theme/variant-provider"
 
 // --- MOCK DATA ---
 const currentUser = {
@@ -125,34 +128,34 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-muted/30">
-      {/* Settings Sidebar */}
-      <aside className="w-80 bg-background border-r flex flex-col h-full">
-        <div className="p-4 border-b">
-            <h1 className="font-semibold text-lg">Paramètres</h1>
+    <div className="flex h-full bg-transparent">
+      {/* Settings Navigation (Secondary) */}
+      <div className="w-72 bg-card/40 backdrop-blur-md border-r h-full hidden md:flex md:flex-col">
+        <div className="p-6 border-b border-border/50">
+            <h1 className="font-bold text-xl tracking-tight">Paramètres</h1>
+            <p className="text-xs text-muted-foreground mt-1">Gérez votre espace ZORO</p>
         </div>
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-6">
             {menuItems.map((section, idx) => (
               <div key={idx} className="space-y-2">
-                <h3 className="text-xs font-semibold text-muted-foreground px-2 uppercase tracking-wider">{section.title}</h3>
+                <h3 className="text-[10px] font-bold text-muted-foreground px-3 uppercase tracking-[0.2em]">{section.title}</h3>
                 <div className="space-y-0.5">
                   {section.items.map((item, itemIdx) => (
                     <button
                       key={itemIdx}
                       onClick={() => setActiveSection(item.id as SettingsSection)}
-                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors group ${
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all group ${
                         activeSection === item.id
-                          ? "bg-primary/10 text-primary" 
-                          : "hover:bg-muted text-foreground"
+                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" 
+                          : "hover:bg-muted text-foreground/70 hover:text-foreground"
                       }`}
                     >
-                      <item.icon className={`h-4 w-4 ${activeSection === item.id ? "text-primary" : "text-muted-foreground"}`} />
+                      <item.icon className={`h-4 w-4 ${activeSection === item.id ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"}`} />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{item.label}</div>
-                        {item.sub && <div className="text-xs text-muted-foreground truncate">{item.sub}</div>}
+                        <div className="text-sm font-semibold truncate">{item.label}</div>
                       </div>
-                      {activeSection === item.id && <ChevronRight className="h-4 w-4 text-primary" />}
+                      {activeSection === item.id && <ChevronRight className="h-3 w-3 text-primary-foreground/70" />}
                     </button>
                   ))}
                 </div>
@@ -161,7 +164,7 @@ export default function SettingsPage() {
           </div>
         </ScrollArea>
         
-        <div className="p-4 border-t space-y-1">
+        <div className="p-4 border-t border-border/50 space-y-1">
           <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-muted text-foreground transition-colors">
               <HelpCircle className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Aide & Support</span>
@@ -171,11 +174,11 @@ export default function SettingsPage() {
               <span className="text-sm font-medium">Se déconnecter</span>
           </button>
         </div>
-      </aside>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col h-full bg-background/50 overflow-hidden">
-        <div className="max-w-4xl w-full mx-auto p-8 flex flex-col h-full overflow-y-auto">
+      <main className="flex-1 flex flex-col h-full bg-transparent overflow-hidden">
+        <div className="max-w-4xl w-full mx-auto p-6 lg:p-10 flex flex-col h-full overflow-y-auto custom-scrollbar">
            {renderContent()}
         </div>
       </main>
@@ -271,26 +274,7 @@ function NotificationSettings() {
 }
 
 function ThemeSettings() {
-  const { setTheme } = useTheme()
-
-  const [dashboardTheme, setDashboardTheme] = useState<string>("command-center")
-
-  useEffect(() => {
-    const stored = window.localStorage.getItem("dashboard-theme")
-    const value = stored || "command-center"
-    setDashboardTheme(value)
-    document.documentElement.dataset.dashboardTheme = value
-
-    // Le thème visuel global est piloté par les options 1/2/3.
-    // On verrouille le mode dark pour éviter les variantes clair/sombre/système.
-    setTheme("dark")
-  }, [setTheme])
-
-  const applyDashboardTheme = (value: string) => {
-    setDashboardTheme(value)
-    document.documentElement.dataset.dashboardTheme = value
-    window.localStorage.setItem("dashboard-theme", value)
-  }
+  const { variant, setVariant } = useThemeVariant()
 
   return (
     <div className="space-y-6">
@@ -303,14 +287,14 @@ function ThemeSettings() {
       <div className="space-y-3">
         <h3 className="text-sm font-semibold">Style du tableau de bord</h3>
         <p className="text-xs text-muted-foreground">
-          Choisissez une ambiance visuelle pour la page d&apos;accueil et les rapports.
+          Choisissez une ambiance visuelle pour toute l&apos;application.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-2xl">
           <button
             type="button"
-            onClick={() => applyDashboardTheme("command-center")}
+            onClick={() => setVariant("command-center")}
             className={`flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-all ${
-              dashboardTheme === "command-center"
+              variant === "command-center"
                 ? "border-primary bg-primary/5 shadow-sm"
                 : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
             }`}
@@ -318,18 +302,17 @@ function ThemeSettings() {
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">
               Option 1
             </span>
-            <span className="text-sm font-medium">Dark Strategic Command Center</span>
+            <span className="text-sm font-medium">Command Center</span>
             <span className="text-[11px] text-muted-foreground">
-              Mode sombre profond, accents néon et cartes glassmorphism pour une ambiance centre de
-              commande.
+              Mode sombre profond, accents néon et cartes glassmorphism.
             </span>
           </button>
 
           <button
             type="button"
-            onClick={() => applyDashboardTheme("ai-productivity")}
+            onClick={() => setVariant("ai-productivity")}
             className={`flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-all ${
-              dashboardTheme === "ai-productivity"
+              variant === "ai-productivity"
                 ? "border-primary bg-primary/5 shadow-sm"
                 : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
             }`}
@@ -337,18 +320,17 @@ function ThemeSettings() {
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">
               Option 2
             </span>
-            <span className="text-sm font-medium">AI Productivity Interface</span>
+            <span className="text-sm font-medium">AI Productivity</span>
             <span className="text-[11px] text-muted-foreground">
-              UI claire ultra soft, cartes très arrondies et ombres profondes façon interface IA
-              premium.
+              UI claire ultra soft, cartes très arrondies et interface épurée.
             </span>
           </button>
 
           <button
             type="button"
-            onClick={() => applyDashboardTheme("executive-futurist")}
+            onClick={() => setVariant("executive-futurist")}
             className={`flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-all ${
-              dashboardTheme === "executive-futurist"
+              variant === "executive-futurist"
                 ? "border-primary bg-primary/5 shadow-sm"
                 : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
             }`}
@@ -356,10 +338,9 @@ function ThemeSettings() {
             <span className="text-xs font-semibold uppercase tracking-widest text-primary">
               Option 3
             </span>
-            <span className="text-sm font-medium">Executive Futuriste</span>
+            <span className="text-sm font-medium">Executive Futurist</span>
             <span className="text-[11px] text-muted-foreground">
-              Palette plus contrastée pour une vue DG / PMO avec focalisation sur les scores
-              stratégiques.
+              Design premium élégant avec focalisation sur les indicateurs stratégiques.
             </span>
           </button>
         </div>

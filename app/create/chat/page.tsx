@@ -11,11 +11,11 @@ import Link from "next/link"
 
 export default function CreateChatPage() {
   return (
-    <div className="min-h-screen bg-background/50 flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-card rounded-xl shadow-lg border overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
+    <div className="min-h-screen bg-transparent flex items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-card/80 backdrop-blur-xl rounded-xl shadow-lg border overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b bg-background">
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-transparent">
           <div className="w-8" /> {/* Spacer */}
           <span className="font-semibold text-sm">Nouveau chat</span>
           <Link href="/create" className="text-sm font-medium text-blue-500 hover:text-blue-600 transition-colors w-8 text-right">
@@ -24,7 +24,7 @@ export default function CreateChatPage() {
         </div>
 
         {/* Content */}
-        <div className="bg-background">
+        <div className="bg-transparent">
            {/* Search */}
            <div className="p-3 border-b">
               <div className="relative">

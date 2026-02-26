@@ -102,11 +102,11 @@ const items = [
 
 export default function CreateHubPage() {
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="w-full max-w-2xl bg-background rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 bg-transparent z-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-2xl bg-card/80 backdrop-blur-xl rounded-xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="px-6 py-4 border-b flex items-center justify-between bg-background shrink-0">
-          <h1 className="text-lg font-semibold">Créer</h1>
+        <div className="px-6 py-4 border-b flex items-center justify-between bg-transparent shrink-0">
+          <h1 className="text-lg font-semibold text-foreground">Créer</h1>
           <Link href="/">
             <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Fermer">
               <X className="h-5 w-5" />
@@ -115,11 +115,11 @@ export default function CreateHubPage() {
         </div>
 
         {/* Search */}
-        <div className="p-4 border-b bg-muted/30 shrink-0">
+        <div className="p-4 border-b bg-muted/30 backdrop-blur-md shrink-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
-              className="pl-9 bg-background" 
+              className="pl-9 bg-card/50" 
               placeholder="Rechercher un type d'élément..." 
             />
           </div>

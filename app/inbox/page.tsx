@@ -80,9 +80,9 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-transparent">
       {/* Header */}
-      <header className="flex flex-col border-b bg-background/50 backdrop-blur-md sticky top-0 z-20">
+      <header className="flex flex-col border-b bg-card/40 backdrop-blur-md sticky top-0 z-20">
         {/* Top Row: Breadcrumb */}
         <div className="flex items-center gap-2 px-6 py-2 text-[10px] uppercase tracking-widest font-bold text-muted-foreground border-b border-border/40">
            <Home className="h-3 w-3" />

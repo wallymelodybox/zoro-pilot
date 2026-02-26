@@ -1,34 +1,73 @@
-@import 'tailwindcss';
-@import 'tw-animate-css';
+@import "tailwindcss";
+@import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
+/* =========================================================
+   1) BASE TOKENS (shadcn)
+   ========================================================= */
 :root {
+  /* status tokens (light) */
+  --success: oklch(0.7 0.18 165);
+  --success-foreground: oklch(0.15 0 0);
+  --warning: oklch(0.75 0.15 55);
+  --warning-foreground: oklch(0.15 0 0);
+
+  /* helpers for badges */
+  --success-bg: color-mix(in oklab, var(--success) 14%, transparent);
+  --success-border: color-mix(in oklab, var(--success) 26%, transparent);
+  --success-fg: color-mix(in oklab, var(--success) 72%, black);
+
+  --warning-bg: color-mix(in oklab, var(--warning) 16%, transparent);
+  --warning-border: color-mix(in oklab, var(--warning) 26%, transparent);
+  --warning-fg: color-mix(in oklab, var(--warning) 78%, black);
+
+  --danger-bg: color-mix(in oklab, var(--destructive) 14%, transparent);
+  --danger-border: color-mix(in oklab, var(--destructive) 26%, transparent);
+  --danger-fg: var(--destructive);
+
+  /* glass helpers */
+  --glass-bg: color-mix(in oklab, var(--card) 75%, transparent);
+  --glass-border: color-mix(in oklab, var(--border) 55%, transparent);
+  --glow-opacity: 0;
+  --glow-1: rgba(99,102,241,0.12);
+  --glow-2: rgba(236,72,153,0.10);
+  --glow-primary: rgba(99,102,241,0.35);
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
+
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
+
   --primary: oklch(0.205 0 0);
   --primary-foreground: oklch(0.985 0 0);
+
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
+
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
+
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
+
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
+
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+
   --radius: 0.625rem;
+
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -37,33 +76,66 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Status tokens (global) */
+  --success: oklch(0.7 0.18 165);
+  --success-foreground: oklch(0.98 0 0);
+  --warning: oklch(0.75 0.15 55);
+  --warning-foreground: oklch(0.15 0 0);
+
+  /* =========================================================
+     2) DASHBOARD/GLASS EXTRA TOKENS (pour Option 1)
+     Ces tokens n'entrent pas en conflit avec shadcn.
+     ========================================================= */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+
+  --glow-cyan: rgba(56, 189, 248, 0.15);
+  --glow-fuchsia: rgba(217, 70, 239, 0.12);
+  --glow-indigo: rgba(99, 102, 241, 0.12);
+
+  --chart-grid: rgba(255, 255, 255, 0.10);
+  --chart-tick: rgba(255, 255, 255, 0.70);
+  --chart-tooltip-bg: rgba(10, 12, 18, 0.85);
+  --chart-tooltip-border: rgba(255, 255, 255, 0.10);
 }
 
 .dark {
   --background: oklch(0.13 0.005 260);
   --foreground: oklch(0.95 0 0);
+
   --card: oklch(0.17 0.005 260);
   --card-foreground: oklch(0.95 0 0);
+
   --popover: oklch(0.17 0.005 260);
   --popover-foreground: oklch(0.95 0 0);
+
   --primary: oklch(0.65 0.2 250);
   --primary-foreground: oklch(0.98 0 0);
+
   --secondary: oklch(0.22 0.005 260);
   --secondary-foreground: oklch(0.88 0 0);
+
   --muted: oklch(0.22 0.005 260);
   --muted-foreground: oklch(0.6 0.01 260);
+
   --accent: oklch(0.25 0.01 260);
   --accent-foreground: oklch(0.95 0 0);
+
   --destructive: oklch(0.55 0.22 27);
   --destructive-foreground: oklch(0.95 0 0);
+
   --border: oklch(0.25 0.01 260);
   --input: oklch(0.22 0.005 260);
   --ring: oklch(0.65 0.2 250);
+
   --chart-1: oklch(0.65 0.2 250);
   --chart-2: oklch(0.7 0.18 165);
   --chart-3: oklch(0.75 0.15 55);
   --chart-4: oklch(0.6 0.22 27);
   --chart-5: oklch(0.65 0.15 310);
+
   --sidebar: oklch(0.1 0.005 260);
   --sidebar-foreground: oklch(0.88 0 0);
   --sidebar-primary: oklch(0.65 0.2 250);
@@ -72,54 +144,165 @@
   --sidebar-accent-foreground: oklch(0.95 0 0);
   --sidebar-border: oklch(0.2 0.005 260);
   --sidebar-ring: oklch(0.65 0.2 250);
+
   --success: oklch(0.7 0.18 165);
   --success-foreground: oklch(0.98 0 0);
   --warning: oklch(0.75 0.15 55);
   --warning-foreground: oklch(0.15 0 0);
+
+  /* Dark defaults for glass */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+
+  --glow-cyan: rgba(56, 189, 248, 0.15);
+  --glow-fuchsia: rgba(217, 70, 239, 0.12);
+  --glow-indigo: rgba(99, 102, 241, 0.12);
+
+  --chart-grid: rgba(255, 255, 255, 0.10);
+  --chart-tick: rgba(255, 255, 255, 0.70);
+  --chart-tooltip-bg: rgba(10, 12, 18, 0.85);
+  --chart-tooltip-border: rgba(255, 255, 255, 0.10);
 }
 
-/* Dashboard style themes (appliqués via data-dashboard-theme sur <html>) */
+/* =========================================================
+   3) DASHBOARD VARIANTS (pilotés par data-dashboard-theme)
+   IMPORTANT : on n'écrase PAS avec des hex partout.
+   On aligne sur la logique OKLCH + ajoute les tokens glass.
+   ========================================================= */
 
+/* COMMAND CENTER (Neon Dark / Glass) */
 :root[data-dashboard-theme="command-center"].dark {
-  --background: #050711;
-  --card: rgba(15, 17, 23, 0.98);
-  --popover: #050711;
-  --border: rgba(37, 47, 89, 0.8);
-  --primary: #4f46e5;
-  --ring: #38bdf8;
-  --chart-1: #38bdf8;
-  --chart-2: #a855f7;
-  --chart-3: #f97316;
+  --background: oklch(0.07 0.02 260); /* proche #070A12 */
+  --foreground: oklch(0.98 0 0);
+
+  --card: oklch(0.16 0.02 260);
+  --card-foreground: oklch(0.98 0 0);
+
+  --popover: oklch(0.10 0.02 260);
+  --popover-foreground: oklch(0.98 0 0);
+
+  --border: oklch(0.30 0.04 260);
+  --input: oklch(0.22 0.02 260);
+
+  --primary: oklch(0.62 0.19 265); /* indigo/blue */
+  --ring: oklch(0.78 0.15 210);    /* cyan */
+
+  --chart-1: oklch(0.78 0.15 210); /* cyan */
+  --chart-2: oklch(0.70 0.20 310); /* fuchsia/violet */
+  --chart-3: oklch(0.75 0.16 55);  /* amber/orange */
+
   --radius: 1rem;
+
+  --sidebar: oklch(0.07 0.02 260);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-border: rgba(255, 255, 255, 0.10);
+  --sidebar-accent: rgba(255, 255, 255, 0.05);
+
+  /* Glass extras for this theme */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+
+  --glow-cyan: rgba(56, 189, 248, 0.15);
+  --glow-fuchsia: rgba(217, 70, 239, 0.12);
+  --glow-indigo: rgba(99, 102, 241, 0.12);
+
+  --chart-grid: rgba(255, 255, 255, 0.10);
+  --chart-tick: rgba(255, 255, 255, 0.70);
+  --chart-tooltip-bg: rgba(10, 12, 18, 0.85);
+  --chart-tooltip-border: rgba(255, 255, 255, 0.10);
 }
 
+/* AI PRODUCTIVITY (Light / clean) */
 :root[data-dashboard-theme="ai-productivity"] {
-  --background: oklch(0.98 0.01 260);
-  --card: oklch(0.99 0 0);
-  --border: rgba(15, 23, 42, 0.06);
-  --primary: oklch(0.32 0.02 260);
+  --background: oklch(0.98 0.01 240);
+  --foreground: oklch(0.18 0.02 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 250);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 250);
+
+  --border: oklch(0.93 0.01 250);
+  --input: oklch(0.93 0.01 250);
+
+  --primary: oklch(0.62 0.19 265);
+  --ring: oklch(0.62 0.17 265);
+
   --radius: 1.75rem;
+
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.18 0.02 250);
+  --sidebar-border: rgba(15, 23, 42, 0.06);
+  --sidebar-accent: oklch(0.95 0.01 250);
+
+  /* Glass (light) */
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(15, 23, 42, 0.10);
+  --glass-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+
+  --glow-cyan: rgba(37, 99, 235, 0.10);
+  --glow-fuchsia: rgba(124, 58, 237, 0.08);
+  --glow-indigo: rgba(99, 102, 241, 0.08);
+
+  --chart-grid: rgba(15, 23, 42, 0.08);
+  --chart-tick: rgba(15, 23, 42, 0.70);
+  --chart-tooltip-bg: rgba(255, 255, 255, 0.96);
+  --chart-tooltip-border: rgba(15, 23, 42, 0.10);
 }
 
-:root[data-dashboard-theme="executive-futurist"] {
-  --background: oklch(0.96 0.01 260);
-  --card: oklch(0.985 0 0);
-  --border: rgba(30, 64, 175, 0.22);
-  --primary: oklch(0.5 0.18 250);
-  --chart-1: oklch(0.7 0.18 165);
-  --chart-2: oklch(0.65 0.2 250);
-  --chart-3: oklch(0.75 0.15 55);
+/* EXECUTIVE FUTURIST (Dark / executive violet) */
+:root[data-dashboard-theme="executive-futurist"].dark {
+  --background: oklch(0.10 0.02 270);
+  --foreground: oklch(0.92 0.01 260);
+
+  --card: oklch(0.16 0.02 270);
+  --card-foreground: oklch(0.92 0.01 260);
+
+  --popover: oklch(0.10 0.02 270);
+  --popover-foreground: oklch(0.92 0.01 260);
+
+  --border: oklch(0.26 0.02 270);
+  --input: oklch(0.20 0.02 270);
+
+  --primary: oklch(0.70 0.18 285); /* violet */
+  --ring: oklch(0.72 0.14 275);
+
+  --radius: 2rem;
+
+  --sidebar: oklch(0.10 0.02 270);
+  --sidebar-foreground: oklch(0.92 0.01 260);
+  --sidebar-border: rgba(255, 255, 255, 0.05);
+  --sidebar-accent: rgba(255, 255, 255, 0.03);
+
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-shadow: 0 30px 90px rgba(0, 0, 0, 0.60);
+
+  --glow-cyan: rgba(56, 189, 248, 0.10);
+  --glow-fuchsia: rgba(168, 85, 247, 0.14);
+  --glow-indigo: rgba(99, 102, 241, 0.10);
+
+  --chart-grid: rgba(255, 255, 255, 0.10);
+  --chart-tick: rgba(255, 255, 255, 0.70);
+  --chart-tooltip-bg: rgba(10, 12, 18, 0.85);
+  --chart-tooltip-border: rgba(255, 255, 255, 0.10);
 }
 
+/* =========================================================
+   4) ANIMATIONS spécifiques (tu avais déjà ça, je garde)
+   ========================================================= */
 @keyframes command-center-header-glow {
   0% {
-    box-shadow: 0 0 0 0 rgba(59,130,246,0.45), 0 0 30px 0 rgba(59,130,246,0.35);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.45), 0 0 30px 0 rgba(59, 130, 246, 0.35);
   }
   50% {
-    box-shadow: 0 0 0 0 rgba(59,130,246,0.1), 0 0 18px 0 rgba(129,140,248,0.4);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.1), 0 0 18px 0 rgba(129, 140, 248, 0.4);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(59,130,246,0.45), 0 0 30px 0 rgba(59,130,246,0.35);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.45), 0 0 30px 0 rgba(59, 130, 246, 0.35);
   }
 }
 
@@ -169,75 +352,29 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.7), transparent);
+  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.7), transparent);
   transform: translateX(-100%);
   animation: command-center-neon-sweep 2.4s linear infinite;
   pointer-events: none;
 }
 
+/* =========================================================
+   5) STATUS RINGS (inchangé)
+   ========================================================= */
 .status-ring.status-ring-0 {
   transform: rotate(-45deg);
 }
-
 .status-ring.status-ring-1 {
   transform: rotate(0deg);
 }
-
 .status-ring.status-ring-2 {
   transform: rotate(45deg);
 }
-
 .status-ring.status-ring-3 {
   transform: rotate(90deg);
 }
-
 .status-ring.status-ring-4 {
   transform: rotate(135deg);
-}
-
-@theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback';
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
-  --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
 }
 
 @layer base {

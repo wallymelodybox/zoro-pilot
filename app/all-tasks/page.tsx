@@ -74,8 +74,8 @@ export default function AllTasksPage() {
   const doneTasks = tasks.filter(t => t.status === "done")
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <header className="flex flex-col border-b bg-background">
+    <div className="flex h-screen flex-col bg-transparent">
+      <header className="flex flex-col border-b bg-card/40 backdrop-blur-md">
          <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-4">
                <div className="p-2 bg-primary/10 rounded-lg text-primary">
@@ -135,7 +135,7 @@ export default function AllTasksPage() {
          </div>
       </header>
 
-      <main className="flex-1 bg-muted/10 p-6 overflow-hidden">
+      <main className="flex-1 bg-transparent p-6 overflow-hidden">
          {currentView === "list" && (
             <CardList tasks={tasks} projects={projects} onRefresh={refresh} />
          )}

@@ -243,9 +243,9 @@ export default function WorkPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <div className="flex h-screen flex-col bg-transparent">
       {/* Header */}
-      <header className="flex flex-col border-b bg-background">
+      <header className="flex flex-col border-b bg-card/40 backdrop-blur-md">
         {/* Top Row: Breadcrumb & User */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/40">
            <div className="flex items-center gap-2 text-sm text-muted-foreground">

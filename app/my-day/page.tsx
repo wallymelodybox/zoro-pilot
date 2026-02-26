@@ -65,10 +65,8 @@ export default function MyDayPage() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-transparent">
       <div className="flex-1 flex flex-col relative">
-         {/* Background Image/Gradient */}
-         <div className="absolute inset-0 bg-linear-to-br from-indigo-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 -z-10" />
          
          <div className="max-w-3xl w-full mx-auto p-8 h-full flex flex-col">
             <header className="mb-8">

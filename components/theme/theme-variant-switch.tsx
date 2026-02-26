@@ -5,9 +5,9 @@ import { useThemeVariant, type ThemeVariant } from "./variant-provider";
 import { cn } from "@/lib/utils";
 
 const items: { id: ThemeVariant; label: string }[] = [
-  { id: "command-center", label: "Futuriste" },
-  { id: "ai-productivity", label: "Productivity" },
-  { id: "executive-futurist", label: "Féminin" },
+  { id: "command-center", label: "Option 1" },
+  { id: "ai-productivity", label: "Option 2" },
+  { id: "executive-futurist", label: "Option 3" },
 ];
 
 export function ThemeVariantSwitch({ className }: { className?: string }) {

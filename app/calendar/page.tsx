@@ -54,8 +54,8 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background">
-      <header className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+    <div className="flex h-screen flex-col bg-transparent">
+      <header className="flex items-center justify-between px-6 py-4 border-b bg-card/40 backdrop-blur-md shrink-0">
          <div className="flex items-center gap-4">
             <div className="p-2 bg-orange-500/10 rounded-lg text-orange-600">
                <CalendarDays className="h-6 w-6" />
