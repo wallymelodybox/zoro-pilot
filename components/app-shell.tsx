@@ -8,10 +8,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden p-4 gap-4 relative">
       <ThemeBackground />
-      <AppSidebar />
-      <main className="flex-1 overflow-y-auto bg-transparent">
+      <div className="flex h-full shrink-0 z-10">
+        <AppSidebar />
+      </div>
+      <main className="flex-1 overflow-y-auto bg-transparent z-10 rounded-2xl">
         {children}
       </main>
     </div>

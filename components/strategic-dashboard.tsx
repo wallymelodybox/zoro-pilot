@@ -49,7 +49,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { useThemeVariant, type ThemeVariant } from "./theme/variant-provider";
-import { WidgetHub } from "./widget-hub";
+import { WidgetHub, WIDGETS } from "./widget-hub";
 import { toast } from "sonner";
 
 // ─── UTILS ──────────────────────────────────────────────────────────────────
@@ -229,7 +229,13 @@ function Stat({
 
 // ─── DASHBOARD VARIANT 1: COMMAND CENTER ────────────────────────────────────
 
-function CommandCenterDashboard() {
+function CommandCenterDashboard({ 
+  addedWidgets, 
+  onToggleWidget 
+}: { 
+  addedWidgets: string[], 
+  onToggleWidget: (id: string) => void 
+}) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
 
   const radarData = [
@@ -298,6 +304,36 @@ function CommandCenterDashboard() {
             <Stat icon={<Activity className="h-5 w-5" />} title="Tâches du Jour" value="9" delta="+1" tone="good" />
             <Stat icon={<Target className="h-5 w-5" />} title="KPI Suivis" value="24" delta="+0%" tone="neutral" />
           </div>
+
+          {/* Dynamic Widgets Section */}
+          {addedWidgets.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {addedWidgets.map(id => {
+                const widget = WIDGETS.find(w => w.id === id);
+                if (!widget) return null;
+                return (
+                  <SurfaceCard key={id} className="p-5 flex flex-col h-full group relative">
+                    <button 
+                      onClick={() => onToggleWidget(id)}
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-all"
+                      title="Retirer le widget"
+                    >
+                      <Plus className="h-4 w-4 rotate-45" />
+                    </button>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-sm font-semibold text-foreground">{widget.title}</div>
+                      <Badge className="text-[10px] uppercase tracking-wider">{widget.cat}</Badge>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center min-h-35 bg-muted/20 rounded-xl border border-border/40 overflow-hidden">
+                      <div className="scale-90">
+                        {widget.preview}
+                      </div>
+                    </div>
+                  </SurfaceCard>
+                );
+              })}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <SurfaceCard className="p-5 xl:col-span-2">
@@ -462,8 +498,8 @@ function CommandCenterDashboard() {
         <WidgetHub 
           isOpen={isWidgetHubOpen} 
           onClose={() => setIsWidgetHubOpen(false)} 
-          addedWidgets={[]} 
-          onToggleWidget={(id) => toast.success(`Widget "${id}" ajouté avec succès !`)}
+          addedWidgets={addedWidgets} 
+          onToggleWidget={onToggleWidget}
         />
       </div>
   );
@@ -573,7 +609,13 @@ function DonutLight({
   );
 }
 
-function AIProductivityDashboard() {
+function AIProductivityDashboard({ 
+  addedWidgets, 
+  onToggleWidget 
+}: { 
+  addedWidgets: string[], 
+  onToggleWidget: (id: string) => void 
+}) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [period, setPeriod] = useState<"1mois" | "1trimestre">("1mois");
 
@@ -657,6 +699,36 @@ function AIProductivityDashboard() {
             <StatCard title="Tâches du jour" value="9" hint="3 critiques" icon={<CheckSquare className="h-5 w-5 text-primary" />} />
             <StatCard title="KPI suivis" value="24" hint="Mensuel / Trimestriel" icon={<BarChart3 className="h-5 w-5 text-primary" />} />
           </div>
+
+          {/* Dynamic Widgets Section */}
+          {addedWidgets.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {addedWidgets.map(id => {
+                const widget = WIDGETS.find(w => w.id === id);
+                if (!widget) return null;
+                return (
+                  <SurfaceCard key={id} className="p-5 flex flex-col h-full group relative">
+                    <button 
+                      onClick={() => onToggleWidget(id)}
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-all"
+                      title="Retirer le widget"
+                    >
+                      <Plus className="h-4 w-4 rotate-45" />
+                    </button>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-sm font-semibold text-foreground">{widget.title}</div>
+                      <Badge className="text-[10px] uppercase tracking-wider">{widget.cat}</Badge>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center min-h-35 bg-muted/20 rounded-xl border border-border/40 overflow-hidden">
+                      <div className="scale-90">
+                        {widget.preview}
+                      </div>
+                    </div>
+                  </SurfaceCard>
+                );
+              })}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
             <SurfaceCard className="p-5 xl:col-span-2">
@@ -837,8 +909,8 @@ function AIProductivityDashboard() {
         <WidgetHub 
           isOpen={isWidgetHubOpen} 
           onClose={() => setIsWidgetHubOpen(false)} 
-          addedWidgets={[]} 
-          onToggleWidget={(id) => toast.success(`Widget "${id}" ajouté avec succès !`)}
+          addedWidgets={addedWidgets} 
+          onToggleWidget={onToggleWidget}
         />
       </div>
   );
@@ -846,7 +918,13 @@ function AIProductivityDashboard() {
 
 // ─── DASHBOARD VARIANT 3: EXECUTIVE FUTURIST ────────────────────────────────
 
-function ExecutiveFuturistDashboard() {
+function ExecutiveFuturistDashboard({ 
+  addedWidgets, 
+  onToggleWidget 
+}: { 
+  addedWidgets: string[], 
+  onToggleWidget: (id: string) => void 
+}) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<"idle" | "thinking">("idle");
 
@@ -979,6 +1057,36 @@ function ExecutiveFuturistDashboard() {
               </SurfaceCard>
             ))}
           </div>
+
+          {/* Dynamic Widgets Section */}
+          {addedWidgets.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {addedWidgets.map(id => {
+                const widget = WIDGETS.find(w => w.id === id);
+                if (!widget) return null;
+                return (
+                  <SurfaceCard key={id} className="p-6 flex flex-col h-full group relative shadow-sm hover:shadow-md transition-all">
+                    <button 
+                      onClick={() => onToggleWidget(id)}
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-all"
+                      title="Retirer le widget"
+                    >
+                      <Plus className="h-4 w-4 rotate-45" />
+                    </button>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-sm font-semibold text-foreground">{widget.title}</div>
+                      <Badge className="text-[10px] uppercase tracking-wider">{widget.cat}</Badge>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center min-h-40 bg-muted/10 rounded-2xl border border-border/40 overflow-hidden">
+                      <div className="scale-100">
+                        {widget.preview}
+                      </div>
+                    </div>
+                  </SurfaceCard>
+                );
+              })}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <SurfaceCard className="lg:col-span-2 p-8 shadow-sm">
@@ -1121,8 +1229,8 @@ function ExecutiveFuturistDashboard() {
         <WidgetHub 
           isOpen={isWidgetHubOpen} 
           onClose={() => setIsWidgetHubOpen(false)} 
-          addedWidgets={[]} 
-          onToggleWidget={(id) => toast.success(`Widget "${id}" ajouté avec succès !`)}
+          addedWidgets={addedWidgets} 
+          onToggleWidget={onToggleWidget}
         />
       </div>
   );
@@ -1132,16 +1240,28 @@ function ExecutiveFuturistDashboard() {
 
 export function StrategicDashboard() {
   const { variant } = useThemeVariant();
+  const [addedWidgets, setAddedWidgets] = useState<string[]>([]);
+
+  const handleToggleWidget = (id: string) => {
+    setAddedWidgets(prev => {
+      if (prev.includes(id)) {
+        toast.info("Widget retiré du dashboard");
+        return prev.filter(w => w !== id);
+      }
+      toast.success("Widget ajouté avec succès !");
+      return [...prev, id];
+    });
+  };
 
   if (variant === "ai-productivity") {
-    return <AIProductivityDashboard />;
+    return <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} />;
   }
 
   if (variant === "executive-futurist") {
-    return <ExecutiveFuturistDashboard />;
+    return <ExecutiveFuturistDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} />;
   }
 
-  return <CommandCenterDashboard />;
+  return <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} />;
 }
 
 export default StrategicDashboard;

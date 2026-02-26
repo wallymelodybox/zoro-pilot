@@ -228,12 +228,12 @@ export function AppSidebar() {
       : (collapsed ? "w-20" : "w-72")
 
   const asideClass = cn(
-    "flex h-screen flex-col overflow-hidden transition-all duration-300",
-    "border-r border-border",
+    "flex h-full flex-col overflow-hidden transition-all duration-300",
+    "border border-border rounded-3xl",
     // Surface: glass overlay + fallback
-    "bg-background/60 backdrop-blur-xl",
+    "bg-card/40 backdrop-blur-xl",
     // Shadow glass (via CSS var; fonctionne dark/light)
-    "shadow-[20px_0_40px_rgba(0,0,0,0.12)] dark:shadow-[20px_0_40px_rgba(0,0,0,0.40)]",
+    "shadow-2xl",
     widthClass
   )
 
