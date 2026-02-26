@@ -1,14 +1,10 @@
 "use client"
 
 import React, { useMemo, useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import styles from "./strategic-dashboard.module.css";
 import {
   Home,
   Target,
   FolderKanban,
-  CalendarDays,
   Sun,
   CheckSquare,
   BarChart3,
@@ -17,11 +13,10 @@ import {
   MessagesSquare,
   Settings,
   Plus,
-  Bell,
   ChevronDown,
-  ShieldAlert,
-  Activity,
   Sparkles,
+  Bot,
+  AlertTriangle,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -39,9 +34,9 @@ import {
   Pie,
   Cell,
 } from "recharts";
-import { cn } from "@/lib/utils";
 
-type NavItem = { label: string; icon: React.ReactNode; href: string };
+type NavItem = { label: string; icon: React.ReactNode; active?: boolean };
+const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(" ");
 
 const neon = {
   blue: "from-cyan-400/30 via-sky-500/20 to-indigo-500/30",
