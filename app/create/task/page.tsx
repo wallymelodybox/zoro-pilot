@@ -42,13 +42,11 @@ export default function CreateTaskPage() {
       const result = await createTask(formData)
       if (result?.error) {
         toast.error(result.error)
-      } else {
+      } else if (result?.success) {
         toast.success("Tâche créée avec succès !")
+        router.push('/work')
       }
     } catch (e) {
-      if (e instanceof Error && e.message === "NEXT_REDIRECT") {
-        throw e;
-      }
       console.error(e)
       toast.error("Une erreur inattendue est survenue.")
     } finally {

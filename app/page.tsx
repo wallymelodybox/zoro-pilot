@@ -21,7 +21,7 @@ import { UserAvatar } from "@/components/user-avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { WidgetHub } from "@/components/widget-hub"
+import { WidgetHub, WIDGETS } from "@/components/widget-hub"
 import {
   DndContext,
   closestCenter,
@@ -51,6 +51,52 @@ interface DraggableWidgetProps {
   className?: string
 }
 
+function GenericWidget({ id, isOverlay = false }: { id: string, isOverlay?: boolean }) {
+  const widget = WIDGETS.find(w => w.id === id)
+  if (!widget) return null
+
+  const getAccentColor = (cat: string) => {
+    switch (cat) {
+      case 'Diagrammes': return 'text-blue-500 bg-blue-500/10'
+      case 'Listes': return 'text-purple-500 bg-purple-500/10'
+      case 'Calendrier': return 'text-emerald-500 bg-emerald-500/10'
+      case 'Utilitaires': return 'text-orange-500 bg-orange-500/10'
+      default: return 'text-muted-foreground bg-muted/10'
+    }
+  }
+
+  const accent = getAccentColor(widget.cat)
+
+  return (
+    <div className={cn(
+      "bg-card/50 border rounded-3xl p-6 flex flex-col min-h-[220px] h-full transition-all hover:bg-card/80",
+      isOverlay && "shadow-2xl border-primary/50"
+    )}>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold truncate pr-2">{widget.title}</h2>
+        <Badge variant="secondary" className={cn("text-[10px] uppercase tracking-wider border-none px-2", accent)}>
+          {widget.cat}
+        </Badge>
+      </div>
+      <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground/30 text-center gap-4 py-2">
+        <div className="scale-90 transition-transform group-hover:scale-95 duration-300">
+          {widget.preview}
+        </div>
+        <div className="space-y-1">
+          <p className="text-[10px] max-w-[200px] leading-relaxed text-muted-foreground/40 italic">
+            Connecté au flux de données
+          </p>
+          <div className="flex justify-center gap-1">
+            <div className="h-1 w-1 rounded-full bg-primary/20 animate-pulse" />
+            <div className="h-1 w-1 rounded-full bg-primary/20 animate-pulse delay-75" />
+            <div className="h-1 w-1 rounded-full bg-primary/20 animate-pulse delay-150" />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DraggableWidget({ id, children, className }: DraggableWidgetProps) {
   const {
     attributes,
@@ -71,20 +117,20 @@ function DraggableWidget({ id, children, className }: DraggableWidgetProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        "relative group cursor-default", 
-        isDragging ? "z-50 opacity-80" : "z-auto opacity-100",
+        "relative group", 
+        isDragging ? "z-50 opacity-30" : "z-auto opacity-100",
         className
       )}
     >
       <div 
         {...attributes} 
         {...listeners}
-        className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-20 p-2 bg-muted/50 rounded-lg"
+        className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing z-20 p-2 bg-muted/80 rounded-lg hover:bg-primary/20 hover:text-primary"
         title="Faire glisser pour réorganiser"
       >
         <div className="grid grid-cols-2 gap-0.5">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="w-1 h-1 bg-muted-foreground/50 rounded-full" />
+            <div key={i} className="w-1 h-1 bg-current rounded-full" />
           ))}
         </div>
       </div>
@@ -94,7 +140,7 @@ function DraggableWidget({ id, children, className }: DraggableWidgetProps) {
 }
 
 export default function DashboardPage() {
-  const { projects, loading } = useSupabaseData()
+  const { projects, tasks, objectives, loading } = useSupabaseData()
   const [isWidgetHubOpen, setIsWidgetHubOpen] = React.useState(false)
   const [activeId, setActiveId] = React.useState<string | null>(null)
   const [widgetOrder, setWidgetOrder] = React.useState([
@@ -103,6 +149,14 @@ export default function DashboardPage() {
     'progress-widget',
     'calendar-widget'
   ])
+
+  const onToggleWidget = (id: string) => {
+    setWidgetOrder(current => 
+      current.includes(id) 
+        ? current.filter(w => w !== id)
+        : [...current, id]
+    )
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -147,8 +201,10 @@ export default function DashboardPage() {
             <div className="bg-card/50 border rounded-3xl p-6 h-150 flex flex-col">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-semibold">Projets</h2>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Plus className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                  <Link href="/create/project">
+                    <Plus className="h-4 w-4" />
+                  </Link>
                 </Button>
               </div>
               
@@ -184,17 +240,28 @@ export default function DashboardPage() {
             </div>
           )
         case 'status-widgets':
+          const todayTasks = tasks.filter(t => t.dueDate === new Date().toISOString().split('T')[0])
+          const doneToday = todayTasks.filter(t => t.status === 'done').length
+          const totalToday = todayTasks.length
+          const progressToday = totalToday > 0 ? (doneToday / totalToday) * 100 : 0
+
           return (
             <div className="space-y-6 h-full">
               <div className="grid grid-cols-2 gap-4">
                 {/* Ma journée */}
-                <div className="bg-card/50 border rounded-3xl p-6 flex flex-col items-center justify-center gap-4 text-center h-44">
+                <Link href="/my-day" className="bg-card/50 border rounded-3xl p-6 flex flex-col items-center justify-center gap-4 text-center h-44 hover:bg-muted/20 transition-colors">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ma journée</h3>
                   <div className="h-20 w-20 rounded-full border-4 border-blue-500/30 flex items-center justify-center relative">
-                     <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent -rotate-45" />
-                     <CheckCircle2 className="h-6 w-6 text-blue-500" />
+                     <div 
+                       className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent transition-all duration-1000" 
+                       style={{ transform: `rotate(${progressToday * 3.6 - 45}deg)` }}
+                     />
+                     <div className="flex flex-col items-center">
+                        <span className="text-xl font-bold">{doneToday}/{totalToday}</span>
+                        <CheckCircle2 className="h-4 w-4 text-blue-500" />
+                     </div>
                   </div>
-                </div>
+                </Link>
                 {/* Ma semaine */}
                 <div className="bg-card/50 border rounded-3xl p-6 flex flex-col items-center justify-center gap-4 text-center h-44">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ma semaine</h3>
@@ -218,6 +285,7 @@ export default function DashboardPage() {
             </div>
           )
         case 'progress-widget':
+          const displayObjectives = objectives.slice(0, 3)
           return (
             <div className="bg-card/50 border rounded-3xl p-6 h-80 flex flex-col">
               <div className="flex items-center justify-between mb-8">
@@ -225,7 +293,7 @@ export default function DashboardPage() {
                   <div className="p-2 rounded-xl bg-orange-500/10 text-orange-500">
                     <TrendingUp className="h-5 w-5" />
                   </div>
-                  <h2 className="text-lg font-semibold">Progression Globale des Objectifs</h2>
+                  <h2 className="text-lg font-semibold">Progression des Objectifs</h2>
                 </div>
                 <Badge variant="outline" className="bg-orange-500/5 text-orange-500 border-orange-500/20">
                   T1 2026
@@ -233,38 +301,29 @@ export default function DashboardPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm font-medium">
-                    <span className="text-muted-foreground">Croissance</span>
-                    <span>65%</span>
+                {displayObjectives.map(obj => (
+                  <div key={obj.id} className="space-y-4">
+                    <div className="flex justify-between text-sm font-medium">
+                      <span className="text-muted-foreground truncate max-w-40">{obj.title}</span>
+                      <span>{obj.progress}%</span>
+                    </div>
+                    <Progress value={obj.progress} className="h-2" />
                   </div>
-                  <Progress value={65} className="h-2" />
-                </div>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm font-medium">
-                    <span className="text-muted-foreground">Excellence Produit</span>
-                    <span>45%</span>
-                  </div>
-                  <Progress value={45} className="h-2" />
-                </div>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm font-medium">
-                    <span className="text-muted-foreground">Équipe & Culture</span>
-                    <span>78%</span>
-                  </div>
-                  <Progress value={78} className="h-2" />
-                </div>
+                ))}
+                {displayObjectives.length === 0 && (
+                  <p className="col-span-3 text-center text-muted-foreground py-10">Aucun objectif stratégique défini.</p>
+                )}
               </div>
 
               <div className="mt-auto pt-6 border-t border-white/5 flex items-center justify-between text-xs text-muted-foreground">
                 <div className="flex items-center gap-4">
                   <span className="flex items-center gap-1.5">
                     <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                    3 Objectifs sains
+                    {objectives.filter(o => o.confidence === 'on-track').length} sains
                   </span>
                   <span className="flex items-center gap-1.5">
                     <div className="h-1.5 w-1.5 rounded-full bg-yellow-500" />
-                    1 Objectif à risque
+                    {objectives.filter(o => o.confidence === 'at-risk').length} à risque
                   </span>
                 </div>
                 <Button variant="link" size="sm" className="h-auto p-0 text-primary" asChild>
@@ -311,7 +370,7 @@ export default function DashboardPage() {
             </div>
           )
         default:
-          return null
+          return <GenericWidget id={id} isOverlay={isOverlay} />
       }
     }
 
@@ -321,7 +380,8 @@ export default function DashboardPage() {
           id === 'projects-widget' ? "col-span-5" : 
           id === 'status-widgets' ? "col-span-4" : 
           id === 'progress-widget' ? "col-span-12" : 
-          "col-span-3"
+          id === 'calendar-widget' ? "col-span-3" :
+          "col-span-4"
         )}>
           {content()}
         </div>
@@ -336,7 +396,8 @@ export default function DashboardPage() {
           id === 'projects-widget' ? "col-span-12 lg:col-span-5" : 
           id === 'status-widgets' ? "col-span-12 lg:col-span-4" : 
           id === 'progress-widget' ? "col-span-12 lg:col-span-12" : 
-          "col-span-12 lg:col-span-3"
+          id === 'calendar-widget' ? "col-span-12 lg:col-span-3" :
+          "col-span-12 lg:col-span-4"
         )}
       >
         {content()}
@@ -375,10 +436,13 @@ export default function DashboardPage() {
                   <Plus className="h-4 w-4" />
                   Ajouter un widget
                </button>
-               <button className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-muted/50 border hover:bg-muted transition-colors text-sm font-medium">
+               <Link 
+                 href="/work"
+                 className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-muted/50 border hover:bg-muted transition-colors text-sm font-medium"
+               >
                   <LayoutDashboard className="h-4 w-4" />
                   Basculer vers l'affichage classique
-               </button>
+               </Link>
             </div>
           </div>
 
@@ -409,7 +473,15 @@ export default function DashboardPage() {
               }),
             }}>
               {activeId ? (
-                <div className="w-full h-full opacity-90 scale-105 transition-transform pointer-events-none">
+                <div 
+                  className="opacity-90 scale-105 transition-transform pointer-events-none"
+                  style={{
+                    width: activeId === 'progress-widget' ? 'calc(100vw - 400px)' : 
+                           activeId === 'projects-widget' ? '400px' :
+                           activeId === 'status-widgets' ? '320px' : '280px',
+                    maxWidth: '1200px'
+                  }}
+                >
                   {renderWidget(activeId, true)}
                 </div>
               ) : null}
@@ -431,17 +503,41 @@ export default function DashboardPage() {
             </button>
          </div>
 
-         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center gap-4 opacity-40">
-            <div className="h-32 w-32 relative">
-               <div className="absolute inset-0 flex flex-col gap-2 p-4">
-                  <div className="h-2 w-full bg-blue-500 rounded-full" />
-                  <div className="h-2 w-2/3 bg-muted rounded-full" />
-                  <div className="h-2 w-1/2 bg-muted rounded-full" />
-               </div>
-               <div className="absolute inset-0 border-2 border-dashed rounded-2xl" />
+         <ScrollArea className="flex-1 px-6 py-4">
+            <div className="space-y-4">
+               {tasks.slice(0, 10).map(task => (
+                 <div key={task.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 border border-transparent hover:border-border transition-all cursor-pointer">
+                    <CheckCircle2 className={cn("h-4 w-4 mt-0.5", task.status === 'done' ? "text-green-500" : "text-muted-foreground/30")} />
+                    <div className="flex flex-col gap-1 min-w-0">
+                       <span className={cn("text-xs font-medium truncate", task.status === 'done' && "line-through text-muted-foreground")}>
+                          {task.title}
+                       </span>
+                       <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className={cn("text-[9px] h-3.5 px-1 bg-muted/50 border-none", 
+                             task.priority === 'urgent' ? "text-red-500" : 
+                             task.priority === 'high' ? "text-orange-500" : "text-muted-foreground"
+                          )}>
+                             {task.priority}
+                          </Badge>
+                       </div>
+                    </div>
+                 </div>
+               ))}
+               {tasks.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-20 text-center gap-4 opacity-40">
+                     <div className="h-20 w-20 relative">
+                        <div className="absolute inset-0 flex flex-col gap-2 p-3">
+                           <div className="h-1 w-full bg-blue-500 rounded-full" />
+                           <div className="h-1 w-2/3 bg-muted rounded-full" />
+                           <div className="h-1 w-1/2 bg-muted rounded-full" />
+                        </div>
+                        <div className="absolute inset-0 border-2 border-dashed rounded-xl" />
+                     </div>
+                     <p className="text-xs font-medium">Pas de tâches</p>
+                  </div>
+               )}
             </div>
-            <p className="text-sm font-medium">Pas de tâches</p>
-         </div>
+         </ScrollArea>
 
          <div className="p-6 mt-auto space-y-4">
             <Button className="w-full h-12 rounded-2xl bg-muted/20 hover:bg-muted/40 text-foreground border border-muted-foreground/10 justify-start gap-3 px-4 transition-all hover:scale-[1.02]" variant="ghost">
@@ -449,16 +545,22 @@ export default function DashboardPage() {
                Créer une tâche
             </Button>
             
-            <button className="w-full h-12 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-3 font-semibold transition-all hover:scale-[1.02] shadow-lg shadow-blue-500/20">
-               <div className="h-6 w-6 rounded-full bg-white/20 flex items-center justify-center">
-                 <UserAvatar name="Menann Zoro" fallback="MZ" className="h-5 w-5" />
-               </div>
-               Chats
-            </button>
+            <Link 
+               href="/create/project"
+               className="w-full h-12 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-3 font-semibold transition-all hover:scale-[1.02] shadow-lg shadow-blue-500/20"
+            >
+               <Plus className="h-5 w-5" />
+               Créer un projet
+            </Link>
          </div>
       </aside>
 
-      <WidgetHub isOpen={isWidgetHubOpen} onClose={() => setIsWidgetHubOpen(false)} />
+      <WidgetHub 
+        isOpen={isWidgetHubOpen} 
+        onClose={() => setIsWidgetHubOpen(false)} 
+        addedWidgets={widgetOrder}
+        onToggleWidget={onToggleWidget}
+      />
     </div>
   )
 }

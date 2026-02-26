@@ -168,6 +168,9 @@ create policy "Public Read" on projects for select using (true);
 create policy "Public Read" on tasks for select using (true);
 create policy "Public Read" on messages for select using (true);
 
--- Insert policy: Authenticated users can insert
-create policy "Auth Insert" on tasks for insert with check (auth.role() = 'authenticated');
-create policy "Auth Insert" on messages for insert with check (auth.role() = 'authenticated');
+-- Insert policies: Allow public insert for demo/pilot purpose
+create policy "Public Insert" on projects for insert with check (true);
+create policy "Public Insert" on tasks for insert with check (true);
+create policy "Public Insert" on objectives for insert with check (true);
+create policy "Public Insert" on okr_checkins for insert with check (true);
+create policy "Public Insert" on messages for insert with check (true);

@@ -49,7 +49,7 @@ export async function createProject(formData: FormData) {
 
   revalidatePath('/work')
   revalidatePath('/')
-  redirect('/work')
+  return { success: true, id: data.id }
 }
 
 export async function createTask(formData: FormData) {
@@ -90,18 +90,7 @@ export async function createTask(formData: FormData) {
   revalidatePath('/all-tasks')
   revalidatePath('/my-day')
   
-  const redirectPath = formData.get('redirectPath') as string
-  const noRedirect = formData.get('noRedirect') === 'true'
-
-  if (noRedirect) {
-    return { success: true }
-  }
-
-  if (redirectPath) {
-    redirect(redirectPath)
-  } else {
-    redirect('/work')
-  }
+  return { success: true }
 }
 
 export async function createList(formData: FormData) {

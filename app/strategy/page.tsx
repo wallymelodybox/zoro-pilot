@@ -48,7 +48,12 @@ import {
   GitMerge,
   ArrowDownWideNarrow,
   PlusCircle,
-  FileText
+  FileText,
+  Users as UsersIcon,
+  User as UserIcon,
+  LayoutList,
+  Clock,
+  History
 } from "lucide-react"
 
 function KRCard({ kr, checkins }: { kr: KeyResult, checkins: OKRCheckin[] }) {
@@ -306,10 +311,103 @@ function StrategyMap({ pillars, objectives }: { pillars: Pillar[], objectives: O
   )
 }
 
+function TimelineView({ objectives }: { objectives: Objective[] }) {
+  // Simple representation of KRs on a timeline
+  const allKRs = objectives.flatMap(o => o.keyResults.map(kr => ({ ...kr, objectiveTitle: o.title })))
+  
+  return (
+    <div className="space-y-8 py-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold">Calendrier des Résultats Clés</h3>
+        <div className="flex items-center gap-4 text-xs font-medium text-muted-foreground">
+          <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-blue-500" /> Janvier</div>
+          <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-purple-500" /> Février</div>
+          <div className="flex items-center gap-1.5"><div className="h-2 w-2 rounded-full bg-emerald-500" /> Mars</div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {allKRs.map((kr, idx) => (
+          <div key={kr.id} className="relative pl-8 pb-8 last:pb-0">
+            {/* Timeline line */}
+            <div className="absolute left-3 top-0 bottom-0 w-px bg-border last:bottom-auto last:h-4" />
+            {/* Timeline dot */}
+            <div className={cn(
+              "absolute left-1 top-1.5 h-4 w-4 rounded-full border-2 border-background z-10 shadow-sm",
+              idx % 3 === 0 ? "bg-blue-500" : idx % 3 === 1 ? "bg-purple-500" : "bg-emerald-500"
+            )} />
+            
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                {kr.objectiveTitle}
+              </span>
+              <div className="flex items-center justify-between gap-4">
+                <h4 className="text-sm font-semibold">{kr.title}</h4>
+                <Badge variant="outline" className="h-5 text-[10px] font-mono">
+                  {kr.current} / {kr.target} {kr.unit}
+                </Badge>
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <Progress value={kr.type === 'metric' ? (kr.current / kr.target) * 100 : kr.current} className="h-1 flex-1" />
+                <RAGBadge status={kr.confidence} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function CheckinHistory({ checkins, objectives }: { checkins: OKRCheckin[], objectives: Objective[] }) {
+  const allKRs = objectives.flatMap(o => o.keyResults)
+  
+  return (
+    <div className="space-y-6 py-4">
+      <h3 className="text-lg font-semibold flex items-center gap-2">
+        <History className="h-5 w-5 text-primary" />
+        Historique des Check-ins
+      </h3>
+      
+      <div className="grid grid-cols-1 gap-4">
+        {checkins.map(ci => {
+          const kr = allKRs.find(k => k.id === ci.keyResultId)
+          return (
+            <div key={ci.id} className="flex items-start gap-4 p-4 rounded-xl bg-card border hover:shadow-md transition-all">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Activity className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <h4 className="text-sm font-bold truncate">{kr?.title || "KR inconnu"}</h4>
+                  <span className="text-[10px] font-mono text-muted-foreground">{ci.date}</span>
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-2 italic mb-2">"{ci.note}"</p>
+                <div className="flex items-center gap-3">
+                  <RAGBadge status={ci.confidence} />
+                  <Badge variant="secondary" className="text-[10px] bg-success/10 text-success border-none">
+                    +{ci.progressDelta}% progression
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function StrategyPage() {
   const [isCheckinOpen, setIsCheckinOpen] = useState(false)
   const { objectives, pillars, checkins, projects, loading } = useSupabaseData()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Current user assumption for "My OKRs" (Marc Dubois - u2)
+  const currentUserId = "u2"
+  const myObjectives = objectives.filter(o => 
+    o.ownerId === currentUserId || o.keyResults.some(kr => kr.ownerId === currentUserId)
+  )
 
   async function handleCheckin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -419,18 +517,34 @@ export default function StrategyPage() {
       </div>
 
       <Tabs defaultValue="objectives" className="w-full">
-        <TabsList className="mb-6">
-          <TabsTrigger value="map" className="font-sans">
-            <Network className="h-4 w-4 mr-1.5" />
+        <TabsList className="mb-6 flex-wrap h-auto p-1 bg-muted/20 gap-1">
+          <TabsTrigger value="map" className="font-sans gap-2">
+            <Network className="h-4 w-4" />
             Strategy Map
           </TabsTrigger>
-          <TabsTrigger value="objectives" className="font-sans">
-            <Target className="h-4 w-4 mr-1.5" />
+          <TabsTrigger value="objectives" className="font-sans gap-2">
+            <Target className="h-4 w-4" />
             Objectifs
           </TabsTrigger>
-          <TabsTrigger value="by-pillar" className="font-sans">
-            <TrendingUp className="h-4 w-4 mr-1.5" />
+          <TabsTrigger value="my-okrs" className="font-sans gap-2">
+            <UserIcon className="h-4 w-4" />
+            Mes OKR
+          </TabsTrigger>
+          <TabsTrigger value="by-team" className="font-sans gap-2">
+            <UsersIcon className="h-4 w-4" />
+            Par équipe
+          </TabsTrigger>
+          <TabsTrigger value="by-pillar" className="font-sans gap-2">
+            <TrendingUp className="h-4 w-4" />
             Par pilier
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="font-sans gap-2">
+            <Clock className="h-4 w-4" />
+            Timeline
+          </TabsTrigger>
+          <TabsTrigger value="history" className="font-sans gap-2">
+            <History className="h-4 w-4" />
+            Historique
           </TabsTrigger>
         </TabsList>
 
@@ -443,6 +557,64 @@ export default function StrategyPage() {
             {objectives.map((obj) => (
               <ObjectiveCard key={obj.id} objective={obj} pillars={pillars} checkins={checkins} projects={projects} />
             ))}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="my-okrs">
+          <div className="flex flex-col gap-6">
+            <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 mb-2">
+              <p className="text-sm font-medium">Connecté en tant que <span className="text-primary">Marc Dubois</span></p>
+              <p className="text-xs text-muted-foreground">Voici les objectifs dont vous êtes responsable ou sur lesquels vous avez un résultat clé.</p>
+            </div>
+            {myObjectives.map((obj) => (
+              <ObjectiveCard key={obj.id} objective={obj} pillars={pillars} checkins={checkins} projects={projects} />
+            ))}
+            {myObjectives.length === 0 && (
+              <div className="text-center py-20 opacity-50">
+                <Target className="h-12 w-12 mx-auto mb-4" />
+                <p>Aucun objectif personnel pour le moment.</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="by-team">
+          <div className="flex flex-col gap-8">
+            {["Direction", "Produit", "Engineering", "Marketing"].map((teamName) => {
+              // Group objectives by team based on owner's team
+              const teamObjectives = objectives.filter(o => {
+                const owner = users.find(u => u.id === o.ownerId)
+                // This is a simplification for the demo, in real it would use team IDs
+                if (teamName === "Direction") return owner?.teamId === "t1"
+                if (teamName === "Produit") return owner?.teamId === "t2"
+                if (teamName === "Engineering") return owner?.teamId === "t3"
+                if (teamName === "Marketing") return owner?.teamId === "t4"
+                return false
+              })
+              
+              if (teamObjectives.length === 0) return null
+
+              return (
+                <div key={teamName}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-8 w-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
+                      <UsersIcon className="h-4 w-4" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-foreground font-sans">
+                      Équipe {teamName}
+                    </h2>
+                    <span className="text-sm text-muted-foreground font-sans">
+                      ({teamObjectives.length} objectif{teamObjectives.length !== 1 ? "s" : ""})
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-4 ml-4 border-l-2 border-border pl-6">
+                    {teamObjectives.map((obj) => (
+                      <ObjectiveCard key={obj.id} objective={obj} pillars={pillars} checkins={checkins} projects={projects} />
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </TabsContent>
 
@@ -472,6 +644,16 @@ export default function StrategyPage() {
               )
             })}
           </div>
+        </TabsContent>
+
+        <TabsContent value="timeline">
+          <Card className="bg-card/50 border-border p-6">
+            <TimelineView objectives={objectives} />
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <CheckinHistory checkins={checkins} objectives={objectives} />
         </TabsContent>
       </Tabs>
     </div>

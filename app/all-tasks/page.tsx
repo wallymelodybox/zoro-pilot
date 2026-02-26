@@ -73,22 +73,22 @@ export default function AllTasksPage() {
 
   const doneTasks = tasks.filter(t => t.status === "done")
 
-  return (fon text-sm leading-relaxed font-medium text-foreground
+  return (
     <div className="flex h-screen flex-col bg-background">
       <header className="flex flex-col border-b bg-background">
          <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center gap-4">
                <div className="p-2 bg-primary/10 rounded-lg text-primary">
                   <Layers className="h-6 w-6" />
-               </div>font-mono text-xs whitespace-nowrap text-muted-foreground
+               </div>
                <div>
                   <h1 className="text-xl font-bold tracking-tight text-foreground">Vue Globale</h1>
                   <p className="text-sm text-muted-foreground">Supervision transverse de toute l'organisation</p>
                </div>
             </div>
-mt-2 flex items-center gap-2
+
             <div className="flex items-center gap-3">
-               <div className="refont-sans text-xs text-muted-foreground
+               <div className="relative w-64">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input placeholder="Rechercher..." className="pl-9 h-9" />
                </div>
@@ -105,11 +105,11 @@ mt-2 flex items-center gap-2
 
          <div className="px-6 pb-2 overflow-x-auto">
             <Tabs value={currentView} onValueChange={setCurrentView} className="h-9">
-              <TabsList className="hmb-1 flex items-center gap-2w-full justify-start">
+              <TabsList className="h-9 bg-transparent p-0 gap-1 w-full justify-start">
                 <TabsTrigger value="list" className="h-9 px-3 data-[state=active]:bg-muted data-[state=active]:text-foreground rounded-md gap-2 text-muted-foreground border border-transparent data-[state=active]:border-border">
-                  <List className="h-4 font-mono text-xs text-muted-foreground
+                  <List className="h-4 w-4" />
                   Toutes les tâches
-                </TabsTrigger>ml-auto font-mono text-xs text-success
+                </TabsTrigger>
                 <TabsTrigger value="kanban" className="h-9 px-3 data-[state=active]:bg-muted data-[state=active]:text-foreground rounded-md gap-2 text-muted-foreground border border-transparent data-[state=active]:border-border">
                   <Columns3 className="h-4 w-4" />
                   Kanban Global
@@ -126,7 +126,7 @@ mt-2 flex items-center gap-2
                   <Archive className="h-4 w-4" />
                   Tâches terminées
                 </TabsTrigger>
-                <TabsTriggerfont-sans text-xs text-muted-foreground-[state=active]:bg-muted data-[state=active]:text-foreground rounded-md gap-2 text-muted-foreground border border-transparent data-[state=active]:border-border">
+                <TabsTrigger value="files" className="h-9 px-3 data-[state=active]:bg-muted data-[state=active]:text-foreground rounded-md gap-2 text-muted-foreground border border-transparent data-[state=active]:border-border">
                   <FileText className="h-4 w-4" />
                   Tous les fichiers
                 </TabsTrigger>

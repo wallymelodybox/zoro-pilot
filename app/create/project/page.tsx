@@ -30,16 +30,11 @@ export default function CreateProjectPage() {
       const result = await createProject(formData)
       if (result?.error) {
         toast.error(result.error)
-      } else {
+      } else if (result?.success) {
         toast.success("Projet créé avec succès !")
+        router.push('/work')
       }
     } catch (e) {
-      // In Next.js 14+, redirect() throws an error that is handled by the framework.
-      // If we catch it, we might break the redirect. 
-      // But we check for it.
-      if (e instanceof Error && e.message === "NEXT_REDIRECT") {
-        throw e;
-      }
       console.error(e)
       toast.error("Une erreur inattendue est survenue.")
     } finally {
