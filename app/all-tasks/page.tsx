@@ -7,7 +7,6 @@ import { getUserById, getPriorityLabel, getTaskStatusLabel, getPriorityColor, ty
 import {
   List,
   Columns3,
-  Calendar,
   Layers,
   Filter,
   ArrowUpDown,
@@ -26,7 +25,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { UserAvatar } from "@/components/user-avatar"
 import { Input } from "@/components/ui/input"
@@ -336,12 +335,13 @@ function SortableTaskCard({ task }: { task: Task }) {
   return (
     <div
       ref={setNodeRef}
+      /* eslint-disable-next-line react/forbid-component-props */
       style={style}
       {...attributes}
       {...listeners}
       className={cn(
         "p-3 bg-card border rounded-lg shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing",
-        "[transform:var(--dnd-transform)] [transition:var(--dnd-transition)]",
+        "transform-(--dnd-transform) transition-(--dnd-transition)",
         isDragging ? "z-50 opacity-50" : "z-auto opacity-100"
       )}
     >
