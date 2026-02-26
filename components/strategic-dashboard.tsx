@@ -1242,7 +1242,8 @@ export function StrategicDashboard() {
   const { variant } = useThemeVariant();
   const [addedWidgets, setAddedWidgets] = useState<string[]>([]);
 
-  const handleToggleWidget = (id: string) => {
+  const handleToggleWidget = (id: string, config?: any) => {
+    console.log("Toggling widget:", id, config);
     setAddedWidgets(prev => {
       if (prev.includes(id)) {
         toast.info("Widget retiré du dashboard");

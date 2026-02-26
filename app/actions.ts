@@ -83,7 +83,7 @@ export async function createTask(formData: FormData) {
 
   if (error) {
     console.error('Error creating task:', error)
-    return { error: 'Erreur lors de la création de la tâche.' }
+    return { error: `Erreur lors de la création de la tâche: ${error.message}` }
   }
 
   revalidatePath('/work')

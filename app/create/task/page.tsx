@@ -36,9 +36,13 @@ export default function CreateTaskPage() {
   const [projectId, setProjectId] = useState("")
   const [priority, setPriority] = useState("medium")
 
-  async function handleSubmit(formData: FormData) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!title) return
+    
     setLoading(true)
     try {
+      const formData = new FormData(e.currentTarget)
       const result = await createTask(formData)
       if (result?.error) {
         toast.error(result.error)
@@ -59,7 +63,7 @@ export default function CreateTaskPage() {
       {/* Modal Container */}
       <div className="w-full max-w-lg bg-card rounded-xl shadow-lg border overflow-hidden flex flex-col h-150 animate-in fade-in zoom-in-95 duration-200">
         
-        <form action={handleSubmit} className="flex flex-col h-full">
+        <form onSubmit={onSubmit} className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b bg-background">
             <Link href="/create" className="text-sm font-medium text-foreground hover:text-muted-foreground transition-colors">

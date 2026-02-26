@@ -312,7 +312,7 @@ interface WidgetHubProps {
   onToggleWidget: (id: string, config?: { size?: WidgetSize; source?: WidgetDataSource }) => void;
 }
 
-export function WidgetHub({ isOpen, onClose, addedWidgets: _addedWidgets, onToggleWidget }: WidgetHubProps) {
+export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: WidgetHubProps) {
   const [active, setActive] = useState("Tout");
   const [search, setSearch] = useState("");
   const [hovered, setHovered] = useState<string | null>(null);
@@ -404,18 +404,25 @@ export function WidgetHub({ isOpen, onClose, addedWidgets: _addedWidgets, onTogg
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
                     {items.map(w => {
                       const isHov = hovered === w.id;
+                      const isAdded = addedWidgets.includes(w.id);
                       return (
                         <button
                           key={w.id} 
                           className={cn(
                             "bg-card/85 backdrop-blur-xl rounded-2xl overflow-hidden border border-border/40 transition-all duration-300 relative select-none flex flex-col group h-full text-left",
-                            isHov && "border-primary/40 -translate-y-1 shadow-2xl bg-card/95"
+                            isHov && "border-primary/40 -translate-y-1 shadow-2xl bg-card/95",
+                            isAdded && "ring-2 ring-primary/20"
                           )}
                           onClick={() => setSelectedId(w.id)}
                           onMouseEnter={() => setHovered(w.id)}
                           onMouseLeave={() => setHovered(null)}
                         >
                           <div className="h-48 flex items-center justify-center bg-muted/30 border-b border-border/40 relative overflow-hidden p-8">
+                            {isAdded && (
+                              <div className="absolute top-3 right-3 z-10 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
+                                AJOUTÉ
+                              </div>
+                            )}
                             <div className="transition-transform duration-500 group-hover:scale-110">
                               {w.preview}
                             </div>
@@ -514,7 +521,7 @@ export function WidgetHub({ isOpen, onClose, addedWidgets: _addedWidgets, onTogg
                             onClose();
                           }}
                         >
-                          Ajouter ce widget
+                          {addedWidgets.includes(selectedId) ? "Retirer ce widget" : "Ajouter ce widget"}
                         </button>
                       </div>
                     </>
