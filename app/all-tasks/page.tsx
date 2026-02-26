@@ -329,9 +329,9 @@ function SortableTaskCard({ task }: { task: Task }) {
   } = useSortable({ id: task.id })
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+    "--dnd-transform": CSS.Transform.toString(transform),
+    "--dnd-transition": transition,
+  } as React.CSSProperties
 
   return (
     <div
@@ -341,6 +341,7 @@ function SortableTaskCard({ task }: { task: Task }) {
       {...listeners}
       className={cn(
         "p-3 bg-card border rounded-lg shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing",
+        "[transform:var(--dnd-transform)] [transition:var(--dnd-transition)]",
         isDragging ? "z-50 opacity-50" : "z-auto opacity-100"
       )}
     >
