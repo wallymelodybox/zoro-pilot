@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useTheme } from "next-themes"
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
@@ -69,8 +70,16 @@ type SettingsSection =
   | "integrations"
   | "permissions"
 
-export default function SettingsPage() {
-  const [activeSection, setActiveSection] = useState<SettingsSection>("members")
+function SettingsContent() {
+  const searchParams = useSearchParams()
+  const sectionParam = searchParams.get("section") as SettingsSection | null
+  const [activeSection, setActiveSection] = useState<SettingsSection>(sectionParam || "members")
+
+  useEffect(() => {
+    if (sectionParam) {
+      setActiveSection(sectionParam)
+    }
+  }, [sectionParam])
 
   const menuItems = [
     { 
@@ -183,6 +192,14 @@ export default function SettingsPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div>Chargement...</div>}>
+      <SettingsContent />
+    </Suspense>
   )
 }
 
