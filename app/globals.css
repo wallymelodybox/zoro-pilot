@@ -78,6 +78,123 @@
   --warning-foreground: oklch(0.15 0 0);
 }
 
+/* Dashboard style themes (appliqués via data-dashboard-theme sur <html>) */
+
+:root[data-dashboard-theme="command-center"].dark {
+  --background: #050711;
+  --card: rgba(15, 17, 23, 0.98);
+  --popover: #050711;
+  --border: rgba(37, 47, 89, 0.8);
+  --primary: #4f46e5;
+  --ring: #38bdf8;
+  --chart-1: #38bdf8;
+  --chart-2: #a855f7;
+  --chart-3: #f97316;
+  --radius: 1rem;
+}
+
+:root[data-dashboard-theme="ai-productivity"] {
+  --background: oklch(0.98 0.01 260);
+  --card: oklch(0.99 0 0);
+  --border: rgba(15, 23, 42, 0.06);
+  --primary: oklch(0.32 0.02 260);
+  --radius: 1.75rem;
+}
+
+:root[data-dashboard-theme="executive-futurist"] {
+  --background: oklch(0.96 0.01 260);
+  --card: oklch(0.985 0 0);
+  --border: rgba(30, 64, 175, 0.22);
+  --primary: oklch(0.5 0.18 250);
+  --chart-1: oklch(0.7 0.18 165);
+  --chart-2: oklch(0.65 0.2 250);
+  --chart-3: oklch(0.75 0.15 55);
+}
+
+@keyframes command-center-header-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59,130,246,0.45), 0 0 30px 0 rgba(59,130,246,0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 0 rgba(59,130,246,0.1), 0 0 18px 0 rgba(129,140,248,0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59,130,246,0.45), 0 0 30px 0 rgba(59,130,246,0.35);
+  }
+}
+
+@keyframes command-center-avatar-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+}
+
+@keyframes command-center-neon-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(200%);
+  }
+}
+
+[data-dashboard-theme="command-center"].dark .command-center-header {
+  animation: command-center-header-glow 5s ease-in-out infinite;
+}
+
+[data-dashboard-theme="command-center"].dark .command-center-avatar {
+  position: relative;
+}
+
+[data-dashboard-theme="command-center"].dark .command-center-avatar-glow,
+[data-dashboard-theme="command-center"].dark .animate-command-center-avatar-glow {
+  animation: command-center-avatar-pulse 3s ease-in-out infinite;
+}
+
+[data-dashboard-theme="command-center"].dark .command-center-progress {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-dashboard-theme="command-center"].dark .command-center-progress::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.7), transparent);
+  transform: translateX(-100%);
+  animation: command-center-neon-sweep 2.4s linear infinite;
+  pointer-events: none;
+}
+
+.status-ring.status-ring-0 {
+  transform: rotate(-45deg);
+}
+
+.status-ring.status-ring-1 {
+  transform: rotate(0deg);
+}
+
+.status-ring.status-ring-2 {
+  transform: rotate(45deg);
+}
+
+.status-ring.status-ring-3 {
+  transform: rotate(90deg);
+}
+
+.status-ring.status-ring-4 {
+  transform: rotate(135deg);
+}
+
 @theme inline {
   --font-sans: 'Geist', 'Geist Fallback';
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';

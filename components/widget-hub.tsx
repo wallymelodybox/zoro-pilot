@@ -300,19 +300,23 @@ const CATS = CAT_DATA.map(c => c.label);
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+type WidgetSize = "small" | "medium" | "large"
+type WidgetDataSource = "auto" | "tasks" | "projects" | "okr"
+
 interface WidgetHubProps {
   isOpen: boolean;
   onClose: () => void;
   addedWidgets: string[];
-  onToggleWidget: (id: string) => void;
+  onToggleWidget: (id: string, config?: { size?: WidgetSize; source?: WidgetDataSource }) => void;
 }
 
-export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: WidgetHubProps) {
+export function WidgetHub({ isOpen, onClose, addedWidgets: _addedWidgets, onToggleWidget }: WidgetHubProps) {
   const [active, setActive] = useState("Tout");
   const [search, setSearch] = useState("");
   const [hovered, setHovered] = useState<string | null>(null);
-
-  const added = new Set(addedWidgets);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedSize, setSelectedSize] = useState<WidgetSize>("medium");
+  const [selectedSource, setSelectedSource] = useState<WidgetDataSource>("auto");
 
   const filtered = WIDGETS.filter(w =>
     (active==="Tout" || w.cat===active) &&
@@ -389,23 +393,21 @@ export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: Wid
               </button>
             </header>
 
-            <div className="overflow-y-auto flex-1 px-12 py-8 pb-20 scrollbar-hide">
+            <div className="overflow-y-auto flex-1 px-12 py-8 pb-4 scrollbar-hide">
               {sections.map(({cat, items, noHeader}) => (
                 <section key={cat} className="mb-12">
                   {!noHeader && <h3 className="text-2xl font-bold text-white mb-8">{cat}</h3>}
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
                     {items.map(w => {
-                      const isOn = added.has(w.id);
                       const isHov = hovered === w.id;
                       return (
-                        <div 
+                        <button
                           key={w.id} 
                           className={cn(
-                            "bg-[#1a1d24] rounded-2xl overflow-hidden cursor-pointer border border-[#1c1f27] transition-all duration-300 relative select-none flex flex-col group h-full",
-                            isHov && "border-[#374151] -translate-y-1 shadow-2xl bg-[#1e2128]",
-                            isOn && "border-blue-500/50 ring-1 ring-blue-500/50"
+                            "bg-[#1a1d24] rounded-2xl overflow-hidden border border-[#1c1f27] transition-all duration-300 relative select-none flex flex-col group h-full text-left",
+                            isHov && "border-[#374151] -translate-y-1 shadow-2xl bg-[#1e2128]"
                           )}
-                          onClick={() => onToggleWidget(w.id)}
+                          onClick={() => setSelectedId(w.id)}
                           onMouseEnter={() => setHovered(w.id)}
                           onMouseLeave={() => setHovered(null)}
                         >
@@ -413,19 +415,12 @@ export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: Wid
                             <div className="transition-transform duration-500 group-hover:scale-110">
                               {w.preview}
                             </div>
-                            {isOn && (
-                              <div className="absolute top-4 right-4 w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
-                                <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
-                                  <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                </svg>
-                              </div>
-                            )}
                           </div>
                           <div className="p-8 text-center flex-1 flex flex-col">
                             <h4 className="text-white text-base font-bold mb-3 leading-tight group-hover:text-blue-400 transition-colors">{w.title}</h4>
                             <p className="text-[#6b7280] text-xs leading-relaxed line-clamp-3 mb-4">{w.desc}</p>
                           </div>
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
@@ -438,6 +433,91 @@ export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: Wid
                 </div>
               )}
             </div>
+            {selectedId && (
+              <div className="border-t border-[#1c1f27]/80 bg-[#0b0e13]/95 px-10 py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-8">
+                {(() => {
+                  const w = WIDGETS.find(widget => widget.id === selectedId);
+                  if (!w) return null;
+                  return (
+                    <>
+                      <div className="flex items-start gap-4 min-w-0">
+                        <div className="hidden sm:flex h-11 w-11 items-center justify-center rounded-xl border border-[#1f2933] bg-[#13161f] shadow-inner">
+                          <span className="text-[10px] font-semibold uppercase tracking-widest text-[#9ca3af]">
+                            {w.cat.slice(0, 3)}
+                          </span>
+                        </div>
+                        <div className="space-y-1 min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">
+                            {w.title}
+                          </p>
+                          <p className="text-xs text-[#9ca3af] line-clamp-2">
+                            Choisissez sa taille et la source de données avant de l&apos;ajouter à votre tableau.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-2 text-[11px] text-[#9ca3af]">
+                          <span className="uppercase tracking-widest font-semibold text-[#6b7280]">Taille</span>
+                          {(["small", "medium", "large"] as WidgetSize[]).map(size => (
+                            <button
+                              key={size}
+                              className={cn(
+                                "px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors",
+                                selectedSize === size
+                                  ? "border-blue-400 bg-blue-500/20 text-blue-100"
+                                  : "border-[#1f2933] bg-transparent text-[#9ca3af] hover:border-blue-500/40 hover:text-blue-100"
+                              )}
+                              onClick={() => setSelectedSize(size)}
+                            >
+                              {size === "small" ? "Compact" : size === "medium" ? "Standard" : "Large"}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-[#9ca3af]">
+                          <span className="uppercase tracking-widest font-semibold text-[#6b7280]">Données</span>
+                          {(["auto", "tasks", "projects", "okr"] as WidgetDataSource[]).map(source => (
+                            <button
+                              key={source}
+                              className={cn(
+                                "px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors",
+                                selectedSource === source
+                                  ? "border-emerald-400 bg-emerald-500/15 text-emerald-100"
+                                  : "border-[#1f2933] bg-transparent text-[#9ca3af] hover:border-emerald-400/40 hover:text-emerald-100"
+                              )}
+                              onClick={() => setSelectedSource(source)}
+                            >
+                              {source === "auto"
+                                ? "Auto"
+                                : source === "tasks"
+                                  ? "Tâches"
+                                  : source === "projects"
+                                    ? "Projets"
+                                    : "OKR"}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          className="px-3 py-2 rounded-lg text-xs font-medium text-[#9ca3af] hover:text-[#e5e7eb] hover:bg-white/5 transition-colors"
+                          onClick={() => setSelectedId(null)}
+                        >
+                          Annuler
+                        </button>
+                        <button
+                          className="px-4 py-2 rounded-lg text-xs font-semibold bg-[#2563eb] text-white hover:bg-[#1d4ed8] shadow-lg shadow-blue-500/30 transition-colors"
+                          onClick={() => {
+                            onToggleWidget(selectedId, { size: selectedSize, source: selectedSource });
+                            setSelectedId(null);
+                            onClose();
+                          }}
+                        >
+                          Ajouter ce widget
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
           </main>
         </div>
       </DialogContent>

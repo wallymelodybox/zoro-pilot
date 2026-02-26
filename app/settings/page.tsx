@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -273,6 +273,21 @@ function NotificationSettings() {
 function ThemeSettings() {
   const { theme, setTheme } = useTheme()
 
+  const [dashboardTheme, setDashboardTheme] = useState<string>("command-center")
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("dashboard-theme")
+    const value = stored || "command-center"
+    setDashboardTheme(value)
+    document.documentElement.dataset.dashboardTheme = value
+  }, [])
+
+  const applyDashboardTheme = (value: string) => {
+    setDashboardTheme(value)
+    document.documentElement.dataset.dashboardTheme = value
+    window.localStorage.setItem("dashboard-theme", value)
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -323,6 +338,71 @@ function ThemeSettings() {
             <div className={`h-4 w-4 rounded-full border ${theme === "system" ? "border-primary bg-primary" : "border-muted-foreground"}`} />
             <span className="text-sm font-medium">Système</span>
           </div>
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-4">
+        <h3 className="text-sm font-semibold">Style du tableau de bord</h3>
+        <p className="text-xs text-muted-foreground">
+          Choisissez une ambiance visuelle pour la page d&apos;accueil et les rapports.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 max-w-2xl">
+          <button
+            type="button"
+            onClick={() => applyDashboardTheme("command-center")}
+            className={`flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-all ${
+              dashboardTheme === "command-center"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
+            }`}
+          >
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">
+              Option 1
+            </span>
+            <span className="text-sm font-medium">Dark Strategic Command Center</span>
+            <span className="text-[11px] text-muted-foreground">
+              Mode sombre profond, accents néon et cartes glassmorphism pour une ambiance centre de
+              commande.
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => applyDashboardTheme("ai-productivity")}
+            className={`flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-all ${
+              dashboardTheme === "ai-productivity"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
+            }`}
+          >
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">
+              Option 2
+            </span>
+            <span className="text-sm font-medium">AI Productivity Interface</span>
+            <span className="text-[11px] text-muted-foreground">
+              UI claire ultra soft, cartes très arrondies et ombres profondes façon interface IA
+              premium.
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => applyDashboardTheme("executive-futurist")}
+            className={`flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-all ${
+              dashboardTheme === "executive-futurist"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
+            }`}
+          >
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">
+              Option 3
+            </span>
+            <span className="text-sm font-medium">Executive Futuriste</span>
+            <span className="text-[11px] text-muted-foreground">
+              Palette plus contrastée pour une vue DG / PMO avec focalisation sur les scores
+              stratégiques.
+            </span>
+          </button>
         </div>
       </div>
     </div>

@@ -51,6 +51,13 @@ interface DraggableWidgetProps {
   className?: string
 }
 
+type WidgetSize = "small" | "medium" | "large"
+
+interface DashboardWidgetConfig {
+  id: string
+  size: WidgetSize
+}
+
 function GenericWidget({ id, isOverlay = false }: { id: string, isOverlay?: boolean }) {
   const widget = WIDGETS.find(w => w.id === id)
   if (!widget) return null
@@ -149,13 +156,20 @@ export default function DashboardPage() {
     'progress-widget',
     'calendar-widget'
   ])
+  const [widgetConfigs, setWidgetConfigs] = React.useState<Record<string, DashboardWidgetConfig>>({})
 
-  const onToggleWidget = (id: string) => {
-    setWidgetOrder(current => 
-      current.includes(id) 
+  const onToggleWidget = (id: string, config?: { size?: WidgetSize }) => {
+    setWidgetOrder(current =>
+      current.includes(id)
         ? current.filter(w => w !== id)
-        : [...current, id]
+        : [...current, id],
     )
+    if (config?.size) {
+      setWidgetConfigs((prev) => ({
+        ...prev,
+        [id]: { id, size: config.size || "medium" },
+      }))
+    }
   }
 
   const sensors = useSensors(
@@ -239,11 +253,17 @@ export default function DashboardPage() {
               </ScrollArea>
             </div>
           )
-        case 'status-widgets':
+        case 'status-widgets': {
           const todayTasks = tasks.filter(t => t.dueDate === new Date().toISOString().split('T')[0])
           const doneToday = todayTasks.filter(t => t.status === 'done').length
           const totalToday = todayTasks.length
           const progressToday = totalToday > 0 ? (doneToday / totalToday) * 100 : 0
+
+          let ringClass = "status-ring-0"
+          if (progressToday > 0 && progressToday <= 25) ringClass = "status-ring-1"
+          else if (progressToday > 25 && progressToday <= 50) ringClass = "status-ring-2"
+          else if (progressToday > 50 && progressToday <= 75) ringClass = "status-ring-3"
+          else if (progressToday > 75) ringClass = "status-ring-4"
 
           return (
             <div className="space-y-6 h-full">
@@ -253,8 +273,11 @@ export default function DashboardPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ma journée</h3>
                   <div className="h-20 w-20 rounded-full border-4 border-blue-500/30 flex items-center justify-center relative">
                      <div 
-                       className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent transition-all duration-1000" 
-                       style={{ transform: `rotate(${progressToday * 3.6 - 45}deg)` }}
+                       className={cn(
+                         "absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent transition-transform duration-700",
+                         "status-ring",
+                         ringClass
+                       )}
                      />
                      <div className="flex flex-col items-center">
                         <span className="text-xl font-bold">{doneToday}/{totalToday}</span>
@@ -284,6 +307,7 @@ export default function DashboardPage() {
               </div>
             </div>
           )
+        }
         case 'progress-widget':
           const displayObjectives = objectives.slice(0, 3)
           return (
@@ -307,7 +331,7 @@ export default function DashboardPage() {
                       <span className="text-muted-foreground truncate max-w-40">{obj.title}</span>
                       <span>{obj.progress}%</span>
                     </div>
-                    <Progress value={obj.progress} className="h-2" />
+                    <Progress value={obj.progress} className="h-2 command-center-progress" />
                   </div>
                 ))}
                 {displayObjectives.length === 0 && (
@@ -388,17 +412,26 @@ export default function DashboardPage() {
       )
     }
 
+    const baseClass = cn(
+      id === 'projects-widget' ? "col-span-12 lg:col-span-5" : 
+      id === 'status-widgets' ? "col-span-12 lg:col-span-4" : 
+      id === 'progress-widget' ? "col-span-12 lg:col-span-12" : 
+      id === 'calendar-widget' ? "col-span-12 lg:col-span-3" :
+      "col-span-12 lg:col-span-4"
+    )
+
+    const cfg = widgetConfigs[id]
+    const sizedClass = cfg?.size === "small"
+      ? "col-span-12 lg:col-span-3"
+      : cfg?.size === "large"
+        ? "col-span-12 lg:col-span-12"
+        : baseClass
+
     return (
       <DraggableWidget 
         key={id} 
         id={id} 
-        className={cn(
-          id === 'projects-widget' ? "col-span-12 lg:col-span-5" : 
-          id === 'status-widgets' ? "col-span-12 lg:col-span-4" : 
-          id === 'progress-widget' ? "col-span-12 lg:col-span-12" : 
-          id === 'calendar-widget' ? "col-span-12 lg:col-span-3" :
-          "col-span-12 lg:col-span-4"
-        )}
+        className={sizedClass}
       >
         {content()}
       </DraggableWidget>
@@ -412,14 +445,20 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto w-full px-8 py-10 space-y-10">
           
           {/* Header Section */}
-          <div className="flex flex-col items-center text-center space-y-4">
-            <span className="text-sm font-medium text-muted-foreground/80 lowercase">{dateStr}</span>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">Bonjour, Menann Zoro !</h1>
+          <div className="command-center-header relative flex flex-col items-center text-center space-y-4 rounded-3xl border border-border/40 bg-gradient-to-b from-background/40 to-background/5 px-6 py-8 overflow-hidden">
+            <div className="pointer-events-none absolute inset-x-0 -top-24 h-40 bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.25),_transparent_60%)]" />
+            <span className="relative text-sm font-medium text-muted-foreground/80 lowercase">{dateStr}</span>
+            <h1 className="relative text-4xl font-bold tracking-tight text-foreground">
+              Bonjour, Menann Zoro !
+            </h1>
             
             {/* Action Pills */}
-            <div className="flex items-center gap-3 pt-2">
-               <button className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border hover:bg-muted transition-colors text-sm font-medium">
-                  <UserAvatar name="Menann Zoro" fallback="MZ" className="h-5 w-5" />
+            <div className="relative flex items-center gap-3 pt-3">
+               <button className="command-center-avatar flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border hover:bg-muted transition-colors text-sm font-medium">
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-full border border-primary/40 animate-command-center-avatar-glow" />
+                    <UserAvatar name="Menann Zoro" fallback="MZ" className="h-7 w-7" />
+                  </div>
                   Profil
                </button>
                <button className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border hover:bg-muted transition-colors text-sm font-medium">
@@ -463,24 +502,29 @@ export default function DashboardPage() {
               </div>
             </SortableContext>
 
-            <DragOverlay dropAnimation={{
-              sideEffects: defaultDropAnimationSideEffects({
-                styles: {
-                  active: {
-                    opacity: '0.4',
+            <DragOverlay
+              dropAnimation={{
+                sideEffects: defaultDropAnimationSideEffects({
+                  styles: {
+                    active: {
+                      opacity: '0.4',
+                    },
                   },
-                },
-              }),
-            }}>
+                }),
+              }}
+            >
               {activeId ? (
                 <div 
-                  className="opacity-90 scale-105 transition-transform pointer-events-none"
-                  style={{
-                    width: activeId === 'progress-widget' ? 'calc(100vw - 400px)' : 
-                           activeId === 'projects-widget' ? '400px' :
-                           activeId === 'status-widgets' ? '320px' : '280px',
-                    maxWidth: '1200px'
-                  }}
+                  className={cn(
+                    "opacity-90 scale-105 transition-transform pointer-events-none max-w-[1200px]",
+                    activeId === "progress-widget"
+                      ? "w-[min(1100px,90vw)]"
+                      : activeId === "projects-widget"
+                        ? "w-[400px]"
+                        : activeId === "status-widgets"
+                          ? "w-[320px]"
+                          : "w-[280px]"
+                  )}
                 >
                   {renderWidget(activeId, true)}
                 </div>
