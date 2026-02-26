@@ -118,8 +118,19 @@ export interface Channel {
 
 // Formatage deterministe des nombres (evite les erreurs d'hydratation SSR)
 const numberFmt = new Intl.NumberFormat("fr-FR")
+const currencyFmt = new Intl.NumberFormat("fr-FR", {
+  style: "currency",
+  currency: "XOF", // Code ISO pour le Franc CFA (BCEAO)
+  currencyDisplay: "symbol",
+})
+
 export function formatNumber(n: number): string {
   return numberFmt.format(n)
+}
+
+export function formatCurrency(n: number): string {
+  // Le Franc CFA s'affiche souvent comme "FCFA" ou "F CFA"
+  return currencyFmt.format(n).replace("XOF", "Fr CFA")
 }
 
 // Demo data
@@ -173,7 +184,7 @@ export const objectives: Objective[] = [
     keyResults: [
       { id: "kr1", objectiveId: "o1", title: "Atteindre 500 nouvelles inscriptions entreprise", type: "metric", target: 500, current: 340, unit: "inscriptions", weight: 40, confidence: "on-track", ownerId: "u5" },
       { id: "kr2", objectiveId: "o1", title: "Lancer dans la region MENA", type: "initiative", target: 100, current: 80, unit: "%", weight: 30, confidence: "on-track", ownerId: "u2" },
-      { id: "kr3", objectiveId: "o1", title: "Atteindre 2M EUR ARR nouvelles regions", type: "metric", target: 2000000, current: 1100000, unit: "EUR", weight: 30, confidence: "at-risk", ownerId: "u1" },
+      { id: "kr3", objectiveId: "o1", title: "Atteindre 2M Fr CFA ARR nouvelles regions", type: "metric", target: 2000000, current: 1100000, unit: "Fr CFA", weight: 30, confidence: "at-risk", ownerId: "u1" },
     ],
   },
   {
@@ -226,7 +237,7 @@ export interface KPI {
 }
 
 export const kpis: KPI[] = [
-  { id: "k1", name: "MRR", value: 75000, target: 100000, unit: "€", trend: "up", category: "finance" },
+  { id: "k1", name: "MRR", value: 75000, target: 100000, unit: "Fr CFA", trend: "up", category: "finance" },
   { id: "k2", name: "Churn Rate", value: 2.4, target: 2.0, unit: "%", trend: "down", category: "marketing" },
   { id: "k3", name: "NPS", value: 45, target: 50, unit: "score", trend: "up", category: "product" },
 ]

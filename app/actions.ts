@@ -69,8 +69,8 @@ export async function createTask(formData: FormData) {
 
   const newTask = {
     title,
-    // description, // Note: Description field might not exist in the minimal schema inferred from use-supabase.ts, but standard tasks usually have it. We'll skip for now if unsure or add it if schema supports.
-    project_id: projectId || null, // Allow standalone tasks if schema permits, otherwise needs a project
+    description: description || null,
+    project_id: projectId && projectId !== "none" ? projectId : null,
     priority,
     status,
     assignee_id: assigneeId,

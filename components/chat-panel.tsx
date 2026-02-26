@@ -20,6 +20,10 @@ import {
   User as UserIcon,
   ChevronLeft,
   MoreVertical,
+  Paperclip,
+  Smile,
+  Reply,
+  MessageCircle,
 } from "lucide-react"
 import {
   getUserById,
@@ -169,7 +173,7 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                           <AvatarFallback>{sender?.name.substring(0, 2)}</AvatarFallback>
                         </Avatar>
                         <div className={cn(
-                          "flex flex-col gap-1",
+                          "flex flex-col gap-1 group relative",
                           isMe ? "items-end" : "items-start"
                         )}>
                           <div className="flex items-center gap-2">
@@ -180,14 +184,40 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                               {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </span>
                           </div>
-                          <div className={cn(
-                            "p-3 rounded-lg text-sm",
-                            isMe 
-                              ? "bg-primary text-primary-foreground rounded-tr-none" 
-                              : "bg-muted rounded-tl-none"
-                          )}>
-                            {msg.content}
+                          
+                          {/* Message Content with context menu simulation */}
+                          <div className="relative">
+                            <div className={cn(
+                              "p-3 rounded-2xl text-sm shadow-sm",
+                              isMe 
+                                ? "bg-primary text-primary-foreground rounded-tr-none" 
+                                : "bg-muted rounded-tl-none"
+                            )}>
+                              {msg.content}
+                            </div>
+
+                            {/* Hover actions */}
+                            <div className={cn(
+                              "absolute -top-8 bg-card border rounded-lg shadow-xl p-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-10",
+                              isMe ? "right-0" : "left-0"
+                            )}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6"><Smile className="h-3.5 w-3.5" /></Button>
+                              <Button variant="ghost" size="icon" className="h-6 w-6"><Reply className="h-3.5 w-3.5" /></Button>
+                              <Button variant="ghost" size="icon" className="h-6 w-6"><MessageCircle className="h-3.5 w-3.5" /></Button>
+                            </div>
                           </div>
+
+                          {/* Reactions Mock */}
+                          {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {Object.entries(msg.reactions).map(([emoji, users]) => (
+                                <button key={emoji} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted/50 border text-[10px] hover:bg-muted transition-colors">
+                                  <span>{emoji}</span>
+                                  <span className="font-semibold">{users.length}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )
@@ -200,24 +230,45 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                 </div>
               </ScrollArea>
               
+              {/* Input Area */}
               <div className="p-4 border-t bg-background">
-                <form 
-                  className="flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    handleSendMessage()
-                  }}
-                >
-                  <Input 
-                    placeholder="Ecrire un message..." 
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Button type="submit" size="icon" disabled={!newMessage.trim()}>
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </form>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 bg-muted/50 rounded-2xl p-1.5 focus-within:bg-muted transition-colors border border-transparent focus-within:border-primary/20">
+                    <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full">
+                      <Paperclip className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <Input 
+                      placeholder="Votre message..." 
+                      className="border-0 focus-visible:ring-0 bg-transparent h-9 text-sm"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 shrink-0 rounded-full"
+                    >
+                      <Smile className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      className="h-8 w-8 shrink-0 rounded-full"
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim()}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-4 px-2">
+                    <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+                      <span className="font-bold">Enter</span> pour envoyer
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/60 flex items-center gap-1">
+                      <span className="font-bold">Shift + Enter</span> pour nouvelle ligne
+                    </span>
+                  </div>
+                </div>
               </div>
             </>
           )}
