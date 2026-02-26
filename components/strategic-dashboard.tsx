@@ -102,7 +102,7 @@ function ProgressNeon({ value }: { value: number }) {
       <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
         <div
           className="h-full rounded-full bg-linear-to-r from-cyan-400 via-sky-500 to-fuchsia-500 shadow-[0_0_18px_rgba(56,189,248,0.45)]"
-          style={{ width: `${clamped}%` }}
+          style={{ width: `${clamped}%` } as React.CSSProperties}
         />
       </div>
       <div className="mt-1 flex items-center justify-between text-[11px] text-white/60">
@@ -240,17 +240,17 @@ export function StrategicDashboard() {
       {/* Background elements */}
       <div className="fixed inset-0 -z-10 bg-[#070A12]" />
       <div className="fixed inset-0 -z-10 opacity-70">
-        <div className="absolute -top-24 left-1/4 h-[480px] w-[480px] rounded-full bg-cyan-500/15 blur-3xl" />
-        <div className="absolute top-10 right-1/4 h-[520px] w-[520px] rounded-full bg-fuchsia-500/12 blur-3xl" />
-        <div className="absolute bottom-0 left-10 h-[520px] w-[520px] rounded-full bg-indigo-500/12 blur-3xl" />
+        <div className="absolute -top-24 left-1/4 h-120 w-120 rounded-full bg-cyan-500/15 blur-3xl" />
+        <div className="absolute top-10 right-1/4 h-130 w-130 rounded-full bg-fuchsia-500/12 blur-3xl" />
+        <div className="absolute bottom-0 left-10 h-130 w-130 rounded-full bg-indigo-500/12 blur-3xl" />
       </div>
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.06),transparent_55%)]" />
       <div className="fixed inset-0 -z-10 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.02),transparent_25%,rgba(255,255,255,0.02))]" />
 
-      <div className="mx-auto flex max-w-[1400px] gap-5 px-4 py-5">
+      <div className="mx-auto flex max-w-350 gap-5 px-4 py-5">
         {/* Sidebar */}
-        <aside className="hidden lg:flex w-[280px] shrink-0 flex-col gap-4">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-4">
+        <aside className="hidden lg:flex w-70 shrink-0 flex-col gap-4">
+          <div className="rounded-2xl border border-white/10 bg-white/3 backdrop-blur-xl p-4">
             <div className="flex items-center gap-3">
               <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/5 border border-white/10">
                 <Sparkles className="h-5 w-5 text-cyan-200" />
@@ -262,7 +262,7 @@ export function StrategicDashboard() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-2">
+          <div className="rounded-2xl border border-white/10 bg-white/3 backdrop-blur-xl p-2">
             {nav.map((item) => {
               const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
               return (
@@ -272,7 +272,7 @@ export function StrategicDashboard() {
                   className={cn(
                     "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition",
                     active
-                      ? "bg-gradient-to-r from-cyan-400/15 via-sky-500/10 to-fuchsia-500/10 border border-white/10 shadow-[0_0_18px_rgba(56,189,248,0.18)]"
+                      ? "bg-linear-to-r from-cyan-400/15 via-sky-500/10 to-fuchsia-500/10 border border-white/10 shadow-[0_0_18px_rgba(56,189,248,0.18)]"
                       : "hover:bg-white/5 text-white/80"
                   )}
                 >
@@ -283,7 +283,7 @@ export function StrategicDashboard() {
             })}
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-4">
+          <div className="rounded-2xl border border-white/10 bg-white/3 backdrop-blur-xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-xs text-white/60">Mode sécurité</div>
@@ -303,7 +303,7 @@ export function StrategicDashboard() {
         {/* Main */}
         <main className="flex-1 flex flex-col gap-5">
           {/* Top Bar */}
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl p-4">
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/3 backdrop-blur-xl p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-xs text-white/55">Jeudi 26 février</div>
@@ -320,7 +320,7 @@ export function StrategicDashboard() {
                   <Bell className="h-4 w-4" />
                 </button>
                 <button className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 transition flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-cyan-400/40 via-sky-500/30 to-fuchsia-500/30 border border-white/10" />
+                  <div className="h-7 w-7 rounded-full bg-linear-to-br from-cyan-400/40 via-sky-500/30 to-fuchsia-500/30 border border-white/10" />
                   <span className="text-white/85">Bonjour Menann Zoro</span>
                   <ChevronDown className="h-4 w-4 text-white/60" />
                 </button>
@@ -475,7 +475,7 @@ export function StrategicDashboard() {
                 </div>
               </div>
 
-              <div className="mt-4 h-[260px]">
+              <div className="mt-4 h-65">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={radarData}>
                     <PolarGrid stroke="rgba(255,255,255,0.12)" />
@@ -517,7 +517,7 @@ export function StrategicDashboard() {
                 <div className="text-lg font-semibold">Historique des Tâches</div>
                 <Chip>7 jours</Chip>
               </div>
-              <div className="mt-4 h-[260px]">
+              <div className="mt-4 h-65">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={barData}>
                     <CartesianGrid stroke="rgba(255,255,255,0.10)" vertical={false} />
@@ -583,7 +583,7 @@ export function StrategicDashboard() {
                 <Donut percent={71} label="Progression" sub="32 / 45" />
               </div>
 
-              <button className="mt-4 w-full rounded-xl border border-white/10 bg-gradient-to-r from-cyan-400/20 via-sky-500/15 to-fuchsia-500/15 px-4 py-3 text-sm font-medium hover:bg-white/10 transition shadow-[0_0_22px_rgba(56,189,248,0.18)]">
+              <button className="mt-4 w-full rounded-xl border border-white/10 bg-linear-to-r from-cyan-400/20 via-sky-500/15 to-fuchsia-500/15 px-4 py-3 text-sm font-medium hover:bg-white/10 transition shadow-[0_0_22px_rgba(56,189,248,0.18)]">
                 + Ajouter une tâche
               </button>
             </GlassCard>
