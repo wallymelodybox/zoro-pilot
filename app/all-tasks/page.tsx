@@ -327,23 +327,19 @@ function SortableTaskCard({ task }: { task: Task }) {
     isDragging,
   } = useSortable({ id: task.id })
 
-  const style = {
-    "--dnd-transform": CSS.Transform.toString(transform),
-    "--dnd-transition": transition,
-  } as React.CSSProperties
-
   return (
     <div
       ref={setNodeRef}
-      /* eslint-disable-next-line react/forbid-component-props */
-      style={style}
-      {...attributes}
-      {...listeners}
       className={cn(
         "p-3 bg-card border rounded-lg shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing",
-        "transform-(--dnd-transform) transition-(--dnd-transition)",
         isDragging ? "z-50 opacity-50" : "z-auto opacity-100"
       )}
+      {...attributes}
+      {...listeners}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
     >
       <div className="flex flex-col gap-2">
         <div className="flex items-start justify-between gap-2">

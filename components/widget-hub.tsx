@@ -340,22 +340,21 @@ export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: Wid
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent 
-        className="fixed inset-0 z-50 flex h-screen w-screen max-w-none translate-x-0 translate-y-0 flex-col border-none bg-transparent p-0 shadow-none outline-none transition-none data-[state=open]:animate-none data-[state=closed]:animate-none sm:max-w-none" 
+        className="fixed left-1/2 top-1/2 z-50 flex h-[90vh] w-[95vw] max-w-7xl -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-3xl border border-border/40 bg-background/95 p-0 shadow-2xl backdrop-blur-3xl sm:max-w-none" 
         showCloseButton={false}
       >
-        <div className="absolute inset-0 bg-background/90 -z-20" />
         <ThemeBackground />
         <DialogTitle className="sr-only">Widget Hub</DialogTitle>
         <div className="flex h-full w-full font-sans text-foreground overflow-hidden">
           {/* Sidebar */}
-          <aside className="w-72 shrink-0 bg-card/90 backdrop-blur-xl border-r border-border/40 flex flex-col h-full">
-            <div className="p-8 pb-4 flex-1 flex flex-col min-h-0">
+          <aside className="w-64 shrink-0 bg-card/30 border-r border-border/40 flex flex-col h-full">
+            <div className="p-6 pb-4 flex-1 flex flex-col min-h-0">
               <h2 className="text-xl font-bold text-foreground mb-6">Widgets</h2>
               
               <div className="relative mb-6">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input 
-                  className="w-full bg-background/40 border border-border/40 rounded-lg py-2 pl-10 pr-4 text-foreground text-sm outline-none focus:border-primary/50 transition-colors" 
+                  className="w-full bg-background/40 border border-border/40 rounded-xl py-2 pl-10 pr-4 text-foreground text-sm outline-none focus:border-primary/50 transition-colors" 
                   placeholder="Recherche" 
                   value={search}
                   onChange={e=>setSearch(e.target.value)}
@@ -388,20 +387,20 @@ export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: Wid
 
           {/* Main */}
           <main className="flex-1 flex flex-col min-w-0 h-full bg-transparent">
-            <header className="flex justify-end items-center p-6 pb-2 shrink-0 border-b border-border/40">
+            <header className="flex justify-end items-center px-8 py-4 shrink-0 border-b border-border/40 bg-card/20">
               <button 
-                className="text-primary hover:text-primary/80 text-sm font-semibold transition-colors flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-primary/5" 
+                className="text-primary hover:text-primary/80 text-sm font-semibold transition-colors flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-primary/5" 
                 onClick={onClose}
               >
-                Fait
+                Fermer
               </button>
             </header>
 
-            <div className="overflow-y-auto flex-1 px-12 py-8 pb-4 scrollbar-hide">
+            <div className="overflow-y-auto flex-1 px-8 py-8 pb-4 scrollbar-hide">
               {sections.map(({cat, items, noHeader}) => (
                 <section key={cat} className="mb-12">
-                  {!noHeader && <h3 className="text-2xl font-bold text-foreground mb-8">{cat}</h3>}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
+                  {!noHeader && <h3 className="text-xl font-bold text-foreground mb-8 px-1">{cat}</h3>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {items.map(w => {
                       const isHov = hovered === w.id;
                       const isAdded = addedWidgets.includes(w.id);
@@ -409,15 +408,15 @@ export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: Wid
                         <button
                           key={w.id} 
                           className={cn(
-                            "bg-card/85 backdrop-blur-xl rounded-2xl overflow-hidden border border-border/40 transition-all duration-300 relative select-none flex flex-col group h-full text-left",
-                            isHov && "border-primary/40 -translate-y-1 shadow-2xl bg-card/95",
+                            "bg-card/40 backdrop-blur-md rounded-2xl overflow-hidden border border-border/40 transition-all duration-300 relative select-none flex flex-col group text-left",
+                            isHov && "border-primary/40 -translate-y-1 shadow-2xl bg-card/60",
                             isAdded && "ring-2 ring-primary/20"
                           )}
                           onClick={() => setSelectedId(w.id)}
                           onMouseEnter={() => setHovered(w.id)}
                           onMouseLeave={() => setHovered(null)}
                         >
-                          <div className="h-48 flex items-center justify-center bg-muted/30 border-b border-border/40 relative overflow-hidden p-8">
+                          <div className="aspect-video flex items-center justify-center bg-muted/10 border-b border-border/40 relative overflow-hidden p-6">
                             {isAdded && (
                               <div className="absolute top-3 right-3 z-10 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-full shadow-lg">
                                 AJOUTÉ
@@ -427,9 +426,9 @@ export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: Wid
                               {w.preview}
                             </div>
                           </div>
-                          <div className="p-8 text-center flex-1 flex flex-col">
-                            <h4 className="text-foreground text-base font-bold mb-3 leading-tight group-hover:text-primary transition-colors">{w.title}</h4>
-                            <p className="text-muted-foreground text-xs leading-relaxed line-clamp-3 mb-4">{w.desc}</p>
+                          <div className="p-4 bg-card/10 flex-1">
+                            <h4 className="text-sm font-bold text-foreground truncate mb-1 group-hover:text-primary transition-colors">{w.title}</h4>
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground/50 font-bold">{w.cat}</span>
                           </div>
                         </button>
                       );
@@ -437,92 +436,85 @@ export function WidgetHub({ isOpen, onClose, addedWidgets, onToggleWidget }: Wid
                   </div>
                 </section>
               ))}
-              {sections.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-full min-h-100 opacity-50">
-                  <Search className="w-16 h-16 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground text-xl font-medium">Aucun widget trouvé.</p>
-                </div>
-              )}
             </div>
+
+            {/* Selection Overlay */}
             {selectedId && (
-              <div className="border-t border-border/40 bg-card/95 backdrop-blur-xl px-10 py-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 md:gap-8">
+              <div className="absolute inset-x-0 bottom-0 bg-card/95 backdrop-blur-2xl border-t border-border/40 p-4 animate-in slide-in-from-bottom duration-300 flex items-center justify-between z-20">
                 {(() => {
-                  const w = WIDGETS.find(widget => widget.id === selectedId);
+                  const w = WIDGETS.find(x => x.id === selectedId);
                   if (!w) return null;
                   return (
                     <>
-                      <div className="flex items-start gap-4 min-w-0">
-                        <div className="hidden sm:flex h-11 w-11 items-center justify-center rounded-xl border border-border/40 bg-muted/30 shadow-inner">
-                          <span className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
+                          <span className="text-primary text-[10px] font-bold">
                             {w.cat.slice(0, 3)}
                           </span>
                         </div>
-                        <div className="space-y-1 min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">
+                        <div className="space-y-0.5 min-w-0">
+                          <p className="text-xs font-bold text-foreground truncate">
                             {w.title}
                           </p>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            Choisissez sa taille et la source de données avant de l&apos;ajouter à votre tableau.
+                          <p className="text-[10px] text-muted-foreground line-clamp-1">
+                            Configuration du widget
                           </p>
                         </div>
                       </div>
-                      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 shrink-0">
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                          <span className="uppercase tracking-widest font-semibold text-muted-foreground/60">Taille</span>
+                      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 shrink-0">
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className="uppercase tracking-widest font-bold text-muted-foreground/40">Taille</span>
                           {(["small", "medium", "large"] as WidgetSize[]).map(size => (
                             <button
                               key={size}
                               className={cn(
-                                "px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors",
+                                "px-2 py-0.5 rounded-full border text-[9px] font-bold transition-colors",
                                 selectedSize === size
-                                  ? "border-primary bg-primary/20 text-primary"
+                                  ? "border-primary bg-primary text-primary-foreground shadow-md shadow-primary/20"
                                   : "border-border/40 bg-transparent text-muted-foreground hover:border-primary/40 hover:text-primary"
                               )}
                               onClick={() => setSelectedSize(size)}
                             >
-                              {size === "small" ? "Compact" : size === "medium" ? "Standard" : "Large"}
+                              {size === "small" ? "S" : size === "medium" ? "M" : "L"}
                             </button>
                           ))}
                         </div>
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                          <span className="uppercase tracking-widest font-semibold text-muted-foreground/60">Données</span>
+                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className="uppercase tracking-widest font-bold text-muted-foreground/40">Source</span>
                           {(["auto", "tasks", "projects", "okr"] as WidgetDataSource[]).map(source => (
                             <button
                               key={source}
                               className={cn(
-                                "px-2.5 py-1 rounded-full border text-[11px] font-medium transition-colors",
+                                "px-2 py-0.5 rounded-full border text-[9px] font-bold transition-colors uppercase",
                                 selectedSource === source
                                   ? "border-success bg-success/20 text-success"
                                   : "border-border/40 bg-transparent text-muted-foreground hover:border-success/40 hover:text-success"
                               )}
                               onClick={() => setSelectedSource(source)}
                             >
-                              {source === "auto"
-                                ? "Auto"
-                                : source === "tasks"
-                                  ? "Tâches"
-                                  : source === "projects"
-                                    ? "Projets"
-                                    : "OKR"}
+                              {source}
                             </button>
                           ))}
                         </div>
-                        <button
-                          className="px-3 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
-                          onClick={() => setSelectedId(null)}
-                        >
-                          Annuler
-                        </button>
-                        <button
-                          className="px-4 py-2 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/30 transition-colors"
-                          onClick={() => {
-                            onToggleWidget(selectedId, { size: selectedSize, source: selectedSource });
-                            setSelectedId(null);
-                            onClose();
-                          }}
-                        >
-                          {addedWidgets.includes(selectedId) ? "Retirer ce widget" : "Ajouter ce widget"}
-                        </button>
+                        <div className="h-6 w-px bg-border/40 mx-2 hidden md:block" />
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="px-3 py-1.5 rounded-lg text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                            onClick={() => setSelectedId(null)}
+                          >
+                            Annuler
+                          </button>
+                          <button
+                            className="px-4 py-1.5 rounded-lg text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 shadow-lg shadow-primary/20 transition-all active:scale-95"
+                            onClick={() => {
+                              onToggleWidget(selectedId, { size: selectedSize, source: selectedSource });
+                              setSelectedId(null);
+                              onClose();
+                            }}
+                          >
+                            {addedWidgets.includes(selectedId) ? "Retirer" : "Ajouter"}
+                          </button>
+                        </div>
                       </div>
                     </>
                   );

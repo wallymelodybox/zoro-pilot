@@ -17,6 +17,10 @@ const badgeVariants = cva(
           'border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
         outline:
           'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
+        good: 'border-[color:var(--success-border)] bg-[color:var(--success-bg)] text-[color:var(--success-fg)]',
+        warn: 'border-[color:var(--warning-border)] bg-[color:var(--warning-bg)] text-[color:var(--warning-fg)]',
+        bad: 'border-[color:var(--danger-border)] bg-[color:var(--danger-bg)] text-[color:var(--danger-fg)]',
+        neutral: 'border-border/70 bg-muted/40 text-muted-foreground',
       },
     },
     defaultVariants: {
@@ -28,16 +32,20 @@ const badgeVariants = cva(
 function Badge({
   className,
   variant,
+  tone,
   asChild = false,
   ...props
 }: React.ComponentProps<'span'> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+  VariantProps<typeof badgeVariants> & { 
+    asChild?: boolean;
+    tone?: "neutral" | "good" | "warn" | "bad";
+  }) {
   const Comp = asChild ? Slot : 'span'
 
   return (
     <Comp
       data-slot="badge"
-      className={cn(badgeVariants({ variant }), className)}
+      className={cn(badgeVariants({ variant: tone || variant }), className)}
       {...props}
     />
   )

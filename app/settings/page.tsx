@@ -11,6 +11,15 @@ import { UserAvatar } from "@/components/user-avatar"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Bell,
   User,
@@ -39,9 +48,13 @@ import {
   Chrome,
   Github,
   Slack,
-  ExternalLink
+  ExternalLink,
+  ShieldAlert,
+  UserX,
+  Edit2
 } from "lucide-react"
-import { integrations } from "@/lib/store"
+import { integrations as initialIntegrations } from "@/lib/store"
+import { toast } from "sonner"
 import { useThemeVariant, type ThemeVariant } from "@/components/theme/variant-provider"
 
 // --- MOCK DATA ---
@@ -414,6 +427,25 @@ function SecuritySettings() {
 }
 
 function IntegrationsSettings() {
+  const [integrations, setIntegrations] = useState(initialIntegrations)
+  const [connecting, setConnecting] = useState<string | null>(null)
+
+  const handleToggle = (id: string, name: string, status: string) => {
+    if (status === 'connected') {
+      // Deconnecter
+      setIntegrations(prev => prev.map(i => i.id === id ? { ...i, status: 'disconnected' } : i))
+      toast.info(`${name} déconnecté.`)
+    } else {
+      // Connecter (simule un délai)
+      setConnecting(id)
+      setTimeout(() => {
+        setIntegrations(prev => prev.map(i => i.id === id ? { ...i, status: 'connected' } : i))
+        setConnecting(null)
+        toast.success(`${name} connecté avec succès !`)
+      }, 1500)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -424,24 +456,41 @@ function IntegrationsSettings() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {integrations.map(integration => (
-          <Card key={integration.id} className="border-white/5 bg-card/50">
+          <Card key={integration.id} className="border-border/40 bg-card/40 backdrop-blur-xl">
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-4">
-                <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
+                <div className="h-12 w-12 rounded-2xl bg-muted/20 flex items-center justify-center border border-border/40">
                   {integration.name === 'Slack' && <Slack className="h-6 w-6 text-[#4A154B]" />}
                   {integration.name === 'Jira' && <Github className="h-6 w-6 text-primary" />}
                   {integration.name === 'Microsoft Teams' && <Mail className="h-6 w-6 text-blue-500" />}
                   {integration.name === 'Asana' && <Chrome className="h-6 w-6 text-rose-500" />}
                 </div>
-                <Badge className={integration.status === 'connected' ? "bg-success/10 text-success border-none" : "bg-muted text-muted-foreground border-none"}>
+                <Badge 
+                  tone={integration.status === 'connected' ? "good" : "neutral"}
+                  className="border-none"
+                >
                   {integration.status === 'connected' ? 'Connecté' : 'Déconnecté'}
                 </Badge>
               </div>
               <h3 className="font-bold text-lg">{integration.name}</h3>
               <p className="text-sm text-muted-foreground mt-1 mb-6">{integration.description}</p>
-              <Button variant={integration.status === 'connected' ? "outline" : "default"} className="w-full gap-2">
-                {integration.status === 'connected' ? 'Gérer' : 'Connecter'}
-                <ExternalLink className="h-3 w-3" />
+              <Button 
+                variant={integration.status === 'connected' ? "outline" : "default"} 
+                className="w-full gap-2 rounded-xl transition-all"
+                onClick={() => handleToggle(integration.id, integration.name, integration.status)}
+                disabled={connecting === integration.id}
+              >
+                {connecting === integration.id ? (
+                  <>
+                    <Activity className="h-3 w-3 animate-spin" />
+                    Connexion...
+                  </>
+                ) : (
+                  <>
+                    {integration.status === 'connected' ? 'Gérer' : 'Connecter'}
+                    <ExternalLink className="h-3 w-3" />
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>
@@ -494,61 +543,157 @@ function MembersSettings() {
     <div className="space-y-6 h-full flex flex-col">
        <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-semibold tracking-tight">Membres</h2>
-            <p className="text-muted-foreground">Gérez les accès à votre organisation.</p>
+            <h2 className="text-2xl font-semibold tracking-tight">Membres & Groupes</h2>
+            <p className="text-muted-foreground">Gérez les accès et l&apos;organisation de votre équipe.</p>
           </div>
-          <Button>
-             <Mail className="h-4 w-4 mr-2" />
-             Inviter
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline">
+               <Users className="h-4 w-4 mr-2" />
+               Créer un groupe
+            </Button>
+            <Button>
+               <Mail className="h-4 w-4 mr-2" />
+               Inviter
+            </Button>
+          </div>
        </div>
        <Separator />
 
-       {/* Search & Filter */}
-       <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-sm">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-             <Input className="pl-9" placeholder="Rechercher un membre..." />
-          </div>
-       </div>
+       <Tabs defaultValue="members" className="flex-1 flex flex-col">
+          <TabsList className="mb-4">
+             <TabsTrigger value="members">Membres</TabsTrigger>
+             <TabsTrigger value="groups">Groupes</TabsTrigger>
+          </TabsList>
 
-       {/* Members List */}
-       <div className="border rounded-lg flex-1 overflow-hidden flex flex-col">
-          <div className="bg-muted/50 px-4 py-3 border-b grid grid-cols-[2fr_1fr_1fr_auto] gap-4 text-xs font-medium text-muted-foreground">
-             <div>Nom</div>
-             <div>Rôle</div>
-             <div>Dernière activité</div>
-             <div className="w-8"></div>
-          </div>
-          <div className="overflow-auto flex-1">
-             {[1, 2, 3].map((i) => (
-                <div key={i} className="px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors">
-                   <div className="flex items-center gap-3">
-                      <UserAvatar 
-                        name={i === 1 ? currentUser.name : `User ${i}`} 
-                        fallback={i === 1 ? currentUser.avatar : `U${i}`}
-                        className="h-8 w-8" 
-                      />
-                      <div>
-                         <div className="text-sm font-medium">{i === 1 ? currentUser.name : `Membre ${i}`}</div>
-                         <div className="text-xs text-muted-foreground">{i === 1 ? currentUser.email : `user${i}@example.com`}</div>
-                      </div>
-                   </div>
-                   <div>
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                         i === 1 ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
-                      }`}>
-                         {i === 1 ? "Propriétaire" : "Membre"}
-                      </span>
-                   </div>
-                   <div className="text-sm text-muted-foreground">Il y a 2h</div>
-                   <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                   </Button>
+          <TabsContent value="members" className="flex-1 flex flex-col space-y-4 outline-none">
+             {/* Search & Filter */}
+             <div className="flex items-center gap-4">
+                <div className="relative flex-1 max-w-sm">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                   <Input className="pl-9" placeholder="Rechercher un membre..." />
                 </div>
-             ))}
-          </div>
-       </div>
+             </div>
+
+             {/* Members List */}
+             <div className="border rounded-lg flex-1 overflow-hidden flex flex-col">
+                <div className="bg-muted/50 px-4 py-3 border-b grid grid-cols-[2fr_1fr_1fr_auto] gap-4 text-xs font-medium text-muted-foreground">
+                   <div>Nom</div>
+                   <div>Rôle</div>
+                   <div>Dernière activité</div>
+                   <div className="w-8"></div>
+                </div>
+                <div className="overflow-auto flex-1">
+                   {[1, 2, 3].map((i) => (
+                      <div key={i} className="px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors">
+                         <div className="flex items-center gap-3">
+                            <UserAvatar 
+                              name={i === 1 ? currentUser.name : `User ${i}`} 
+                              fallback={i === 1 ? currentUser.avatar : `U${i}`}
+                              className="h-8 w-8" 
+                            />
+                            <div>
+                               <div className="text-sm font-medium">{i === 1 ? currentUser.name : `Membre ${i}`}</div>
+                               <div className="text-xs text-muted-foreground">{i === 1 ? currentUser.email : `user${i}@example.com`}</div>
+                            </div>
+                         </div>
+                         <div>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                               i === 1 ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                            }`}>
+                               {i === 1 ? "Propriétaire" : "Membre"}
+                            </span>
+                         </div>
+                         <div className="text-sm text-muted-foreground">Il y a 2h</div>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                               <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                               </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                               <DropdownMenuLabel>Options membre</DropdownMenuLabel>
+                               <DropdownMenuSeparator />
+                               <DropdownMenuItem className="cursor-pointer">
+                                  <Edit2 className="h-4 w-4 mr-2" />
+                                  Modifier le rôle
+                               </DropdownMenuItem>
+                               <DropdownMenuItem className="cursor-pointer">
+                                  <ShieldAlert className="h-4 w-4 mr-2" />
+                                  Gérer les permissions
+                               </DropdownMenuItem>
+                               <DropdownMenuSeparator />
+                               <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                                  <UserX className="h-4 w-4 mr-2" />
+                                  Retirer de l&apos;organisation
+                               </DropdownMenuItem>
+                            </DropdownMenuContent>
+                         </DropdownMenu>
+                      </div>
+                   ))}
+                </div>
+             </div>
+          </TabsContent>
+
+          <TabsContent value="groups" className="flex-1 flex flex-col space-y-4 outline-none">
+             {/* Search & Filter */}
+             <div className="flex items-center gap-4">
+                <div className="relative flex-1 max-w-sm">
+                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                   <Input className="pl-9" placeholder="Rechercher un groupe..." />
+                </div>
+             </div>
+
+             {/* Groups List */}
+             <div className="border rounded-lg flex-1 overflow-hidden flex flex-col">
+                <div className="bg-muted/50 px-4 py-3 border-b grid grid-cols-[2fr_1fr_auto] gap-4 text-xs font-medium text-muted-foreground">
+                   <div>Nom du groupe</div>
+                   <div>Membres</div>
+                   <div className="w-8"></div>
+                </div>
+                <div className="overflow-auto flex-1">
+                   {[
+                      { name: "Direction", members: 1 },
+                      { name: "Ingénierie", members: 5 },
+                      { name: "Design", members: 3 },
+                   ].map((group, i) => (
+                      <div key={i} className="px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors">
+                         <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                               <Users className="h-4 w-4 text-primary" />
+                            </div>
+                            <div className="text-sm font-medium">{group.name}</div>
+                         </div>
+                         <div className="text-sm text-muted-foreground">{group.members} membres</div>
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                               <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                               </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                               <DropdownMenuLabel>Options groupe</DropdownMenuLabel>
+                               <DropdownMenuSeparator />
+                               <DropdownMenuItem className="cursor-pointer">
+                                  <Edit2 className="h-4 w-4 mr-2" />
+                                  Modifier le groupe
+                               </DropdownMenuItem>
+                               <DropdownMenuItem className="cursor-pointer">
+                                  <Users className="h-4 w-4 mr-2" />
+                                  Gérer les membres
+                               </DropdownMenuItem>
+                               <DropdownMenuSeparator />
+                               <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  Archiver le groupe
+                               </DropdownMenuItem>
+                            </DropdownMenuContent>
+                         </DropdownMenu>
+                      </div>
+                   ))}
+                </div>
+             </div>
+          </TabsContent>
+       </Tabs>
     </div>
   )
 }
