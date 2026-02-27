@@ -1,3 +1,4 @@
+"use client"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -13,8 +14,9 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Chrome, Apple, Command, Globe, CheckCircle2, Beaker } from "lucide-react"
-import { login, signup, loginDemo } from "./actions"
+import { login, signup } from "./actions"
 import { LoginCarousel } from "./login-carousel"
+import { useRouter } from "next/navigation"
 
 // Microsoft icon custom component
 function MicrosoftIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -33,18 +35,17 @@ export default function LoginPage({
 }: {
   searchParams?: { error?: string }
 }) {
-  // Wrapper functions to handle the return type mismatch
-  // React 19's form action expects void | Promise<void>, but our actions return { error: string } | void
-  // In a real app we'd use useActionState (useFormState) to handle errors
-  
+  const router = useRouter()
+
   const handleLogin = async (formData: FormData) => {
-    "use server"
     await login(formData)
   }
 
-  const handleSignup = async (formData: FormData) => {
-    "use server"
-    await signup(formData)
+  const handleDemoMode = () => {
+    // Set bypass flag in localStorage
+    localStorage.setItem('zoro_demo_owner', 'true')
+    // Redirect directly to BO
+    router.push('/bo-zoro-control-2026-secure')
   }
 
   return (
@@ -126,13 +127,15 @@ export default function LoginPage({
                 </div>
               </div>
 
-              {/* DEMO LOGIN BUTTON - Gardé pour le développement mais marqué comme démo */}
-              <form action={loginDemo}>
-                <Button variant="secondary" className="w-full bg-emerald-100/50 text-emerald-800 hover:bg-emerald-200/50 border border-emerald-200/50" type="submit">
-                  <Beaker className="mr-2 h-4 w-4" />
-                  Mode Démo (Propriétaire uniquement)
-                </Button>
-              </form>
+              {/* DEMO LOGIN BUTTON - Bypass for Owner */}
+              <Button 
+                variant="secondary" 
+                className="w-full bg-emerald-100/50 text-emerald-800 hover:bg-emerald-200/50 border border-emerald-200/50" 
+                onClick={handleDemoMode}
+              >
+                <Beaker className="mr-2 h-4 w-4" />
+                Accès Direct Back Office (Démo Propriétaire)
+              </Button>
             </div>
           </div>
 

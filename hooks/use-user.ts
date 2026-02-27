@@ -22,6 +22,23 @@ export function useUser() {
 
   useEffect(() => {
     async function getUser() {
+      // Check for demo bypass in development
+      if (typeof window !== 'undefined' && localStorage.getItem('zoro_demo_owner') === 'true') {
+        setUser({
+          id: 'demo-owner-id',
+          email: 'menannzoro@gmail.com',
+          name: 'Menann Zoro (Mode Démo)',
+          role: 'Propriétaire',
+          avatar_url: null,
+          team_id: null,
+          rbac_role: 'super_admin',
+          organization_id: 'demo-org-id',
+          organization_name: 'Zoro Pilot Demo'
+        })
+        setLoading(false)
+        return
+      }
+
       const { data: { user: authUser } } = await supabase.auth.getUser()
 
       if (!authUser) {
