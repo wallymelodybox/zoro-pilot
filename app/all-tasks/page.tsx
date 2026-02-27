@@ -535,10 +535,16 @@ function PlanningView({ tasks, projects }: { tasks: Task[], projects: any[] }) {
       <ScrollArea className="flex-1">
         <div className="p-6">
           <div className="space-y-8">
-            {sortedTasks.map(task => {
+            {sortedTasks.map((task, i) => {
                const project = projects.find(p => p.id === task.projectId)
                return (
-                 <div key={task.id} className="flex gap-4">
+                 <div 
+                   key={task.id} 
+                   className={cn(
+                     "flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both",
+                     `[animation-delay:${Math.min(i, 15) * 50}ms]`
+                   )}
+                 >
                    <div className="w-24 shrink-0 text-right">
                      <span className="text-sm font-medium">
                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : "Pas d'échéance"}
@@ -587,10 +593,16 @@ function AssignmentsView({ tasks }: { tasks: Task[] }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-auto h-full pr-2 pb-4">
-      {Object.entries(groupedTasks).map(([assigneeId, userTasks]) => {
+      {Object.entries(groupedTasks).map(([assigneeId, userTasks], i) => {
         const user = getUserById(assigneeId)
         return (
-          <div key={assigneeId} className="flex flex-col bg-card border rounded-xl shadow-sm h-fit">
+          <div 
+            key={assigneeId} 
+            className={cn(
+              "flex flex-col bg-card border rounded-xl shadow-sm h-fit animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both",
+              `[animation-delay:${i * 100}ms]`
+            )}
+          >
             <div className="p-4 border-b flex items-center gap-3 bg-muted/5">
               <UserAvatar name={user?.name || "Utilisateur"} fallback={user?.avatar || "U"} className="h-8 w-8" />
               <div className="flex flex-col">
@@ -647,14 +659,20 @@ function CardList({ tasks, projects, onRefresh }: { tasks: Task[], projects: any
    return (
       <ScrollArea className="h-full pr-4">
          <div className="space-y-2">
-            {tasks.map(task => {
+            {tasks.map((task, i) => {
                const project = projects.find(p => p.id === task.projectId)
                const assignee = getUserById(task.assigneeId)
                
                const isOpen = openTaskId === task.id
 
                return (
-                  <div key={task.id} className="group p-3 bg-card border rounded-lg hover:shadow-sm transition-all hover:border-primary/20">
+                  <div 
+                    key={task.id} 
+                    className={cn(
+                      "group p-3 bg-card border rounded-lg hover:shadow-sm transition-all hover:border-primary/20 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both",
+                      `[animation-delay:${Math.min(i, 20) * 40}ms]`
+                    )}
+                  >
                      <div className="flex items-center justify-between">
                      <div className="flex items-center gap-4 flex-1 min-w-0">
                         <CheckCircle2 

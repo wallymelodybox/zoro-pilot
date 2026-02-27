@@ -369,7 +369,7 @@ export default function ChatsPage() {
               <div className="p-4 text-sm text-muted-foreground">
                 <div className="mb-3">Aucun channel. Initialisez le chat pour démarrer.</div>
                 {bootstrapError ? (
-                  <div className="mb-3 text-destructive break-words">{bootstrapError}</div>
+                  <div className="mb-3 text-destructive wrap-break-word">{bootstrapError}</div>
                 ) : null}
                 <Button
                   type="button"
@@ -387,7 +387,7 @@ export default function ChatsPage() {
                 </Button>
               </div>
             ) : (
-              filteredChannels.map((channel) => {
+              filteredChannels.map((channel, i) => {
               const isActive = activeChannelId === channel.id
               const lastMessage = lastMessageByChannelId[channel.id] || "Aucun message"
               return (
@@ -396,10 +396,11 @@ export default function ChatsPage() {
                   type="button"
                   onClick={() => setActiveChannelId(channel.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-4 rounded-xl transition-all text-left",
+                    "w-full flex items-center gap-3 px-3 py-4 rounded-xl transition-all text-left animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both",
                     isActive 
                       ? "bg-primary/10 border border-primary/20" 
-                      : "hover:bg-muted/40 border border-transparent"
+                      : "hover:bg-muted/40 border border-transparent",
+                    `[animation-delay:${i * 50}ms]`
                   )}
                 >
                   <UserAvatar name={channel.name} fallback={channel.name.substring(0, 2).toUpperCase()} className="h-10 w-10 shrink-0" />
@@ -453,7 +454,7 @@ export default function ChatsPage() {
             {/* Messages */}
             <ScrollArea className="flex-1 p-6">
               <div className="max-w-4xl mx-auto space-y-6 pb-4">
-                {localMessages.map((msg) => {
+                {localMessages.map((msg, i) => {
                   const isMe = currentUserId ? msg.senderId === currentUserId : false
                   const sender = profiles[msg.senderId]
                   const senderChatName =
@@ -464,8 +465,9 @@ export default function ChatsPage() {
                     <div
                       key={msg.id}
                       className={cn(
-                        "flex gap-3 max-w-[80%] group relative",
-                        isMe ? "ml-auto flex-row-reverse" : ""
+                        "flex gap-3 max-w-[80%] group relative animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both",
+                        isMe ? "ml-auto flex-row-reverse" : "",
+                        `[animation-delay:${Math.min(i, 20) * 30}ms]`
                       )}
                     >
                       <UserAvatar name={sender?.name || "?"} fallback={sender?.avatar || "?"} className="h-8 w-8 mt-1 shrink-0" />
@@ -590,6 +592,8 @@ export default function ChatsPage() {
                       type="file"
                       multiple
                       className="hidden"
+                      aria-label="Sélectionner des fichiers"
+                      title="Sélectionner des fichiers"
                       onChange={(e) => handleFilesSelected(e.target.files)}
                     />
 

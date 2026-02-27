@@ -306,12 +306,13 @@ export default function InboxPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {gmailMessages.map((msg) => (
+                    {gmailMessages.map((msg, i) => (
                       <div 
                         key={msg.id} 
                         className={cn(
-                          "group flex items-start gap-4 p-4 rounded-2xl border border-white/5 transition-all cursor-pointer hover:bg-card hover:shadow-lg hover:shadow-black/5 hover:-translate-y-0.5",
-                          msg.isRead ? "bg-card/40 opacity-70" : "bg-card shadow-sm border-l-4 border-l-primary"
+                          "group flex items-start gap-4 p-4 rounded-2xl border border-white/5 transition-all cursor-pointer hover:bg-card hover:shadow-lg hover:shadow-black/5 hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both",
+                          msg.isRead ? "bg-card/40 opacity-70" : "bg-card shadow-sm border-l-4 border-l-primary",
+                          `[animation-delay:${Math.min(i, 20) * 40}ms]`
                         )}
                       >
                         <div className="pt-1">
@@ -383,12 +384,13 @@ export default function InboxPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {visibleItems.map((it) => (
+                {visibleItems.map((it, i) => (
                   <div
                     key={it.id}
                     className={cn(
-                      "group flex items-start gap-4 p-4 rounded-2xl border border-white/5 transition-all cursor-pointer hover:bg-card hover:shadow-lg hover:shadow-black/5",
-                      it.isUnread ? "bg-card shadow-sm border-l-4 border-l-primary" : "bg-card/40 opacity-80"
+                      "group flex items-start gap-4 p-4 rounded-2xl border border-white/5 transition-all cursor-pointer hover:bg-card hover:shadow-lg hover:shadow-black/5 animate-in fade-in slide-in-from-bottom-2 duration-300 fill-mode-both",
+                      it.isUnread ? "bg-card shadow-sm border-l-4 border-l-primary" : "bg-card/40 opacity-80",
+                      `[animation-delay:${Math.min(i, 20) * 40}ms]`
                     )}
                     onClick={() => markRead(it.id)}
                   >

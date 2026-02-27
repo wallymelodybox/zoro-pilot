@@ -287,14 +287,18 @@ export function AppSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1.5 px-4 overflow-y-auto custom-scrollbar">
-          {navItems.map((item) => {
+          {navItems.map((item, i) => {
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
             const Icon = item.icon
 
             return (
               <Tooltip key={item.href}>
                 <TooltipTrigger asChild>
-                  <Link href={item.href} className={getItemClass(isActive)}>
+                  <Link 
+                    href={item.href} 
+                    className={cn(getItemClass(isActive), "animate-in fade-in slide-in-from-left-4 duration-300 fill-mode-both")}
+                    style={{ animationDelay: `${i * 40}ms` }}
+                  >
                     <div className={cn("transition-transform group-hover:scale-110 shrink-0")}>
                       <Icon className="h-5 w-5" />
                     </div>

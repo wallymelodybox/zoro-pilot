@@ -98,6 +98,28 @@
   --chart-grid: rgba(255, 255, 255, 0.10);
   --chart-tick: rgba(255, 255, 255, 0.70);
   --chart-tooltip-bg: rgba(10, 12, 18, 0.85);
+
+  /* Animation delays utilities */
+  --delay-1: 50ms;
+  --delay-2: 100ms;
+  --delay-3: 150ms;
+  --delay-4: 200ms;
+  --delay-5: 250ms;
+  --delay-6: 300ms;
+  --delay-7: 350ms;
+  --delay-8: 400ms;
+  --delay-9: 450ms;
+  --delay-10: 500ms;
+  --delay-11: 550ms;
+  --delay-12: 600ms;
+  --delay-13: 650ms;
+  --delay-14: 700ms;
+  --delay-15: 750ms;
+  --delay-16: 800ms;
+  --delay-17: 850ms;
+  --delay-18: 900ms;
+  --delay-19: 950ms;
+  --delay-20: 1000ms;
   --chart-tooltip-border: rgba(255, 255, 255, 0.10);
 }
 

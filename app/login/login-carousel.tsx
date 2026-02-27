@@ -14,19 +14,19 @@ const slides = [
     quote: "Zoro Pilot a transformé notre façon de collaborer. La connexion fluide avec Microsoft 365 a permis une adoption immédiate par toute l'équipe.",
     author: "Sofia El Amrani",
     role: "CEO @ TechFlow",
-    image: "/placeholder.jpg",
+    image: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=1200&h=800",
   },
   {
     quote: "La centralisation de nos documents et la recherche intelligente nous font gagner des heures chaque semaine. Un outil indispensable.",
     author: "Marc Lefebvre",
     role: "Directeur Opérations @ InnovateCorp",
-    image: "/placeholder-user.jpg",
+    image: "https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=1200&h=800",
   },
   {
     quote: "L'interface est intuitive et l'intégration avec nos outils existants est parfaite. Nos équipes adorent l'utiliser au quotidien.",
     author: "Julie Dubois",
     role: "Product Manager @ NextGen",
-    image: "/placeholder-logo.png",
+    image: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?auto=format&fit=crop&q=80&w=1200&h=800",
   },
 ]
 

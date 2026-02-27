@@ -71,7 +71,7 @@ export async function signup(formData: FormData) {
   const password = formData.get('password') as string
   const fullName = formData.get('fullName') as string
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -83,6 +83,14 @@ export async function signup(formData: FormData) {
 
   if (error) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
+  }
+
+  if (!data.session) {
+    redirect(
+      `/login?error=${encodeURIComponent(
+        "Compte créé. Confirmez l'email reçu pour activer la connexion."
+      )}`
+    )
   }
 
   const ensured = await ensureProfile(fullName)

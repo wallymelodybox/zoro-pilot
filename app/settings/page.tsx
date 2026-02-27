@@ -21,6 +21,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Bell,
   User,
   Building,
@@ -53,6 +69,7 @@ import {
   UserX,
   Edit2
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { integrations as initialIntegrations } from "@/lib/store"
 import { toast } from "sonner"
 import { useThemeVariant, type ThemeVariant } from "@/components/theme/variant-provider"
@@ -539,6 +556,40 @@ function OrganizationSettings() {
 }
 
 function MembersSettings() {
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
+  const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState("")
+  const [inviteRole, setInviteRole] = useState("Membre")
+  const [groupName, setGroupName] = useState("")
+
+  const availableRoles = (userRole: string) => {
+    if (userRole === "Propriétaire de l'organisation") {
+      return ["Administrateur", "Membre", "Invité"]
+    }
+    if (userRole === "Administrateur") {
+      return ["Membre", "Invité"]
+    }
+    return []
+  }
+
+  const handleInvite = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!inviteEmail) return
+    toast.success(`Invitation envoyée à ${inviteEmail} en tant que ${inviteRole}`)
+    setIsInviteOpen(false)
+    setInviteEmail("")
+  }
+
+  const handleCreateGroup = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!groupName) return
+    toast.success(`Groupe "${groupName}" créé avec succès`)
+    setIsCreateGroupOpen(false)
+    setGroupName("")
+  }
+
+  const roles = availableRoles(currentUser.role)
+
   return (
     <div className="space-y-6 h-full flex flex-col">
        <div className="flex items-center justify-between">
@@ -547,14 +598,88 @@ function MembersSettings() {
             <p className="text-muted-foreground">Gérez les accès et l&apos;organisation de votre équipe.</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
-               <Users className="h-4 w-4 mr-2" />
-               Créer un groupe
-            </Button>
-            <Button>
-               <Mail className="h-4 w-4 mr-2" />
-               Inviter
-            </Button>
+            <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                   <Users className="h-4 w-4 mr-2" />
+                   Créer un groupe
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Créer un nouveau groupe</DialogTitle>
+                  <DialogDescription>
+                    Regroupez vos membres pour faciliter la gestion des permissions et des partages.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateGroup} className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Nom du groupe</label>
+                    <Input 
+                      placeholder="ex: Design, Marketing, Direction..." 
+                      value={groupName}
+                      onChange={(e) => setGroupName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={() => setIsCreateGroupOpen(false)}>Annuler</Button>
+                    <Button type="submit">Créer le groupe</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+              <DialogTrigger asChild>
+                <Button disabled={roles.length === 0}>
+                   <Mail className="h-4 w-4 mr-2" />
+                   Inviter
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Inviter un nouveau membre</DialogTitle>
+                  <DialogDescription>
+                    Envoyez une invitation par email pour rejoindre votre organisation.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleInvite} className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Adresse email</label>
+                    <Input 
+                      type="email" 
+                      placeholder="nom@entreprise.com" 
+                      value={inviteEmail}
+                      onChange={(e) => setInviteEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Rôle attribué</label>
+                    <Select value={inviteRole} onValueChange={setInviteRole}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Choisir un rôle" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {role}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Les permissions associées dépendent du rôle choisi.
+                    </p>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={() => setIsInviteOpen(false)}>Annuler</Button>
+                    <Button type="submit">Envoyer l'invitation</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
        </div>
        <Separator />
@@ -584,7 +709,13 @@ function MembersSettings() {
                 </div>
                 <div className="overflow-auto flex-1">
                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors">
+                      <div 
+                        key={i} 
+                        className={cn(
+                          "px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both",
+                          i === 1 ? "[animation-delay:var(--delay-1)]" : i === 2 ? "[animation-delay:var(--delay-2)]" : "[animation-delay:var(--delay-3)]"
+                        )}
+                      >
                          <div className="flex items-center gap-3">
                             <UserAvatar 
                               name={i === 1 ? currentUser.name : `User ${i}`} 
@@ -656,7 +787,13 @@ function MembersSettings() {
                       { name: "Ingénierie", members: 5 },
                       { name: "Design", members: 3 },
                    ].map((group, i) => (
-                      <div key={i} className="px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors">
+                      <div 
+                        key={i} 
+                        className={cn(
+                          "px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both",
+                          i === 0 ? "[animation-delay:var(--delay-2)]" : i === 1 ? "[animation-delay:var(--delay-4)]" : "[animation-delay:var(--delay-6)]"
+                        )}
+                      >
                          <div className="flex items-center gap-3">
                             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                                <Users className="h-4 w-4 text-primary" />
