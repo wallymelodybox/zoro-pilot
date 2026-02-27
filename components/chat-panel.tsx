@@ -653,6 +653,8 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                         <Smile className="h-4 w-4 text-muted-foreground" />
                       </Button>
 
+                    </div>
+
                     <Button
                       type="button"
                       size="icon"
