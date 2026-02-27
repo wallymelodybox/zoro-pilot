@@ -20,21 +20,63 @@ async function ensureProfile(fullName?: string) {
   const email = user.email || `user-${user.id}@example.com`
   const name = fullName || (email.includes('@') ? email.split('@')[0] : email)
 
-  const { error } = await supabase
-    .from('profiles')
-    .upsert({
-      id: user.id,
-      email,
-      name,
-      role: 'Membre',
-      avatar_url: null,
-      team_id: null,
-      rbac_role: 'member',
-      manager_id: null,
-    })
+  // Determine RBAC role: 
+  // - Owner's email gets super_admin
+  // - Others get member by default (unless updated by a DG)
+  const rbac_role = email === 'menannzoro@gmail.com' ? 'super_admin' : 'member'
+  const role = rbac_role === 'super_admin' ? 'Propriétaire' : 'Membre'
 
-  if (error) {
-    return { error: error.message }
+  // If not super_admin, verify if there is a valid invitation for this email
+  if (rbac_role !== 'super_admin') {
+    const { data: invite, error: inviteError } = await supabase
+      .from('invites')
+      .select('*')
+      .eq('invited_email', email)
+      .eq('is_used', false)
+      .gt('expires_at', new Date().toISOString())
+      .single()
+
+    if (inviteError || !invite) {
+      return { error: "Accès refusé. Une invitation valide est requise pour se connecter." }
+    }
+
+    // Mark invite as used and get organization_id
+    await supabase
+      .from('invites')
+      .update({ is_used: true, used_at: new Date().toISOString(), used_by: user.id })
+      .eq('id', invite.id)
+
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        email,
+        name,
+        role: invite.role_assigned || 'Membre',
+        avatar_url: null,
+        team_id: null,
+        rbac_role: invite.rbac_role_assigned || 'member',
+        organization_id: invite.organization_id,
+        manager_id: invite.created_by,
+      })
+
+    if (upsertError) return { error: upsertError.message }
+  } else {
+    // Super Admin logic (existing)
+    const { error: upsertError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        email,
+        name,
+        role,
+        avatar_url: null,
+        team_id: null,
+        rbac_role,
+        manager_id: null,
+      })
+    
+    if (upsertError) return { error: upsertError.message }
   }
 
   return { success: true }

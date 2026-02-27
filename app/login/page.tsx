@@ -74,135 +74,67 @@ export default function LoginPage({
               Connexion à votre espace
             </h1>
             <p className="text-sm text-muted-foreground">
-              Entrez vos identifiants pour accéder à Zoro Pilot
+              L'accès à Zoro Pilot se fait exclusivement sur invitation.
             </p>
             {searchParams?.error ? (
-              <div className="mt-2 text-sm text-destructive break-words">
+              <div className="mt-2 text-sm text-destructive wrap-break-word p-2 bg-destructive/10 rounded-lg">
                 {searchParams.error}
               </div>
             ) : null}
           </div>
 
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="login">Connexion</TabsTrigger>
-              <TabsTrigger value="register">Inscription</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login">
-              <div className="grid gap-6">
-                <form action={handleLogin}>
-                  <div className="grid gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        name="email"
-                        placeholder="nom@entreprise.com"
-                        type="email"
-                        autoCapitalize="none"
-                        autoComplete="email"
-                        autoCorrect="off"
-                        required
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="password">Mot de passe</Label>
-                      <Input 
-                        id="password" 
-                        name="password"
-                        type="password" 
-                        required 
-                      />
-                    </div>
-                    <Button type="submit">
-                      Se connecter avec Email
-                    </Button>
+          <div className="w-full space-y-6">
+            <div className="grid gap-6">
+              <form action={handleLogin}>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="email">Email professionnel</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      placeholder="nom@entreprise.com"
+                      type="email"
+                      autoCapitalize="none"
+                      autoComplete="email"
+                      autoCorrect="off"
+                      required
+                    />
                   </div>
-                </form>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
+                  <div className="grid gap-2">
+                    <Label htmlFor="password">Mot de passe / Code d'accès</Label>
+                    <Input 
+                      id="password" 
+                      name="password"
+                      type="password" 
+                      required 
+                    />
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Ou continuer avec
-                    </span>
-                  </div>
+                  <Button type="submit">
+                    Se connecter
+                  </Button>
                 </div>
+              </form>
 
-                {/* DEMO LOGIN BUTTON */}
-                <form action={loginDemo}>
-                  <Button variant="secondary" className="w-full bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-200" type="submit">
-                    <Beaker className="mr-2 h-4 w-4" />
-                    Mode Démo (Accès direct)
-                  </Button>
-                </form>
-
-                <div className="grid gap-2">
-
-                  <Button variant="outline" type="button" disabled>
-                    <MicrosoftIcon className="mr-2 h-4 w-4" />
-                    Microsoft 365
-                  </Button>
-                  <Button variant="outline" type="button" disabled>
-                    <Chrome className="mr-2 h-4 w-4" />
-                    Google
-                  </Button>
-                  <Button variant="outline" type="button" disabled>
-                    <Apple className="mr-2 h-4 w-4" />
-                    Apple ID
-                  </Button>
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground italic">
+                    Invitation requise pour tout nouvel accès
+                  </span>
                 </div>
               </div>
-            </TabsContent>
 
-            <TabsContent value="register">
-               <form action={handleSignup}>
-                  <div className="grid gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="fullName">Nom complet</Label>
-                      <Input id="fullName" name="fullName" placeholder="Jean Dupont" required />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="register-email">Email professionnel</Label>
-                      <Input
-                        id="register-email"
-                        name="email"
-                        placeholder="nom@entreprise.com"
-                        type="email"
-                        required
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="register-password">Mot de passe</Label>
-                      <Input 
-                        id="register-password" 
-                        name="password"
-                        type="password" 
-                        required 
-                      />
-                    </div>
-                    
-                    <div className="text-xs text-muted-foreground space-y-2 my-2">
-                       <div className="flex items-center gap-2">
-                         <CheckCircle2 className="h-3 w-3 text-green-500" />
-                         <span>Support SSO Enterprise inclus</span>
-                       </div>
-                       <div className="flex items-center gap-2">
-                         <CheckCircle2 className="h-3 w-3 text-green-500" />
-                         <span>Espace sécurisé & crypté</span>
-                       </div>
-                    </div>
-
-                    <Button type="submit">
-                      Créer un compte
-                    </Button>
-                  </div>
-                </form>
-            </TabsContent>
-          </Tabs>
+              {/* DEMO LOGIN BUTTON - Gardé pour le développement mais marqué comme démo */}
+              <form action={loginDemo}>
+                <Button variant="secondary" className="w-full bg-emerald-100/50 text-emerald-800 hover:bg-emerald-200/50 border border-emerald-200/50" type="submit">
+                  <Beaker className="mr-2 h-4 w-4" />
+                  Mode Démo (Propriétaire uniquement)
+                </Button>
+              </form>
+            </div>
+          </div>
 
           <p className="px-8 text-center text-sm text-muted-foreground">
             En continuant, vous acceptez nos{" "}

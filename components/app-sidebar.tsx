@@ -19,6 +19,7 @@ import {
   Layers,
   Sparkles,
   Activity,
+  Shield,
 } from "lucide-react"
 import {
   ResponsiveContainer,
@@ -34,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { useThemeVariant } from "@/components/theme/variant-provider"
+import { useUser } from "@/hooks/use-user"
 
 const cx = cn
 
@@ -221,6 +223,15 @@ export function AppSidebar() {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
   const { variant } = useThemeVariant()
+  const { user } = useUser()
+
+  const items = useMemo(() => {
+    const base = [...navItems]
+    if (user?.rbac_role === 'super_admin' || user?.email === 'menannzoro@gmail.com') {
+      base.push({ href: "/bo-zoro-control-2026-secure", label: "Back Office", icon: Shield })
+    }
+    return base
+  }, [user])
 
   const widthClass =
     variant === "executive-futurist"
@@ -287,7 +298,7 @@ export function AppSidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1.5 px-4 overflow-y-auto custom-scrollbar">
-          {navItems.map((item, i) => {
+          {items.map((item, i) => {
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
             const Icon = item.icon
 

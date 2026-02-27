@@ -8,7 +8,7 @@ export type Priority = "low" | "medium" | "high" | "urgent"
 export type KRType = "metric" | "initiative" | "manual"
 
 // RBAC Role Types
-export type RBACRole = "admin" | "executive" | "manager" | "member" | "viewer"
+export type RBACRole = "super_admin" | "admin" | "executive" | "manager" | "member" | "viewer"
 
 export interface Organization {
   id: string
@@ -459,21 +459,25 @@ export const checkins: OKRCheckin[] = [
 
 export function getRoleLabel(role: RBACRole): string {
   switch (role) {
+    case "super_admin": return "Propriétaire"
     case "admin": return "Administrateur"
     case "executive": return "Direction"
     case "manager": return "Manager"
     case "member": return "Membre"
     case "viewer": return "Lecteur"
+    default: return "Membre"
   }
 }
 
 export function getRoleBadgeColor(role: RBACRole): string {
   switch (role) {
+    case "super_admin": return "bg-primary/20 text-primary border border-primary/30"
     case "admin": return "bg-destructive/15 text-destructive"
     case "executive": return "bg-chart-5/15 text-chart-5"
     case "manager": return "bg-primary/15 text-primary"
     case "member": return "bg-success/15 text-success"
     case "viewer": return "bg-muted text-muted-foreground"
+    default: return "bg-muted text-muted-foreground"
   }
 }
 

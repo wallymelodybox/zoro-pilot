@@ -73,6 +73,8 @@ import { cn } from "@/lib/utils"
 import { integrations as initialIntegrations } from "@/lib/store"
 import { toast } from "sonner"
 import { useThemeVariant, type ThemeVariant } from "@/components/theme/variant-provider"
+import { useUser } from "@/hooks/use-user"
+import { createClient } from "@/lib/supabase/client"
 
 // --- MOCK DATA ---
 const currentUser = {
@@ -101,6 +103,7 @@ type SettingsSection =
   | "permissions"
 
 function SettingsContent() {
+  const { user, loading: userLoading } = useUser()
   const searchParams = useSearchParams()
   const sectionParam = searchParams.get("section") as SettingsSection | null
   const [activeSection, setActiveSection] = useState<SettingsSection>(sectionParam || "members")
@@ -111,11 +114,15 @@ function SettingsContent() {
     }
   }, [sectionParam])
 
+  if (userLoading) {
+    return <div className="p-10 text-center">Chargement...</div>
+  }
+
   const menuItems = [
     { 
       title: "Compte personnel", 
       items: [
-        { id: "account", icon: User, label: "Mon profil", sub: currentUser.email },
+        { id: "account", icon: User, label: "Mon profil", sub: user?.email },
         { id: "notifications", icon: Bell, label: "Notifications" },
         { id: "theme", icon: Palette, label: "Apparence" },
         { id: "security", icon: Shield, label: "Sécurité" },
@@ -124,7 +131,7 @@ function SettingsContent() {
     { 
       title: "Organisation", 
       items: [
-        { id: "organization", icon: Building, label: organization.name, sub: `${organization.role}` },
+        { id: "organization", icon: Building, label: user?.organization_name || "Organisation", sub: user?.role },
         { id: "members", icon: Users, label: "Membres & Groupes" },
         { id: "integrations", icon: Database, label: "Intégrations" },
         { id: "billing", icon: CreditCard, label: "Abonnement" },
@@ -556,6 +563,8 @@ function OrganizationSettings() {
 }
 
 function MembersSettings() {
+  const { user } = useUser()
+  const supabase = createClient()
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [isCreateGroupOpen, setIsCreateGroupOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState("")
@@ -563,19 +572,49 @@ function MembersSettings() {
   const [groupName, setGroupName] = useState("")
 
   const availableRoles = (userRole: string) => {
-    if (userRole === "Propriétaire de l'organisation") {
-      return ["Administrateur", "Membre", "Invité"]
+    if (userRole === "super_admin" || userRole === "admin") {
+      return ["Administrateur", "Chef de département", "Membre", "Invité"]
     }
-    if (userRole === "Administrateur") {
+    if (userRole === "executive" || userRole === "manager") {
       return ["Membre", "Invité"]
     }
     return []
   }
 
-  const handleInvite = (e: React.FormEvent) => {
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inviteEmail) return
-    toast.success(`Invitation envoyée à ${inviteEmail} en tant que ${inviteRole}`)
+    
+    const { data: invite, error } = await supabase
+      .from('invites')
+      .insert({
+        token: Math.random().toString(36).substring(2, 15),
+        organization_id: user?.organization_id,
+        invited_email: inviteEmail,
+        rbac_role_assigned: inviteRole === "Administrateur" ? "admin" : 
+                            inviteRole === "Chef de département" ? "manager" : "member",
+        role_assigned: inviteRole,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 jours
+        created_by: user?.id
+      })
+      .select()
+      .single()
+
+    if (error) {
+      toast.error("Erreur lors de la génération de l'invitation")
+      return
+    }
+
+    const inviteUrl = `${window.location.origin}/invite/${invite.token}`
+    
+    // Simulate email sending
+    console.log("Invitation URL:", inviteUrl)
+    toast.success(`Invitation générée pour ${inviteEmail}`)
+    
+    // Copy to clipboard for the demo
+    navigator.clipboard.writeText(inviteUrl)
+    toast.info("Lien d'invitation copié dans le presse-papier !")
+    
     setIsInviteOpen(false)
     setInviteEmail("")
   }
@@ -588,7 +627,16 @@ function MembersSettings() {
     setGroupName("")
   }
 
-  const roles = availableRoles(currentUser.role)
+  const roles = availableRoles(user?.rbac_role || user?.role || "")
+
+  // Check if user is DG (Admin), Executive or a Department Manager (e.g., Infography head)
+  // They must be part of an organization to manage it
+  const canManageMembers = !!user?.organization_id && (
+    user?.rbac_role === 'super_admin' || 
+    user?.rbac_role === 'admin' || 
+    user?.rbac_role === 'executive' || 
+    user?.rbac_role === 'manager'
+  )
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -597,90 +645,92 @@ function MembersSettings() {
             <h2 className="text-2xl font-semibold tracking-tight">Membres & Groupes</h2>
             <p className="text-muted-foreground">Gérez les accès et l&apos;organisation de votre équipe.</p>
           </div>
-          <div className="flex gap-2">
-            <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                   <Users className="h-4 w-4 mr-2" />
-                   Créer un groupe
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Créer un nouveau groupe</DialogTitle>
-                  <DialogDescription>
-                    Regroupez vos membres pour faciliter la gestion des permissions et des partages.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreateGroup} className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Nom du groupe</label>
-                    <Input 
-                      placeholder="ex: Design, Marketing, Direction..." 
-                      value={groupName}
-                      onChange={(e) => setGroupName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="ghost" onClick={() => setIsCreateGroupOpen(false)}>Annuler</Button>
-                    <Button type="submit">Créer le groupe</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+          {canManageMembers && (
+            <div className="flex gap-2">
+              <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                     <Users className="h-4 w-4 mr-2" />
+                     Créer un groupe
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Créer un nouveau groupe</DialogTitle>
+                    <DialogDescription>
+                      Regroupez vos membres pour faciliter la gestion des permissions et des partages.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleCreateGroup} className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Nom du groupe</label>
+                      <Input 
+                        placeholder="ex: Design, Marketing, Direction..." 
+                        value={groupName}
+                        onChange={(e) => setGroupName(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="ghost" onClick={() => setIsCreateGroupOpen(false)}>Annuler</Button>
+                      <Button type="submit">Créer le groupe</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
 
-            <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
-              <DialogTrigger asChild>
-                <Button disabled={roles.length === 0}>
-                   <Mail className="h-4 w-4 mr-2" />
-                   Inviter
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Inviter un nouveau membre</DialogTitle>
-                  <DialogDescription>
-                    Envoyez une invitation par email pour rejoindre votre organisation.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleInvite} className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Adresse email</label>
-                    <Input 
-                      type="email" 
-                      placeholder="nom@entreprise.com" 
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Rôle attribué</label>
-                    <Select value={inviteRole} onValueChange={setInviteRole}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Choisir un rôle" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roles.map((role) => (
-                          <SelectItem key={role} value={role}>
-                            {role}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-[11px] text-muted-foreground">
-                      Les permissions associées dépendent du rôle choisi.
-                    </p>
-                  </div>
-                  <DialogFooter>
-                    <Button type="button" variant="ghost" onClick={() => setIsInviteOpen(false)}>Annuler</Button>
-                    <Button type="submit">Envoyer l'invitation</Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+              <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+                <DialogTrigger asChild>
+                  <Button disabled={roles.length === 0}>
+                     <Mail className="h-4 w-4 mr-2" />
+                     Inviter
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Inviter un nouveau membre</DialogTitle>
+                    <DialogDescription>
+                      Envoyez une invitation par email pour rejoindre votre organisation.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleInvite} className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Adresse email</label>
+                      <Input 
+                        type="email" 
+                        placeholder="nom@entreprise.com" 
+                        value={inviteEmail}
+                        onChange={(e) => setInviteEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Rôle attribué</label>
+                      <Select value={inviteRole} onValueChange={setInviteRole}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Choisir un rôle" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roles.map((role) => (
+                            <SelectItem key={role} value={role}>
+                              {role}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[11px] text-muted-foreground">
+                        Les permissions associées dépendent du rôle choisi.
+                      </p>
+                    </div>
+                    <DialogFooter>
+                      <Button type="button" variant="ghost" onClick={() => setIsInviteOpen(false)}>Annuler</Button>
+                      <Button type="submit">Envoyer l'invitation</Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
        </div>
        <Separator />
 

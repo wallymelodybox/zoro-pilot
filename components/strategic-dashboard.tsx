@@ -51,6 +51,7 @@ import { cn } from "@/lib/utils";
 import { useThemeVariant, type ThemeVariant } from "./theme/variant-provider";
 import { WidgetHub, WIDGETS } from "./widget-hub";
 import { toast } from "sonner";
+import { useUser } from "@/hooks/use-user";
 
 // ─── UTILS ──────────────────────────────────────────────────────────────────
 
@@ -231,10 +232,14 @@ function Stat({
 
 function CommandCenterDashboard({ 
   addedWidgets, 
-  onToggleWidget 
+  onToggleWidget,
+  userName,
+  orgName
 }: { 
   addedWidgets: string[], 
-  onToggleWidget: (id: string) => void 
+  onToggleWidget: (id: string) => void,
+  userName: string,
+  orgName: string
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
 
@@ -264,7 +269,7 @@ function CommandCenterDashboard({
               <div>
                 <div className="text-xs text-foreground/55">Jeudi 26 février</div>
                 <div className="text-3xl font-semibold tracking-tight">
-                  Bonjour, <span className="text-foreground/90">Menann Zoro</span> !
+                  Bonjour, <span className="text-foreground/90">{userName}</span> !
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -279,7 +284,7 @@ function CommandCenterDashboard({
                 </button>
                 <button className="rounded-xl border border-border/40 bg-card/20 px-3 py-2 text-sm hover:bg-card/30 transition flex items-center gap-2">
                   <div className="h-7 w-7 rounded-full bg-linear-to-br from-cyan-400/40 via-sky-500/30 to-fuchsia-500/30 border border-border/40" />
-                  <span className="text-foreground/85">Menann Zoro</span>
+                  <span className="text-foreground/85">{userName}</span>
                   <ChevronDown className="h-4 w-4 text-foreground/60" />
                 </button>
               </div>
@@ -290,7 +295,7 @@ function CommandCenterDashboard({
                 <Badge className="cursor-pointer hover:bg-muted/60 transition-colors">Profil</Badge>
               </Link>
               <Link href="/settings?section=organization">
-                <Badge className="cursor-pointer hover:bg-muted/60 transition-colors">Organisation</Badge>
+                <Badge className="cursor-pointer hover:bg-muted/60 transition-colors">{orgName}</Badge>
               </Link>
               <button 
                 onClick={() => setIsWidgetHubOpen(true)}
@@ -615,10 +620,14 @@ function DonutLight({
 
 function AIProductivityDashboard({ 
   addedWidgets, 
-  onToggleWidget 
+  onToggleWidget,
+  userName,
+  orgName
 }: { 
   addedWidgets: string[], 
-  onToggleWidget: (id: string) => void 
+  onToggleWidget: (id: string) => void,
+  userName: string,
+  orgName: string
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [period, setPeriod] = useState<"1mois" | "1trimestre">("1mois");
@@ -649,13 +658,13 @@ function AIProductivityDashboard({
               <div>
                 <div className="text-xs text-muted-foreground">Jeudi 26 février</div>
                 <div className="text-3xl font-semibold tracking-tight">
-                  Bonjour, <span className="text-foreground">Menann Zoro</span> !
+                  Bonjour, <span className="text-foreground">{userName}</span> !
                 </div>
               </div>
 
               <button className="flex items-center gap-2 rounded-2xl bg-card px-3 py-2 ring-1 ring-border/50 shadow-sm hover:shadow-md transition">
                 <div className="h-8 w-8 rounded-full bg-linear-to-br from-sky-200 via-violet-200 to-amber-200 ring-1 ring-border/50" />
-                <span className="text-sm text-foreground/80">Bonjour Menann Zoro</span>
+                <span className="text-sm text-foreground/80">Bonjour {userName}</span>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </button>
             </div>
@@ -665,7 +674,7 @@ function AIProductivityDashboard({
                 <Badge className="cursor-pointer hover:bg-muted/60 transition-colors">Profil</Badge>
               </Link>
               <Link href="/settings?section=organization">
-                <Badge className="cursor-pointer hover:bg-muted/60 transition-colors">Organisation</Badge>
+                <Badge className="cursor-pointer hover:bg-muted/60 transition-colors">{orgName}</Badge>
               </Link>
               <button 
                 onClick={() => setIsWidgetHubOpen(true)}
@@ -928,10 +937,14 @@ function AIProductivityDashboard({
 
 function ExecutiveFuturistDashboard({ 
   addedWidgets, 
-  onToggleWidget 
+  onToggleWidget,
+  userName,
+  orgName
 }: { 
   addedWidgets: string[], 
-  onToggleWidget: (id: string) => void 
+  onToggleWidget: (id: string) => void,
+  userName: string,
+  orgName: string
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<"idle" | "thinking">("idle");
@@ -970,7 +983,7 @@ function ExecutiveFuturistDashboard({
                 Executive Overview
               </h1>
               <p className="text-muted-foreground mt-1">
-                Bonjour Menann, l'IA a analysé vos <span className="font-semibold text-foreground">12</span> tâches prioritaires.
+                Bonjour {userName}, l'IA a analysé vos <span className="font-semibold text-foreground">12</span> tâches prioritaires.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button 
@@ -1248,6 +1261,7 @@ function ExecutiveFuturistDashboard({
 
 export function StrategicDashboard() {
   const { variant } = useThemeVariant();
+  const { user, loading: userLoading } = useUser();
   const [addedWidgets, setAddedWidgets] = useState<string[]>([]);
 
   const handleToggleWidget = (id: string, config?: any) => {
@@ -1262,15 +1276,26 @@ export function StrategicDashboard() {
     });
   };
 
+  if (userLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-transparent">
+        <Activity className="h-10 w-10 animate-spin text-primary opacity-20" />
+      </div>
+    );
+  }
+
+  const userName = user?.name || "Invité";
+  const orgName = user?.organization_name || "Organisation";
+
   if (variant === "ai-productivity") {
-    return <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} />;
+    return <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} />;
   }
 
   if (variant === "executive-futurist") {
-    return <ExecutiveFuturistDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} />;
+    return <ExecutiveFuturistDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} />;
   }
 
-  return <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} />;
+  return <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} />;
 }
 
 export default StrategicDashboard;
