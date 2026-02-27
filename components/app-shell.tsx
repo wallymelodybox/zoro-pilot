@@ -1,19 +1,30 @@
 "use client"
 
+import React from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { usePathname } from "next/navigation"
 import { ThemeBackground } from "@/components/theme/theme-background"
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const [isAdminDomain, setIsAdminDomain] = React.useState(false)
+
+  React.useEffect(() => {
+    const host = window.location.host
+    const adminDomain = 'zoro-secure-control-net.com'
+    if (host === adminDomain) {
+      setIsAdminDomain(true)
+    }
+  }, [])
+
   const isLoginPage = pathname === "/login"
-  const isBOPage = pathname.startsWith("/bo-zoro-control-2026-secure")
+  const isBOPage = pathname.startsWith("/bo-zoro-control-2026-secure") || isAdminDomain
 
   if (isLoginPage || isBOPage) {
     return (
-      <div className="flex h-screen overflow-hidden relative">
+      <div className="flex h-screen overflow-hidden relative" suppressHydrationWarning>
         <ThemeBackground />
-        <main className="flex-1 overflow-y-auto bg-transparent z-10">
+        <main className="flex-1 overflow-y-auto bg-transparent z-10" suppressHydrationWarning>
           {children}
         </main>
       </div>

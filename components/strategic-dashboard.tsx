@@ -262,9 +262,9 @@ function CommandCenterDashboard({
   const [period, setPeriod] = useState<"1mois" | "1trimestre">("1mois");
 
   return (
-    <div className="min-h-screen w-full text-foreground p-5 lg:p-8 bg-transparent">
-      <div className="mx-auto max-w-6xl flex flex-col gap-5">
-        <div className="flex flex-col gap-3 rounded-2xl border border-border/40 bg-card/40 backdrop-blur-xl p-4">
+    <div className="min-h-screen w-full text-foreground p-5 lg:p-8 bg-transparent" suppressHydrationWarning>
+      <div className="mx-auto max-w-6xl flex flex-col gap-5" suppressHydrationWarning>
+        <div className="flex flex-col gap-3 rounded-2xl border border-border/40 bg-card/40 backdrop-blur-xl p-4" suppressHydrationWarning>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-xs text-foreground/55">Jeudi 26 février</div>
@@ -651,8 +651,8 @@ function AIProductivityDashboard({
   ];
 
   return (
-    <div className="min-h-screen bg-transparent text-foreground p-5 lg:p-8">
-      <div className="mx-auto max-w-6xl flex flex-col gap-5">
+    <div className="min-h-screen bg-transparent text-foreground p-5 lg:p-8" suppressHydrationWarning>
+      <div className="mx-auto max-w-6xl flex flex-col gap-5" suppressHydrationWarning>
         <SurfaceCard className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -975,8 +975,8 @@ function ExecutiveFuturistDashboard({
   const aiReady = aiStatus !== "thinking";
 
   return (
-    <div className="min-h-screen w-full bg-transparent text-foreground font-sans selection:bg-pink-200/30 p-5 lg:p-10">
-      <div className="mx-auto flex flex-col max-w-6xl gap-8">
+    <div className="min-h-screen w-full bg-transparent text-foreground font-sans selection:bg-pink-200/30 p-5 lg:p-10" suppressHydrationWarning>
+      <div className="mx-auto flex flex-col max-w-6xl gap-8" suppressHydrationWarning>
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
@@ -1278,7 +1278,7 @@ export function StrategicDashboard() {
 
   if (userLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-transparent">
+      <div className="flex h-screen w-full items-center justify-center bg-transparent" suppressHydrationWarning>
         <Activity className="h-10 w-10 animate-spin text-primary opacity-20" />
       </div>
     );

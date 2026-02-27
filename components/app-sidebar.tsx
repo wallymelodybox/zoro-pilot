@@ -287,12 +287,12 @@ export function AppSidebar() {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <aside className={asideClass}>
+      <aside className={asideClass} suppressHydrationWarning>
         {/* Logo Section */}
-        <div className={cn("p-6", collapsed && "px-4")}>
-          <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
+        <div className={cn("p-6", collapsed && "px-4")} suppressHydrationWarning>
+          <div className={cn("flex items-center gap-3", collapsed && "justify-center")} suppressHydrationWarning>
             {user?.organization_logo ? (
-              <div className={cn("h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border shadow-sm", collapsed && "mx-auto")}>
+              <div className={cn("h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border shadow-sm", collapsed && "mx-auto")} suppressHydrationWarning>
                 <img 
                   src={user.organization_logo} 
                   alt={user.organization_name || "Logo"} 
@@ -300,13 +300,13 @@ export function AppSidebar() {
                 />
               </div>
             ) : (
-              <div className={logoBadgeClass}>
+              <div className={logoBadgeClass} suppressHydrationWarning>
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
             )}
 
             {!collapsed && (
-              <div className="flex flex-col overflow-hidden">
+              <div className="flex flex-col overflow-hidden" suppressHydrationWarning>
                 <span className="font-bold text-lg tracking-tight text-foreground truncate uppercase">
                   {user?.organization_name || "ZORO PILOT"}
                 </span>
@@ -319,7 +319,7 @@ export function AppSidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 space-y-1.5 px-4 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 space-y-1.5 px-4 overflow-y-auto custom-scrollbar" suppressHydrationWarning>
           {items.map((item, i) => {
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
             const Icon = item.icon

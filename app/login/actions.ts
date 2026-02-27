@@ -103,7 +103,17 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/')
+
+  // Logique de redirection selon le domaine
+  const headersList = await (await import('next/headers')).headers()
+  const hostname = headersList.get('host')
+  const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.com'
+  
+  if (hostname === adminDomain) {
+    redirect('/') // Le middleware réécrira vers le BO
+  } else {
+    redirect('/') // Le domaine app restera sur le dashboard client
+  }
 }
 
 export async function signup(formData: FormData) {

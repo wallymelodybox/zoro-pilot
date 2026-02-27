@@ -10,12 +10,30 @@ import { redirectToApp } from "@/app/actions"
 
 export default function BOLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const [isAdminDomain, setIsAdminDomain] = React.useState(false)
+
+  React.useEffect(() => {
+    const host = window.location.host
+    const adminDomain = 'zoro-secure-control-net.com'
+    if (host === adminDomain) {
+      setIsAdminDomain(true)
+    }
+  }, [])
 
   const navItems = [
     { href: "/bo-zoro-control-2026-secure", label: "Dashboard", icon: LayoutDashboard },
     { href: "/bo-zoro-control-2026-secure/licenses", label: "Licences", icon: Shield },
     { href: "/bo-zoro-control-2026-secure/settings", label: "Paramètres", icon: Settings },
   ]
+
+  // If we are on the admin domain, we want to hide the secret folder from the links
+  const getDisplayHref = (href: string) => {
+    if (isAdminDomain) {
+      const clean = href.replace("/bo-zoro-control-2026-secure", "")
+      return clean === "" ? "/" : clean
+    }
+    return href
+  }
 
   return (
     <div className="flex h-screen overflow-hidden relative bg-background">
@@ -32,12 +50,13 @@ export default function BOLayout({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 space-y-2">
           {navItems.map((item) => {
-            const isActive = pathname === item.href
+            const displayHref = getDisplayHref(item.href)
+            const isActive = pathname === item.href || pathname === displayHref
             const Icon = item.icon
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={displayHref}
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all",
                   isActive 

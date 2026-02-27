@@ -10,17 +10,24 @@ export async function middleware(request: NextRequest) {
 
   // 1. Logic for Admin Domain
   if (hostname === adminDomain) {
-    // If we're at the root of the admin domain, rewrite to the secure BO folder
-    if (url.pathname === '/') {
-      url.pathname = '/bo-zoro-control-2026-secure'
+    // If the path doesn't already start with the secret BO folder, rewrite it
+    if (!url.pathname.startsWith('/bo-zoro-control-2026-secure') && 
+        !url.pathname.startsWith('/login') && 
+        !url.pathname.startsWith('/auth') &&
+        !url.pathname.startsWith('/_next') &&
+        !url.pathname.match(/\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/)) {
+      
+      // Rewrite all admin domain paths to the secret BO folder
+      // e.g. /licenses -> /bo-zoro-control-2026-secure/licenses
+      url.pathname = `/bo-zoro-control-2026-secure${url.pathname === '/' ? '' : url.pathname}`
       return NextResponse.rewrite(url)
     }
     
-    // Allow access only to BO related sub-paths
+    // Safety check: ensure we're only accessing allowed areas on the admin domain
     if (!url.pathname.startsWith('/bo-zoro-control-2026-secure') && 
         !url.pathname.startsWith('/login') && 
         !url.pathname.startsWith('/auth')) {
-      // Forbidden or redirect to login on the admin domain
+      // This part might be redundant now but keep as fallback
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
@@ -32,12 +39,17 @@ export async function middleware(request: NextRequest) {
     if (url.pathname.startsWith('/bo-zoro-control-2026-secure')) {
       return new NextResponse('Access Denied', { status: 403 })
     }
+
+    // Double check: if user is not super_admin but somehow gets to admin-only area, block them
+    // (This is a second layer, the first is rbac_role check in components)
   }
 
-  // 3. Fallback for unknown domains (optional but safer)
-  if (hostname !== adminDomain && hostname !== appDomain && process.env.NODE_ENV === 'production') {
-    // You might want to allow this for local development (localhost)
-    // but in production, we only want our two domains
+  // 3. Fallback for localhost (local development)
+  if (hostname?.includes('localhost') || hostname?.includes('127.0.0.1')) {
+    // Keep standard behavior for dev
+  } else if (hostname !== adminDomain && hostname !== appDomain && process.env.NODE_ENV === 'production') {
+    // In production, only allow our two domains
+    return new NextResponse('Domain Not Allowed', { status: 403 })
   }
 
   // Always update session to keep the user logged in

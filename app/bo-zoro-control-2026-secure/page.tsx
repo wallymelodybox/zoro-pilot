@@ -6,10 +6,12 @@ import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Shield, UserPlus, Key, Building, Activity, LayoutDashboard } from "lucide-react"
+import { Shield, UserPlus, Key, Building, Activity, LayoutDashboard, Clock, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { createDGAccount } from "./actions"
+import { cn } from "@/lib/utils"
+import { Progress } from "@/components/ui/progress"
 
 export default function BackOfficePage() {
   const { user, loading } = useUser()
@@ -18,19 +20,37 @@ export default function BackOfficePage() {
   const [dgName, setDgName] = useState("")
   const [licenseCode, setLicenseCode] = useState("")
   const [creating, setCreating] = useState(false)
+  const [organizations, setOrganizations] = useState<any[]>([])
+  const [fetching, setFetching] = useState(true)
   const supabase = createClient()
 
   useEffect(() => {
     if (!loading) {
-      // For now, we'll check if the email is the owner's email or rbac_role is super_admin
-      // In a real app, you'd use a dedicated role in Supabase
       if (user?.rbac_role === 'super_admin' || user?.email === 'menannzoro@gmail.com') {
         setIsAuthorized(true)
+        fetchStats()
       } else {
         redirect("/")
       }
     }
   }, [user, loading])
+
+  async function fetchStats() {
+    setFetching(true)
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      setOrganizations(data || [])
+    } catch (error) {
+      console.error("Error fetching stats:", error)
+    } finally {
+      setFetching(false)
+    }
+  }
 
   const handleCreateDG = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,18 +68,42 @@ export default function BackOfficePage() {
         toast.error(res.error)
       } else if (res.success) {
         toast.success(res.message)
-        // Display temp password to owner
         alert(`COMPTE CRÉÉ !\nDG: ${dgName}\nMot de passe temporaire: ${res.tempPassword}\n\nVeuillez le transmettre au DG en toute sécurité.`)
         
         setDgEmail("")
         setDgName("")
         setLicenseCode("")
+        fetchStats()
       }
     } catch (error) {
       toast.error("Erreur système lors de la création du compte DG")
     } finally {
       setCreating(false)
     }
+  }
+
+  const getLicenseProgress = (org: any) => {
+    if (org.license_type === 'definitive') return 100
+    if (!org.expires_at || !org.created_at) return 0
+    
+    const total = new Date(org.expires_at).getTime() - new Date(org.created_at).getTime()
+    const elapsed = new Date().getTime() - new Date(org.created_at).getTime()
+    const progress = Math.max(0, Math.min(100, 100 - (elapsed / total * 100)))
+    return isNaN(progress) ? 0 : Math.round(progress)
+  }
+
+  const getTimeLeft = (expiryDate: string | null) => {
+    if (!expiryDate) return "Illimité"
+    const diff = new Date(expiryDate).getTime() - new Date().getTime()
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
+    
+    if (days < 0) return "Expiré"
+    if (days === 0) return "Aujourd'hui"
+    if (days > 30) {
+      const months = Math.floor(days / 30)
+      return `${months} mois restant${months > 1 ? 's' : ''}`
+    }
+    return `${days} jour${days > 1 ? 's' : ''} restant${days > 1 ? 's' : ''}`
   }
 
   if (loading) return <div className="p-10 text-center">Chargement...</div>
@@ -90,8 +134,8 @@ export default function BackOfficePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-black">12</div>
-            <p className="text-xs text-green-500 mt-2 font-medium">+2 ce mois-ci</p>
+            <div className="text-4xl font-black">{organizations.filter(o => o.setup_completed).length}</div>
+            <p className="text-xs text-green-500 mt-2 font-medium">Clients opérationnels</p>
           </CardContent>
         </Card>
         <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">
@@ -102,20 +146,26 @@ export default function BackOfficePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-black">8</div>
-            <p className="text-xs text-blue-500 mt-2 font-medium">Données Isolées</p>
+            <div className="text-4xl font-black">{organizations.length}</div>
+            <p className="text-xs text-blue-500 mt-2 font-medium">Entités enregistrées</p>
           </CardContent>
         </Card>
         <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">
           <CardHeader>
             <CardTitle className="text-xs font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-[0.2em]">
               <LayoutDashboard className="h-4 w-4" />
-              Revenus MRR
+              Licences expirant bientôt
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-black text-primary">450k <span className="text-lg font-bold">FCFA</span></div>
-            <p className="text-xs text-muted-foreground mt-2 font-medium">Croissance +15%</p>
+            <div className="text-4xl font-black text-amber-500">
+              {organizations.filter(o => {
+                if (o.license_type === 'definitive' || !o.expires_at) return false
+                const days = Math.ceil((new Date(o.expires_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                return days > 0 && days <= 15
+              }).length}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 font-medium">Dans les 15 prochains jours</p>
           </CardContent>
         </Card>
       </div>
@@ -166,9 +216,6 @@ export default function BackOfficePage() {
                   onChange={(e) => setLicenseCode(e.target.value)} 
                   required 
                 />
-                <p className="text-xs text-muted-foreground/80 italic mt-2 ml-1">
-                  💡 Ce code garantit l'isolation totale des données de cette organisation.
-                </p>
               </div>
               <Button type="submit" className="w-full h-12 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 transition-all hover:scale-[1.01]" disabled={creating}>
                 {creating ? (
@@ -184,38 +231,65 @@ export default function BackOfficePage() {
 
         <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-2xl">
           <CardHeader className="pb-4">
-            <CardTitle className="text-2xl">Activités Récentes</CardTitle>
-            <CardDescription className="text-base">Historique des 5 dernières licences.</CardDescription>
+            <CardTitle className="text-2xl flex items-center justify-between">
+              Suivi des Licences
+              <Button variant="ghost" size="sm" onClick={() => redirect("/bo-zoro-control-2026-secure/licenses")} className="text-xs font-bold text-primary uppercase tracking-widest hover:bg-primary/10">
+                Voir tout
+              </Button>
+            </CardTitle>
+            <CardDescription className="text-base">État des dernières licences émises.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[
-                { name: "Mme. Amrani", org: "TechFlow", date: "Il y a 2h", code: "TF-99", status: "actif" },
-                { name: "M. Lefebvre", org: "InnovateCorp", date: "Hier", code: "IC-45", status: "actif" },
-                { name: "Julie Dubois", org: "NextGen", date: "Il y a 3j", code: "NG-12", status: "actif" },
-                { name: "M. Traoré", org: "Sahel-Strat", date: "Il y a 1 sem.", code: "SS-21", status: "en attente" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-4 rounded-2xl border border-border/20 bg-muted/20 hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border border-primary/10">
-                      {item.name.charAt(0)}
+            <div className="space-y-6">
+              {fetching ? (
+                <div className="text-center py-10 text-muted-foreground">Chargement des données...</div>
+              ) : organizations.slice(0, 4).map((org) => {
+                const progress = getLicenseProgress(org)
+                const timeLeft = getTimeLeft(org.expires_at)
+                
+                return (
+                  <div key={org.id} className="space-y-3 p-4 rounded-2xl border border-border/20 bg-muted/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black border border-primary/10">
+                          {org.name?.charAt(0) || "O"}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-foreground truncate max-w-37.5">{org.name || "En attente..."}</div>
+                          <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">{org.license_type || 'mensuelle'}</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={cn(
+                          "text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5",
+                          progress < 20 ? "text-destructive" : progress < 50 ? "text-amber-500" : "text-green-500"
+                        )}>
+                          <Clock className="h-3 w-3" />
+                          {timeLeft}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-base font-bold text-foreground">{item.name}</div>
-                      <div className="text-sm text-muted-foreground font-medium">{item.org} • <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{item.code}</code></div>
+                    
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+                        <span>Durée consommée</span>
+                        <span>{100 - progress}%</span>
+                      </div>
+                      <Progress 
+                        value={progress} 
+                        className="h-2 bg-background/50" 
+                        indicatorClassName={cn(
+                          "transition-all",
+                          progress < 20 ? "bg-destructive" : progress < 50 ? "bg-amber-500" : "bg-primary"
+                        )}
+                      />
                     </div>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{item.date}</div>
-                    <div className={cn(
-                      "text-[9px] uppercase font-bold px-2 py-0.5 rounded-full",
-                      item.status === "actif" ? "bg-green-500/10 text-green-500 border border-green-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                    )}>
-                      {item.status}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
+              {organizations.length === 0 && !fetching && (
+                <div className="text-center py-10 text-muted-foreground italic">Aucune licence active.</div>
+              )}
             </div>
           </CardContent>
         </Card>
