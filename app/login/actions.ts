@@ -159,18 +159,29 @@ export async function signInWithOAuth(provider: 'google' | 'apple' | 'azure') {
 }
 
 export async function loginDemo() {
-  // Simule une connexion réussie pour l'environnement de développement
-  // En production, cela ne devrait pas exister ou être protégé
-  
-  // On peut définir un cookie "demo-session" par exemple, 
-  // mais pour l'instant on va juste rediriger vers la home 
-  // en supposant que le middleware laisse passer ou qu'on le désactive temporairement
-  
-  // Note: Pour une vraie simulation, il faudrait mocker supabase.auth.getUser() 
-  // dans le middleware, ou utiliser un compte de test réel dans Supabase.
-  
-  // Pour l'instant, simple redirection pour tester l'UI
+  const supabase = await createClient()
+
+  // Tentative de connexion avec le compte propriétaire par défaut pour la démo
+  // Si le compte n'existe pas ou le mot de passe est différent, cela redirigera normalement
+  // Note: C'est une aide au développement pour accéder rapidement au BO.
+  const { error } = await supabase.auth.signInWithPassword({
+    email: 'menannzoro@gmail.com',
+    password: 'password123', // Remplacez par votre mot de passe de test si nécessaire
+  })
+
+  if (error) {
+    // Si la connexion auto échoue (ex: mauvais mot de passe), on redirige simplement vers l'accueil
+    // ou on affiche une erreur spécifique
+    redirect(`/login?error=${encodeURIComponent("Mode démo : Échec de la connexion automatique. Connectez-vous manuellement.")}`)
+  }
+
+  const ensured = await ensureProfile()
+  if ('error' in ensured && ensured.error) {
+    redirect(`/login?error=${encodeURIComponent(ensured.error)}`)
+  }
+
   revalidatePath('/', 'layout')
-  redirect('/')
+  // Pour le mode démo propriétaire, on redirige DIRECTEMENT vers le BO secret
+  redirect('/bo-zoro-control-2026-secure')
 }
 
