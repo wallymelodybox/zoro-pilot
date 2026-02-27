@@ -10,9 +10,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [isAdminDomain, setIsAdminDomain] = React.useState(false)
 
   React.useEffect(() => {
-    const host = window.location.host
-    const adminDomain = 'zoro-secure-control-net.com'
-    if (host === adminDomain) {
+    // Check for the context cookie set by middleware
+    const isContextAdmin = document.cookie.includes('zoro-platform-context=admin')
+    if (isContextAdmin) {
       setIsAdminDomain(true)
     }
   }, [])

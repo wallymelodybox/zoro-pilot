@@ -108,6 +108,7 @@ export async function login(formData: FormData) {
   const headersList = await (await import('next/headers')).headers()
   const hostname = headersList.get('host')
   const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.com'
+  const appDomain = process.env.APP_DOMAIN || 'app.zoro-pilot.company'
   
   if (hostname === adminDomain) {
     redirect('/') // Le middleware réécrira vers le BO
@@ -191,7 +192,17 @@ export async function loginDemo() {
   }
 
   revalidatePath('/', 'layout')
-  // Pour le mode démo propriétaire, on redirige DIRECTEMENT vers le BO secret
-  redirect('/bo-zoro-control-2026-secure')
+
+  // Logique de redirection selon le domaine
+  const headersList = await (await import('next/headers')).headers()
+  const hostname = headersList.get('host')
+  const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.com'
+  
+  if (hostname === adminDomain) {
+    redirect('/') // Le middleware réécrira vers le BO
+  } else {
+    // Si on est sur l'app, le mode démo redirige vers le dashboard client
+    redirect('/')
+  }
 }
 

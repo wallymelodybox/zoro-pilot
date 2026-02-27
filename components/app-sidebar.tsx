@@ -36,7 +36,6 @@ import {
 } from "@/components/ui/tooltip"
 import { useThemeVariant } from "@/components/theme/variant-provider"
 import { useUser } from "@/hooks/use-user"
-import { redirectToAdmin } from "@/app/actions"
 
 const cx = cn
 
@@ -234,17 +233,8 @@ export function AppSidebar() {
   const { user } = useUser()
 
   const items = useMemo<NavItem[]>(() => {
-    const base: NavItem[] = [...navItems]
-    if (user?.rbac_role === 'super_admin' || user?.email === 'menannzoro@gmail.com') {
-      base.push({ 
-        href: "#", 
-        label: "Back Office", 
-        icon: Shield,
-        onClick: () => redirectToAdmin()
-      })
-    }
-    return base
-  }, [user])
+    return [...navItems]
+  }, [])
 
   const widthClass =
     variant === "executive-futurist"
