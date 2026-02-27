@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 
@@ -11,7 +11,7 @@ import { revalidatePath } from 'next/cache'
 async function createAdminClient() {
   const cookieStore = await cookies()
   
-  return createClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!, // Secret key!
     {
