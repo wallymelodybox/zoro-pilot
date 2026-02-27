@@ -441,7 +441,7 @@ function SortableTaskCard({ task }: { task: Task }) {
   const [isOpen, setIsOpen] = React.useState(false)
 
   const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transform: CSS.Transform.toString(transform),
     transition,
   }
 
@@ -453,8 +453,8 @@ function SortableTaskCard({ task }: { task: Task }) {
         isDragging ? "z-50 opacity-50" : "z-auto opacity-100"
       )}
       {...attributes}
-      style={style}
-    >
+        style={style}
+      >
       <div className="flex items-start gap-2">
         <button
           type="button"
