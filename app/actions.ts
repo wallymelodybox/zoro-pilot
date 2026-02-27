@@ -93,6 +93,103 @@ export async function createTask(formData: FormData) {
   return { success: true }
 }
 
+export async function bootstrapChat() {
+  try {
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser()
+
+    if (userError || !user) {
+      console.error("bootstrapChat getUser error", userError)
+      return { error: "Utilisateur non authentifié." }
+    }
+
+    const email = user.email || `user-${user.id}@example.com`
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .upsert({
+        id: user.id,
+        email,
+        name: email.split("@")[0],
+        role: "Membre",
+        avatar_url: null,
+        team_id: null,
+        rbac_role: "member",
+        manager_id: null,
+      })
+
+    if (profileError) {
+      console.error("bootstrapChat profile error", profileError)
+      return { error: profileError.message }
+    }
+
+    const { data: org, error: orgError } = await supabase
+      .from("organizations")
+      .insert({ name: "Mon organisation" })
+      .select("id,name")
+      .single()
+
+    if (orgError || !org) {
+      console.error("bootstrapChat org error", orgError)
+      return { error: orgError?.message || "Erreur création organisation" }
+    }
+
+    const { error: memberError } = await supabase
+      .from("organization_members")
+      .insert({
+        organization_id: org.id,
+        profile_id: user.id,
+        title: "Owner",
+      })
+
+    if (memberError) {
+      console.error("bootstrapChat member error", memberError)
+      return { error: memberError.message }
+    }
+
+    const { data: channel, error: channelError } = await supabase
+      .from("channels")
+      .insert({
+        name: "Général",
+        type: "public",
+        organization_id: org.id,
+        context_id: null,
+        context_type: null,
+      })
+      .select("id")
+      .single()
+
+    if (channelError || !channel) {
+      console.error("bootstrapChat channel error", channelError)
+      return { error: channelError?.message || "Erreur création channel" }
+    }
+
+    const { error: cmError } = await supabase
+      .from("channel_members")
+      .insert({
+        channel_id: channel.id,
+        user_id: user.id,
+      })
+
+    if (cmError) {
+      console.error("bootstrapChat channel_members error", cmError)
+      return { error: cmError.message }
+    }
+
+    revalidatePath("/chats")
+    revalidatePath("/inbox")
+
+    return { success: true }
+  } catch (e) {
+    console.error("bootstrapChat unexpected error", e)
+    return { error: e instanceof Error ? e.message : "Erreur inconnue" }
+  }
+}
+
 export async function createList(formData: FormData) {
     // For "List", we can treat it as a Project with a specific type or tag, 
     // or just a simple project for now as per the schema.

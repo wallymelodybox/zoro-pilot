@@ -25,7 +25,14 @@ import {
   Loader2
 } from "lucide-react"
 import { connectGmail, fetchGmailMessages } from "@/app/actions"
-import { type GmailMessage } from "@/lib/store"
+import {
+  type GmailMessage,
+  getChannelMessages,
+  channels,
+  getUserById,
+  getOrganizationById,
+  getUserOrgTitle,
+} from "@/lib/store"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
@@ -34,6 +41,10 @@ export default function InboxPage() {
   const [isGmailConnected, setIsGmailConnected] = useState(false)
   const [gmailMessages, setGmailMessages] = useState<GmailMessage[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set())
+  const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set())
+
+  const CURRENT_USER_ID = "u1"
 
   const filters = [
     { id: "tout", label: "Tout" },
@@ -49,6 +60,116 @@ export default function InboxPage() {
       loadGmailMessages()
     }
   }, [activeTab, isGmailConnected])
+
+  type InboxItem = {
+    id: string
+    source: "chat" | "gmail"
+    category: "message" | "comment"
+    title: string
+    subtitle: string
+    snippet: string
+    date: string
+    isUnread: boolean
+    hasMention: boolean
+    organizationName?: string
+  }
+
+  const buildChatItems = (): InboxItem[] => {
+    return channels
+      .map((ch) => {
+        const msgs = getChannelMessages(ch.id)
+        if (!msgs || msgs.length === 0) return null
+        const last = msgs[msgs.length - 1]
+        const sender = getUserById(last.senderId)
+        const senderChatName =
+          getUserOrgTitle(last.senderId, ch.organizationId) || sender?.role || sender?.name || "?"
+        const isComment = ch.type === "context" || ch.contextType === "task"
+        const orgName = ch.organizationId ? getOrganizationById(ch.organizationId)?.name : undefined
+
+        const mentionNeedle = (() => {
+          const me = getUserById(CURRENT_USER_ID)
+          const nameNeedle = me?.name ? `@${me.name.split(" ")[0]}` : ""
+          return nameNeedle
+        })()
+
+        const hasMention =
+          last.content.includes("@") &&
+          (last.content.includes("@all") || (mentionNeedle ? last.content.includes(mentionNeedle) : false))
+
+        const id = `chat:${last.id}`
+        const isUnread = !readIds.has(id)
+
+        return {
+          id,
+          source: "chat",
+          category: isComment ? "comment" : "message",
+          title: ch.name,
+          subtitle: senderChatName,
+          snippet: last.content,
+          date: last.timestamp,
+          isUnread,
+          hasMention,
+          organizationName: orgName,
+        } satisfies InboxItem
+      })
+      .filter(Boolean) as InboxItem[]
+  }
+
+  const buildGmailItems = (): InboxItem[] => {
+    if (!isGmailConnected) return []
+    return gmailMessages.map((m) => {
+      const id = `gmail:${m.id}`
+      const isUnread = !readIds.has(id) ? !m.isRead : false
+      const hasMention = m.snippet.includes("@")
+      return {
+        id,
+        source: "gmail",
+        category: "message",
+        title: m.subject,
+        subtitle: m.from.split("<")[0].trim(),
+        snippet: m.snippet,
+        date: m.date,
+        isUnread,
+        hasMention,
+      } satisfies InboxItem
+    })
+  }
+
+  const allItems = [...buildChatItems(), ...buildGmailItems()].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  )
+
+  const visibleItems = (() => {
+    const base = allItems.filter((it) => {
+      const isArchived = archivedIds.has(it.id)
+      if (activeTab === "archive") return isArchived
+      return !isArchived
+    })
+
+    if (activeTab === "tout") return base
+    if (activeTab === "non-lu") return base.filter((it) => it.isUnread)
+    if (activeTab === "mentions") return base.filter((it) => it.hasMention)
+    if (activeTab === "commentaires") return base.filter((it) => it.category === "comment")
+    if (activeTab === "gmail") return base.filter((it) => it.source === "gmail")
+    return base
+  })()
+
+  const markRead = (id: string) => {
+    setReadIds((prev) => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }
+
+  const toggleArchive = (id: string) => {
+    setArchivedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const loadGmailMessages = async () => {
     setIsLoading(true)
@@ -241,23 +362,107 @@ export default function InboxPage() {
             )}
           </div>
         ) : (
-          /* Original empty state for other tabs */
-          <div className="h-full flex flex-col items-center justify-center">
-            <div className="flex flex-col items-center gap-6 max-w-md text-center">
-              <div className="relative flex items-center justify-center">
-                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-20 h-20 bg-blue-500/10 rounded-full blur-xl animate-pulse" />
-                 <div className="relative z-10 w-20 h-20 bg-linear-to-br from-primary to-primary-foreground/20 rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/20 text-white">
-                   <Bell className="h-10 w-10" fill="currentColor" />
-                 </div>
+          <div className="max-w-5xl mx-auto">
+            {visibleItems.length === 0 ? (
+              <div className="h-[60vh] flex flex-col items-center justify-center">
+                <div className="flex flex-col items-center gap-6 max-w-md text-center">
+                  <div className="relative flex items-center justify-center">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 w-20 h-20 bg-blue-500/10 rounded-full blur-xl animate-pulse" />
+                    <div className="relative z-10 w-20 h-20 bg-linear-to-br from-primary to-primary-foreground/20 rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/20 text-white">
+                      <Bell className="h-10 w-10" fill="currentColor" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold tracking-tight">Inbox vide</h3>
+                    <p className="text-muted-foreground font-medium text-sm px-10">
+                      Il n'y a pas de notifications pour le moment dans l'onglet{" "}
+                      <span className="text-foreground font-bold">{activeTab}</span>.
+                    </p>
+                  </div>
+                </div>
               </div>
-              
+            ) : (
               <div className="space-y-2">
-                <h3 className="text-xl font-bold tracking-tight">Inbox vide</h3>
-                <p className="text-muted-foreground font-medium text-sm px-10">
-                  Il n'y a pas de notifications pour le moment dans l'onglet <span className="text-foreground font-bold">{activeTab}</span>.
-                </p>
+                {visibleItems.map((it) => (
+                  <div
+                    key={it.id}
+                    className={cn(
+                      "group flex items-start gap-4 p-4 rounded-2xl border border-white/5 transition-all cursor-pointer hover:bg-card hover:shadow-lg hover:shadow-black/5",
+                      it.isUnread ? "bg-card shadow-sm border-l-4 border-l-primary" : "bg-card/40 opacity-80"
+                    )}
+                    onClick={() => markRead(it.id)}
+                  >
+                    <div className="pt-1">
+                      <div
+                        className={cn(
+                          "h-10 w-10 rounded-full flex items-center justify-center text-sm font-bold shadow-sm",
+                          it.source === "gmail"
+                            ? "bg-primary/10 text-primary border border-primary/20"
+                            : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {it.source === "gmail" ? "G" : "#"}
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className={cn("text-sm truncate", it.isUnread ? "font-bold" : "font-medium text-muted-foreground")}
+                        >
+                          {it.subtitle}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-mono whitespace-nowrap flex items-center gap-1.5">
+                          <Clock className="h-3 w-3" />
+                          {new Date(it.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <h4 className={cn("text-sm truncate", it.isUnread ? "font-bold text-foreground" : "font-medium text-muted-foreground")}
+                      >
+                        {it.title}
+                      </h4>
+                      <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        {it.snippet}
+                      </p>
+                      <div className="flex items-center gap-2 mt-3">
+                      {it.hasMention && (
+                        <Badge variant="secondary" className="text-[9px] font-bold tracking-widest px-1.5 py-0 bg-primary/10 text-primary border-none">
+                          @
+                        </Badge>
+                      )}
+                      {it.organizationName && (
+                        <Badge variant="secondary" className="text-[9px] font-bold tracking-widest px-1.5 py-0 bg-muted/50 text-muted-foreground border-none">
+                          {it.organizationName}
+                        </Badge>
+                      )}
+                      <Badge variant="secondary" className="text-[9px] font-bold tracking-widest px-1.5 py-0 bg-muted/50 text-muted-foreground border-none">
+                        {it.source.toUpperCase()}
+                      </Badge>
+                      {it.category === "comment" && (
+                        <Badge variant="secondary" className="text-[9px] font-bold tracking-widest px-1.5 py-0 bg-muted/50 text-muted-foreground border-none">
+                          COMMENTAIRE
+                        </Badge>
+                      )}
+                    </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 pt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleArchive(it.id)
+                        }}
+                      >
+                        <Archive className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         )}
       </main>

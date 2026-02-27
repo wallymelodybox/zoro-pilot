@@ -10,6 +10,17 @@ export type KRType = "metric" | "initiative" | "manual"
 // RBAC Role Types
 export type RBACRole = "admin" | "executive" | "manager" | "member" | "viewer"
 
+export interface Organization {
+  id: string
+  name: string
+}
+
+export interface OrganizationMember {
+  organizationId: string
+  userId: string
+  title: string
+}
+
 export interface Pillar {
   id: string
   name: string
@@ -95,7 +106,24 @@ export interface User {
 
 // --- CHAT & COLLABORATION TYPES ---
 
-export type MessageType = "text" | "system" | "file"
+export type MessageType = "text" | "system" | "file" | "entity"
+
+export type AttachmentKind = "image" | "video" | "file"
+
+export interface MessageAttachment {
+  kind: AttachmentKind
+  name: string
+  url: string
+  mimeType?: string
+}
+
+export type EntityRefType = "project" | "task"
+
+export interface MessageEntityRef {
+  type: EntityRefType
+  id: string
+  title: string
+}
 
 export interface Message {
   id: string
@@ -104,6 +132,8 @@ export interface Message {
   content: string
   timestamp: string
   type: MessageType
+  attachments?: MessageAttachment[]
+  entityRef?: MessageEntityRef
   replyToId?: string // For threading
   reactions?: Record<string, string[]> // emoji -> userIds
 }
@@ -113,6 +143,7 @@ export interface Channel {
   name: string
   type: "public" | "private" | "dm" | "context"
   memberIds: string[]
+  organizationId?: string
   contextId?: string // ID of OKR, Project, Task if context-based
   contextType?: "objective" | "project" | "task"
 }
@@ -151,12 +182,30 @@ export const teams: Team[] = [
   { id: "t4", name: "Marketing", memberIds: ["u5"], parentTeamId: "t1", managerId: "u5" },
 ]
 
+export const organizations: Organization[] = [
+  { id: "org1", name: "TechFlow" },
+  { id: "org2", name: "InnovateCorp" },
+]
+
+export const organizationMembers: OrganizationMember[] = [
+  { organizationId: "org1", userId: "u1", title: "PDG" },
+  { organizationId: "org1", userId: "u2", title: "VP Produit" },
+  { organizationId: "org1", userId: "u3", title: "Resp. Engineering" },
+  { organizationId: "org1", userId: "u4", title: "Designer" },
+  { organizationId: "org1", userId: "u5", title: "Resp. Marketing" },
+  { organizationId: "org1", userId: "u6", title: "Developpeur" },
+
+  { organizationId: "org2", userId: "u1", title: "Conseil" },
+  { organizationId: "org2", userId: "u2", title: "COO" },
+]
+
 // Demo Chat Data
 export const channels: Channel[] = [
-  { id: "c1", name: "General", type: "public", memberIds: ["u1", "u2", "u3", "u4", "u5", "u6"] },
-  { id: "c2", name: "Leadership", type: "private", memberIds: ["u1", "u2", "u3", "u5"] },
-  { id: "c3", name: "Project: MENA Launch", type: "context", memberIds: ["u1", "u4", "u5", "u6"], contextId: "proj1", contextType: "project" },
-  { id: "c4", name: "Objective: Platform v2.0", type: "context", memberIds: ["u3", "u6"], contextId: "o2", contextType: "objective" },
+  { id: "c1", name: "General", type: "public", memberIds: ["u1", "u2", "u3", "u4", "u5", "u6"], organizationId: "org1" },
+  { id: "c2", name: "Leadership", type: "private", memberIds: ["u1", "u2", "u3", "u5"], organizationId: "org1" },
+  { id: "c3", name: "Project: MENA Launch", type: "context", memberIds: ["u1", "u4", "u5", "u6"], organizationId: "org1", contextId: "proj1", contextType: "project" },
+  { id: "c4", name: "Objective: Platform v2.0", type: "context", memberIds: ["u3", "u6"], organizationId: "org1", contextId: "o2", contextType: "objective" },
+  { id: "c5", name: "General", type: "public", memberIds: ["u1", "u2"], organizationId: "org2" },
 ]
 
 export const messages: Message[] = [
@@ -631,6 +680,19 @@ export function getTaskStatusColor(status: TaskStatus): string {
 
 export function getChannelById(id: string): Channel | undefined {
   return channels.find(c => c.id === id)
+}
+
+export function getOrganizationById(id: string): Organization | undefined {
+  return organizations.find((o) => o.id === id)
+}
+
+export function getUserOrganizationIds(userId: string): string[] {
+  return organizationMembers.filter((m) => m.userId === userId).map((m) => m.organizationId)
+}
+
+export function getUserOrgTitle(userId: string, organizationId?: string): string | undefined {
+  if (!organizationId) return undefined
+  return organizationMembers.find((m) => m.userId === userId && m.organizationId === organizationId)?.title
 }
 
 export function getChannelMessages(channelId: string): Message[] {
