@@ -13,6 +13,8 @@ export interface UserProfile {
   rbac_role: 'admin' | 'executive' | 'manager' | 'member' | 'viewer' | 'super_admin'
   organization_id: string | null
   organization_name?: string
+  organization_logo?: string
+  onboarding_completed?: boolean
 }
 
 export function useUser() {
@@ -33,7 +35,9 @@ export function useUser() {
           team_id: null,
           rbac_role: 'super_admin',
           organization_id: 'demo-org-id',
-          organization_name: 'Zoro Pilot Demo'
+          organization_name: 'Zoro Pilot Demo',
+          organization_logo: undefined,
+          onboarding_completed: true
         })
         setLoading(false)
         return
@@ -49,14 +53,15 @@ export function useUser() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('*, organizations(name)')
+        .select('*, organizations(name, logo_url)')
         .eq('id', authUser.id)
         .single()
 
       if (profile) {
         setUser({
           ...profile,
-          organization_name: profile.organizations?.name
+          organization_name: profile.organizations?.name,
+          organization_logo: profile.organizations?.logo_url
         })
       } else {
         setUser(null)

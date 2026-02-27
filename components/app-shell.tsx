@@ -7,8 +7,9 @@ import { ThemeBackground } from "@/components/theme/theme-background"
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isLoginPage = pathname === "/login"
+  const isBOPage = pathname.startsWith("/bo-zoro-control-2026-secure")
 
-  if (isLoginPage) {
+  if (isLoginPage || isBOPage) {
     return (
       <div className="flex h-screen overflow-hidden relative">
         <ThemeBackground />

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Shield, UserPlus, Key, Building, Activity, LayoutDashboard } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
+import { createDGAccount } from "./actions"
 
 export default function BackOfficePage() {
   const { user, loading } = useUser()
@@ -35,18 +36,27 @@ export default function BackOfficePage() {
     e.preventDefault()
     setCreating(true)
     
-    // Logic to create a DG account would normally involve a backend function or Supabase Auth Admin API
-    // Since we are in a client component, we simulate it or use a server action
+    const formData = new FormData()
+    formData.append('name', dgName)
+    formData.append('email', dgEmail)
+    formData.append('licenseCode', licenseCode)
+
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      const res = await createDGAccount(formData)
       
-      toast.success(`Compte DG créé pour ${dgName} (${dgEmail}). Code licence: ${licenseCode}`)
-      setDgEmail("")
-      setDgName("")
-      setLicenseCode("")
+      if (res.error) {
+        toast.error(res.error)
+      } else if (res.success) {
+        toast.success(res.message)
+        // Display temp password to owner
+        alert(`COMPTE CRÉÉ !\nDG: ${dgName}\nMot de passe temporaire: ${res.tempPassword}\n\nVeuillez le transmettre au DG en toute sécurité.`)
+        
+        setDgEmail("")
+        setDgName("")
+        setLicenseCode("")
+      }
     } catch (error) {
-      toast.error("Erreur lors de la création du compte DG")
+      toast.error("Erreur système lors de la création du compte DG")
     } finally {
       setCreating(false)
     }
@@ -56,134 +66,154 @@ export default function BackOfficePage() {
   if (!isAuthorized) return null
 
   return (
-    <div className="container mx-auto p-6 lg:p-10 space-y-8">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <Shield className="h-8 w-8 text-primary" />
-            Back Office - Administration Zoro Pilot
+          <h1 className="text-4xl font-extrabold tracking-tight flex items-center gap-3">
+            <Shield className="h-10 w-10 text-primary" />
+            Zoro Pilot Admin
           </h1>
-          <p className="text-muted-foreground">Gestion des licences DG et accès entreprises.</p>
+          <p className="text-muted-foreground text-lg">Tableau de bord de gestion stratégique des licences.</p>
         </div>
-        <div className="flex items-center gap-4 bg-primary/10 px-4 py-2 rounded-xl border border-primary/20">
-          <Activity className="h-4 w-4 text-primary animate-pulse" />
-          <span className="text-sm font-medium text-primary">Système Actif</span>
+        <div className="flex items-center gap-4 bg-primary/10 px-6 py-3 rounded-2xl border border-primary/20 shadow-sm">
+          <Activity className="h-5 w-5 text-primary animate-pulse" />
+          <span className="text-sm font-bold text-primary uppercase tracking-widest">Système Actif</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40">
+        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">
           <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+            <CardTitle className="text-xs font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-[0.2em]">
               <Key className="h-4 w-4" />
               Licences Actives
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground mt-1">+2 ce mois-ci</p>
+            <div className="text-4xl font-black">12</div>
+            <p className="text-xs text-green-500 mt-2 font-medium">+2 ce mois-ci</p>
           </CardContent>
         </Card>
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40">
+        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">
           <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+            <CardTitle className="text-xs font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-[0.2em]">
               <Building className="h-4 w-4" />
               Organisations
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">8</div>
-            <p className="text-xs text-muted-foreground mt-1">Isolations OK</p>
+            <div className="text-4xl font-black">8</div>
+            <p className="text-xs text-blue-500 mt-2 font-medium">Données Isolées</p>
           </CardContent>
         </Card>
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40">
+        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">
           <CardHeader>
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground uppercase tracking-wider">
+            <CardTitle className="text-xs font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-[0.2em]">
               <LayoutDashboard className="h-4 w-4" />
-              Revenus (Est.)
+              Revenus MRR
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">450k FCFA</div>
-            <p className="text-xs text-muted-foreground mt-1">MRR Actuel</p>
+            <div className="text-4xl font-black text-primary">450k <span className="text-lg font-bold">FCFA</span></div>
+            <p className="text-xs text-muted-foreground mt-2 font-medium">Croissance +15%</p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-primary" />
-              Créer un compte DG (Super Utilisateur)
+        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-2xl overflow-hidden">
+          <div className="h-1.5 w-full bg-primary/20" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <UserPlus className="h-6 w-6 text-primary" />
+              Nouvel Accès DG
             </CardTitle>
-            <CardDescription>
-              Le DG pourra ensuite créer son organisation et inviter ses collaborateurs.
+            <CardDescription className="text-base">
+              Générez un compte Super Utilisateur pour un nouveau client.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleCreateDG} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Nom complet du DG</label>
-                <Input 
-                  placeholder="ex: Jean Dupont" 
-                  value={dgName} 
-                  onChange={(e) => setDgName(e.target.value)} 
-                  required 
-                />
+            <form onSubmit={handleCreateDG} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Nom du DG</label>
+                  <Input 
+                    placeholder="Jean Dupont" 
+                    className="h-12 rounded-xl bg-background/50 border-border/40 focus:ring-primary/20"
+                    value={dgName} 
+                    onChange={(e) => setDgName(e.target.value)} 
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Email Pro</label>
+                  <Input 
+                    type="email" 
+                    placeholder="dg@entreprise.com" 
+                    className="h-12 rounded-xl bg-background/50 border-border/40 focus:ring-primary/20"
+                    value={dgEmail} 
+                    onChange={(e) => setDgEmail(e.target.value)} 
+                    required 
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Email professionnel</label>
-                <Input 
-                  type="email" 
-                  placeholder="dg@entreprise.com" 
-                  value={dgEmail} 
-                  onChange={(e) => setDgEmail(e.target.value)} 
-                  required 
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Code de Licence / Entreprise</label>
+                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Identifiant Entreprise (Code)</label>
                 <Input 
                   placeholder="ex: CODE-ENT-2026" 
+                  className="h-12 rounded-xl bg-background/50 border-border/40 focus:ring-primary/20"
                   value={licenseCode} 
                   onChange={(e) => setLicenseCode(e.target.value)} 
                   required 
                 />
-                <p className="text-[11px] text-muted-foreground italic">
-                  Ce code servira d'identifiant unique pour l'isolation des données de l'entreprise.
+                <p className="text-xs text-muted-foreground/80 italic mt-2 ml-1">
+                  💡 Ce code garantit l'isolation totale des données de cette organisation.
                 </p>
               </div>
-              <Button type="submit" className="w-full" disabled={creating}>
-                {creating ? "Création en cours..." : "Générer Accès DG"}
+              <Button type="submit" className="w-full h-12 rounded-xl font-bold text-lg shadow-lg shadow-primary/20 transition-all hover:scale-[1.01]" disabled={creating}>
+                {creating ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Création en cours...
+                  </div>
+                ) : "Générer Accès Super Utilisateur"}
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40">
-          <CardHeader>
-            <CardTitle>Activités Récentes</CardTitle>
-            <CardDescription>Dernières licences générées.</CardDescription>
+        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-2xl">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-2xl">Activités Récentes</CardTitle>
+            <CardDescription className="text-base">Historique des 5 dernières licences.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {[
-                { name: "Mme. Amrani", org: "TechFlow", date: "Il y a 2h", code: "TF-99" },
-                { name: "M. Lefebvre", org: "InnovateCorp", date: "Hier", code: "IC-45" },
-                { name: "Julie Dubois", org: "NextGen", date: "Il y a 3j", code: "NG-12" },
+                { name: "Mme. Amrani", org: "TechFlow", date: "Il y a 2h", code: "TF-99", status: "actif" },
+                { name: "M. Lefebvre", org: "InnovateCorp", date: "Hier", code: "IC-45", status: "actif" },
+                { name: "Julie Dubois", org: "NextGen", date: "Il y a 3j", code: "NG-12", status: "actif" },
+                { name: "M. Traoré", org: "Sahel-Strat", date: "Il y a 1 sem.", code: "SS-21", status: "en attente" },
               ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-border/20 bg-muted/10">
-                  <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                <div key={i} className="flex items-center justify-between p-4 rounded-2xl border border-border/20 bg-muted/20 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg border border-primary/10">
                       {item.name.charAt(0)}
                     </div>
                     <div>
-                      <div className="text-sm font-semibold">{item.name}</div>
-                      <div className="text-xs text-muted-foreground">{item.org} • {item.code}</div>
+                      <div className="text-base font-bold text-foreground">{item.name}</div>
+                      <div className="text-sm text-muted-foreground font-medium">{item.org} • <code className="bg-muted px-1.5 py-0.5 rounded text-xs">{item.code}</code></div>
                     </div>
                   </div>
-                  <div className="text-[10px] text-muted-foreground uppercase font-bold">{item.date}</div>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="text-[10px] text-muted-foreground uppercase font-black tracking-widest">{item.date}</div>
+                    <div className={cn(
+                      "text-[9px] uppercase font-bold px-2 py-0.5 rounded-full",
+                      item.status === "actif" ? "bg-green-500/10 text-green-500 border border-green-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                    )}>
+                      {item.status}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/tooltip"
 import { useThemeVariant } from "@/components/theme/variant-provider"
 import { useUser } from "@/hooks/use-user"
+import { redirectToAdmin } from "@/app/actions"
 
 const cx = cn
 
@@ -52,6 +53,13 @@ const navItems = [
   { href: "/chats", label: "Chats", icon: MessageSquare },
   { href: "/settings", label: "Paramètres", icon: Settings },
 ]
+
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ElementType
+  onClick?: () => void
+}
 
 /**
  * Sidebar “token-first” :
@@ -225,10 +233,15 @@ export function AppSidebar() {
   const { variant } = useThemeVariant()
   const { user } = useUser()
 
-  const items = useMemo(() => {
-    const base = [...navItems]
+  const items = useMemo<NavItem[]>(() => {
+    const base: NavItem[] = [...navItems]
     if (user?.rbac_role === 'super_admin' || user?.email === 'menannzoro@gmail.com') {
-      base.push({ href: "/bo-zoro-control-2026-secure", label: "Back Office", icon: Shield })
+      base.push({ 
+        href: "#", 
+        label: "Back Office", 
+        icon: Shield,
+        onClick: () => redirectToAdmin()
+      })
     }
     return base
   }, [user])
@@ -275,18 +288,27 @@ export function AppSidebar() {
   return (
     <TooltipProvider delayDuration={0}>
       <aside className={asideClass}>
-        {/* Logo */}
+        {/* Logo Section */}
         <div className={cn("p-6", collapsed && "px-4")}>
           <div className={cn("flex items-center gap-3", collapsed && "justify-center")}>
-            <div className={logoBadgeClass}>
-              {/* Accent via ring/primary tokens */}
-              <Sparkles className="h-5 w-5 text-primary" />
-            </div>
+            {user?.organization_logo ? (
+              <div className={cn("h-10 w-10 shrink-0 overflow-hidden rounded-xl border border-border shadow-sm", collapsed && "mx-auto")}>
+                <img 
+                  src={user.organization_logo} 
+                  alt={user.organization_name || "Logo"} 
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className={logoBadgeClass}>
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+            )}
 
             {!collapsed && (
-              <div className="flex flex-col">
-                <span className="font-bold text-lg tracking-tight text-foreground">
-                  ZORO PILOT
+              <div className="flex flex-col overflow-hidden">
+                <span className="font-bold text-lg tracking-tight text-foreground truncate uppercase">
+                  {user?.organization_name || "ZORO PILOT"}
                 </span>
                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">
                   {subtitle}
@@ -303,10 +325,16 @@ export function AppSidebar() {
             const Icon = item.icon
 
             return (
-              <Tooltip key={item.href}>
+              <Tooltip key={item.label}>
                 <TooltipTrigger asChild>
                   <Link 
                     href={item.href} 
+                    onClick={(e) => {
+                      if (item.onClick) {
+                        e.preventDefault()
+                        item.onClick()
+                      }
+                    }}
                     className={cn(getItemClass(isActive), "animate-in fade-in slide-in-from-left-4 duration-300 fill-mode-both")}
                     style={{ animationDelay: `${i * 40}ms` }}
                   >

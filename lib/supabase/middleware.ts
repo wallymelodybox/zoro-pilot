@@ -38,6 +38,32 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (user) {
+    // Check if onboarding is needed
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('rbac_role, onboarding_completed, organization_id')
+      .eq('id', user.id)
+      .single()
+
+    const isDG = profile?.rbac_role === 'admin'
+    const needsOnboarding = isDG && !profile?.onboarding_completed
+    const isLoginPage = request.nextUrl.pathname.startsWith('/login')
+    const isOnboardingPage = request.nextUrl.pathname.startsWith('/onboarding')
+
+    if (needsOnboarding && !isOnboardingPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/onboarding'
+      return NextResponse.redirect(url)
+    }
+
+    if (!needsOnboarding && isOnboardingPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+  }
+
   if (
     !user &&
     !request.nextUrl.pathname.startsWith('/login') &&

@@ -52,6 +52,24 @@ export async function createProject(formData: FormData) {
   return { success: true, id: data.id }
 }
 
+export async function redirectToAdmin() {
+  const adminDomain = process.env.ADMIN_DOMAIN
+  if (adminDomain) {
+    redirect(`https://${adminDomain}/`)
+  } else {
+    redirect('/bo-zoro-control-2026-secure')
+  }
+}
+
+export async function redirectToApp() {
+  const appDomain = process.env.APP_DOMAIN
+  if (appDomain) {
+    redirect(`https://${appDomain}/`)
+  } else {
+    redirect('/')
+  }
+}
+
 export async function createTask(formData: FormData) {
   const supabase = await createClient()
   

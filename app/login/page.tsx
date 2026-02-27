@@ -17,6 +17,7 @@ import { Chrome, Apple, Command, Globe, CheckCircle2, Beaker } from "lucide-reac
 import { login, signup } from "./actions"
 import { LoginCarousel } from "./login-carousel"
 import { useRouter } from "next/navigation"
+import { use } from "react"
 
 // Microsoft icon custom component
 function MicrosoftIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -33,19 +34,13 @@ function MicrosoftIcon(props: React.SVGProps<SVGSVGElement>) {
 export default function LoginPage({
   searchParams,
 }: {
-  searchParams?: { error?: string }
+  searchParams: Promise<{ error?: string }>
 }) {
   const router = useRouter()
+  const resolvedSearchParams = use(searchParams)
 
   const handleLogin = async (formData: FormData) => {
     await login(formData)
-  }
-
-  const handleDemoMode = () => {
-    // Set bypass flag in localStorage
-    localStorage.setItem('zoro_demo_owner', 'true')
-    // Redirect directly to BO
-    router.push('/bo-zoro-control-2026-secure')
   }
 
   return (
@@ -77,9 +72,9 @@ export default function LoginPage({
             <p className="text-sm text-muted-foreground">
               L'accès à Zoro Pilot se fait exclusivement sur invitation.
             </p>
-            {searchParams?.error ? (
+            {resolvedSearchParams?.error ? (
               <div className="mt-2 text-sm text-destructive wrap-break-word p-2 bg-destructive/10 rounded-lg">
-                {searchParams.error}
+                {resolvedSearchParams.error}
               </div>
             ) : null}
           </div>
@@ -126,16 +121,6 @@ export default function LoginPage({
                   </span>
                 </div>
               </div>
-
-              {/* DEMO LOGIN BUTTON - Bypass for Owner */}
-              <Button 
-                variant="secondary" 
-                className="w-full bg-emerald-100/50 text-emerald-800 hover:bg-emerald-200/50 border border-emerald-200/50" 
-                onClick={handleDemoMode}
-              >
-                <Beaker className="mr-2 h-4 w-4" />
-                Accès Direct Back Office (Démo Propriétaire)
-              </Button>
             </div>
           </div>
 

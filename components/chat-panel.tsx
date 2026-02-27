@@ -418,7 +418,7 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                   <div className="p-2">
                     <div className="text-sm text-muted-foreground mb-3">Aucun channel.</div>
                     {bootstrapError ? (
-                      <div className="text-sm text-destructive mb-3 break-words">{bootstrapError}</div>
+                      <div className="text-sm text-destructive mb-3 wrap-break-word">{bootstrapError}</div>
                     ) : null}
                     <Button
                       type="button"
@@ -624,6 +624,7 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                       multiple
                       className="hidden"
                       onChange={(e) => handleFilesSelected(e.target.files)}
+                      aria-label="Joindre des fichiers"
                     />
 
                     <Button
@@ -647,12 +648,12 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                        aria-label="Votre message"
                       />
 
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-full" title="Emojis">
                         <Smile className="h-4 w-4 text-muted-foreground" />
                       </Button>
-
                     </div>
 
                     <Button

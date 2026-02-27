@@ -1285,7 +1285,7 @@ export function StrategicDashboard() {
   }
 
   const userName = user?.name || "Invité";
-  const orgName = user?.organization_name || "Organisation";
+  const orgName = user?.organization_name || "Zoro Pilot";
 
   if (variant === "ai-productivity") {
     return <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} />;
