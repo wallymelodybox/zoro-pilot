@@ -603,13 +603,13 @@ export default function ChatsPage() {
                     >
                       <Plus className="h-4.5 w-4.5" />
                     </Button>
-                    <div className="flex items-center gap-3 px-4">
+                    <div className="flex flex-1 min-w-0 items-center gap-3 px-4">
                       {sendError ? (
                         <div className="text-xs text-destructive truncate max-w-[45%]">{sendError}</div>
                       ) : null}
                       <Input 
                         placeholder="Écrire un message..." 
-                        className="border-0 focus-visible:ring-0 bg-transparent h-10 text-sm"
+                        className="flex-1 border-0 focus-visible:ring-0 bg-transparent h-10 text-sm"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}

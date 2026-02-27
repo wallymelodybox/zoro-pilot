@@ -28,7 +28,11 @@ function MicrosoftIcon(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
-export default function LoginPage() {
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams?: { error?: string }
+}) {
   // Wrapper functions to handle the return type mismatch
   // React 19's form action expects void | Promise<void>, but our actions return { error: string } | void
   // In a real app we'd use useActionState (useFormState) to handle errors
@@ -72,6 +76,11 @@ export default function LoginPage() {
             <p className="text-sm text-muted-foreground">
               Entrez vos identifiants pour accéder à Zoro Pilot
             </p>
+            {searchParams?.error ? (
+              <div className="mt-2 text-sm text-destructive break-words">
+                {searchParams.error}
+              </div>
+            ) : null}
           </div>
 
           <Tabs defaultValue="login" className="w-full">

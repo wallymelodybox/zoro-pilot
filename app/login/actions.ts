@@ -5,6 +5,41 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
+async function ensureProfile(fullName?: string) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    return { error: 'Utilisateur non authentifié.' }
+  }
+
+  const email = user.email || `user-${user.id}@example.com`
+  const name = fullName || (email.includes('@') ? email.split('@')[0] : email)
+
+  const { error } = await supabase
+    .from('profiles')
+    .upsert({
+      id: user.id,
+      email,
+      name,
+      role: 'Membre',
+      avatar_url: null,
+      team_id: null,
+      rbac_role: 'member',
+      manager_id: null,
+    })
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
@@ -17,7 +52,12 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    redirect(`/login?error=${encodeURIComponent(error.message)}`)
+  }
+
+  const ensured = await ensureProfile()
+  if ('error' in ensured && ensured.error) {
+    redirect(`/login?error=${encodeURIComponent(ensured.error)}`)
   }
 
   revalidatePath('/', 'layout')
@@ -42,7 +82,12 @@ export async function signup(formData: FormData) {
   })
 
   if (error) {
-    return { error: error.message }
+    redirect(`/login?error=${encodeURIComponent(error.message)}`)
+  }
+
+  const ensured = await ensureProfile(fullName)
+  if ('error' in ensured && ensured.error) {
+    redirect(`/login?error=${encodeURIComponent(ensured.error)}`)
   }
 
   revalidatePath('/', 'layout')
