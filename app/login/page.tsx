@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Chrome, Apple, Command, Globe, CheckCircle2, Beaker } from "lucide-react"
 import { login, signup, loginDemo } from "./actions"
+import { LoginCarousel } from "./login-carousel"
 
 // Microsoft icon custom component
 function MicrosoftIcon(props: React.SVGProps<SVGSVGElement>) {
@@ -46,18 +47,10 @@ export default function LoginPage() {
     <div className="container relative h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
       {/* Left Panel - Branding & Marketing */}
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
-        <div className="absolute inset-0 bg-zinc-900" />
+        <LoginCarousel />
         <div className="relative z-20 flex items-center text-lg font-medium">
           <Command className="mr-2 h-6 w-6" />
           ZORO PILOT
-        </div>
-        <div className="relative z-20 mt-auto">
-          <blockquote className="space-y-2">
-            <p className="text-lg">
-              &ldquo;Zoro Pilot a transformé notre façon de collaborer. La connexion fluide avec Microsoft 365 a permis une adoption immédiate par toute l'équipe.&rdquo;
-            </p>
-            <footer className="text-sm">Sofia El Amrani, CEO @ TechFlow</footer>
-          </blockquote>
         </div>
       </div>
 

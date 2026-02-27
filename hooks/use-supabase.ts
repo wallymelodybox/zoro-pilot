@@ -75,6 +75,7 @@ export function useSupabaseData() {
             id: t.id,
             projectId: t.project_id,
             title: t.title,
+            description: t.description,
             assigneeId: t.assignee_id,
             status: t.status,
             priority: t.priority,
