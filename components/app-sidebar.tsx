@@ -310,10 +310,10 @@ export function AppSidebar() {
                     className={cn(getItemClass(isActive), "animate-in fade-in slide-in-from-left-4 duration-300 fill-mode-both")}
                     style={{ animationDelay: `${i * 40}ms` }}
                   >
-                    <div className={cn("transition-transform group-hover:scale-110 shrink-0")}>
+                    <div className={cn("transition-transform group-hover:scale-110 shrink-0")} suppressHydrationWarning>
                       <Icon className="h-5 w-5" />
                     </div>
-                    {!collapsed && <span className="font-medium">{item.label}</span>}
+                    {!collapsed && <span className="font-medium" suppressHydrationWarning>{item.label}</span>}
                   </Link>
                 </TooltipTrigger>
                 {collapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
