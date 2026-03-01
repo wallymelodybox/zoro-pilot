@@ -46,9 +46,12 @@ export function useSupabaseData() {
         supabase.from('okr_checkins').select('*').order('date', { ascending: false })
       ])
 
-      // If no data or error (e.g. tables empty or not created yet), fallback to mock data for demo continuity
-      if (projectsError || !projectsData || projectsData.length === 0) {
-         console.warn('Supabase data empty or error, falling back to mock data:', projectsError)
+      // If no data (e.g. tables empty), fallback to mock data for demo continuity
+      // Only fallback if we have NO projects AND NO tasks
+      const hasNoData = (!projectsData || projectsData.length === 0) && (!tasksData || tasksData.length === 0);
+      
+      if (hasNoData) {
+         console.warn('Supabase data empty, falling back to mock data')
          setProjects(mockProjects)
          setTasks(mockTasks)
          setObjectives(mockObjectives)

@@ -14,6 +14,21 @@ import {
 } from "@/components/ui/select"
 import { ChatPanel } from "@/components/chat-panel"
 import { useSupabaseData } from "@/hooks/use-supabase"
+import { useUser } from "@/hooks/use-user"
+import { createClient } from "@/lib/supabase/client"
+import { createTask, updateTaskStatus, addProjectMember } from "@/app/actions"
+import { toast } from "sonner"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import {
   objectives,
   users,
@@ -115,8 +130,59 @@ function TaskCard({ task, canEdit }: { task: Task; canEdit: boolean }) {
   )
 }
 
-function KanbanBoard({ projectTasks, canEdit }: { projectTasks: Task[]; canEdit: boolean }) {
+function KanbanBoard({ 
+  projectTasks, 
+  canEdit,
+  projectId,
+  onRefresh
+}: { 
+  projectTasks: Task[]; 
+  canEdit: boolean;
+  projectId: string;
+  onRefresh: () => void;
+}) {
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [targetStatus, setTargetStatus] = useState<TaskStatus>("todo")
+  const [newTitle, setNewTitle] = useState("")
+  const [newDescription, setNewDescription] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  const handleOpenAdd = (status: TaskStatus) => {
+    setTargetStatus(status)
+    setNewTitle("")
+    setNewDescription("")
+    setIsAddOpen(true)
+  }
+
+  const handleCreateTask = async () => {
+    if (!newTitle.trim()) return
+    setSaving(true)
+    
+    const fd = new FormData()
+    fd.append('title', newTitle)
+    fd.append('description', newDescription)
+    fd.append('projectId', projectId)
+    fd.append('status', targetStatus)
+    fd.append('priority', 'medium')
+    
+    try {
+      const res = await createTask(fd)
+      if (res?.error) {
+        toast.error(res.error)
+      } else {
+        toast.success("Tâche ajoutée")
+        setIsAddOpen(false)
+        onRefresh()
+      }
+    } catch (err) {
+      toast.error("Erreur de création")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
+    <>
     <ScrollArea className="w-full h-full">
       <div className="flex gap-6 pb-4 min-w-full h-full px-1">
         {STATUSES.map((status) => {
@@ -131,7 +197,7 @@ function KanbanBoard({ projectTasks, canEdit }: { projectTasks: Task[]; canEdit:
                   </span>
                 </div>
                 {canEdit && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenAdd(status.key)}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 )}
@@ -175,13 +241,105 @@ function KanbanBoard({ projectTasks, canEdit }: { projectTasks: Task[]; canEdit:
       </div>
       <ScrollBar orientation="horizontal" />
     </ScrollArea>
+
+    <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+      <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-border/40 shadow-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold flex items-center gap-2">
+            <Plus className="h-5 w-5 text-primary" />
+            Nouvelle Tâche - {STATUSES.find(s => s.key === targetStatus)?.label}
+          </DialogTitle>
+          <DialogDescription>
+            Ajoutez un nouvel élément au projet.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Titre</Label>
+            <Input 
+              placeholder="ex: Finaliser le design..." 
+              value={newTitle} 
+              onChange={(e) => setNewTitle(e.target.value)}
+              className="h-11 rounded-xl bg-background/50 border-border/40"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Description (optionnelle)</Label>
+            <Textarea 
+              placeholder="Détails de la tâche..." 
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              className="min-h-25 rounded-xl bg-background/50 border-border/40 resize-none"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setIsAddOpen(false)} className="rounded-xl">Annuler</Button>
+          <Button onClick={handleCreateTask} disabled={saving || !newTitle.trim()} className="rounded-xl gap-2 shadow-lg shadow-primary/20">
+            {saving ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus className="h-4 w-4" />}
+            Ajouter la tâche
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 }
 
-function MembersColumn({ project }: { project: Project }) {
+function MembersColumn({ project, onRefresh }: { project: Project; onRefresh: () => void }) {
+  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
+  const [selectedMemberId, setSelectedMemberId] = useState("")
+  const [adding, setAdding] = useState(false)
+  
+  const { user } = useUser() // We need the current user's org
+  const supabase = createClient()
+  const [orgMembers, setOrgMembers] = useState<any[]>([])
+
+  // Fetch organization members to add to project
+  useState(() => {
+    async function fetchOrgMembers() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single()
+      
+      if (profile?.organization_id) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, name, avatar_url, role')
+          .eq('organization_id', profile.organization_id)
+        if (data) setOrgMembers(data)
+      }
+    }
+    fetchOrgMembers()
+  })
+
   const owner = getUserById(project.ownerId)
   // Mock members list - in real app fetch from team
   const members = owner ? [owner] : []
+
+  const handleAddMember = async () => {
+    if (!selectedMemberId) return
+    setAdding(true)
+    try {
+      const res = await addProjectMember(project.id, selectedMemberId, "Membre")
+      if (res.error) {
+        toast.error(res.error)
+      } else {
+        toast.success("Membre ajouté au projet")
+        setIsAddMemberOpen(false)
+        onRefresh()
+      }
+    } catch (err) {
+      toast.error("Erreur d'ajout")
+    } finally {
+      setAdding(false)
+    }
+  }
 
   return (
     <div className="w-64 border-r bg-background flex flex-col h-full">
@@ -202,7 +360,7 @@ function MembersColumn({ project }: { project: Project }) {
         </div>
       </ScrollArea>
       <div className="p-4 border-t space-y-2">
-        <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+        <Button variant="outline" className="w-full justify-start gap-2" size="sm" onClick={() => setIsAddMemberOpen(true)}>
           <UserPlus className="h-4 w-4" />
           Ajouter un membre
         </Button>
@@ -211,12 +369,48 @@ function MembersColumn({ project }: { project: Project }) {
           Gerer les acces
         </Button>
       </div>
+
+      <Dialog open={isAddMemberOpen} onOpenChange={setIsAddMemberOpen}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-border/40 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              Ajouter un membre
+            </DialogTitle>
+            <DialogDescription>
+              Choisissez un membre de l'organisation à ajouter à ce projet.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sélectionner un membre</Label>
+              <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
+                <SelectTrigger className="h-11 rounded-xl bg-background/50 border-border/40">
+                  <SelectValue placeholder="Choisir un collaborateur" />
+                </SelectTrigger>
+                <SelectContent>
+                  {orgMembers.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.name} ({m.role})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsAddMemberOpen(false)} className="rounded-xl">Annuler</Button>
+            <Button onClick={handleAddMember} disabled={adding || !selectedMemberId} className="rounded-xl gap-2 shadow-lg shadow-primary/20">
+              {adding ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              Ajouter au projet
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
 export default function WorkPage() {
-  const { projects, tasks, loading, usingMockData } = useSupabaseData()
+  const { projects, tasks, loading, refresh } = useSupabaseData()
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [currentUserId, setCurrentUserId] = useState<string>("u1") // Default: Sarah Chen (Admin)
   const [currentView, setCurrentView] = useState("kanban")
@@ -348,12 +542,17 @@ export default function WorkPage() {
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Members Column */}
-        <MembersColumn project={selectedProject} />
+        <MembersColumn project={selectedProject} onRefresh={refresh} />
 
         {/* Right Board Area */}
         <main className="flex-1 flex flex-col min-w-0 bg-muted/10 p-6 overflow-hidden">
           {currentView === "kanban" && (
-            <KanbanBoard projectTasks={projectTasks} canEdit={canEditProject} />
+            <KanbanBoard 
+              projectTasks={projectTasks} 
+              canEdit={canEditProject} 
+              projectId={selectedProject.id}
+              onRefresh={refresh}
+            />
           )}
           {currentView === "list" && (
             <ProjectTaskList projectTasks={projectTasks} onCanEdit={canEditProject} />

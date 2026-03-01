@@ -233,6 +233,65 @@ export async function updateTaskStatus(taskId: string, status: string) {
   return { success: true }
 }
 
+export async function createChannel(formData: FormData) {
+  const supabase = await createClient()
+  
+  const name = formData.get('name') as string
+  const type = formData.get('type') as string || 'public'
+  const organizationId = formData.get('organizationId') as string
+
+  if (!name || !organizationId) {
+    return { error: 'Le nom et l\'organisation sont requis.' }
+  }
+
+  const { data: channel, error: channelError } = await supabase
+    .from('channels')
+    .insert({
+      name,
+      type,
+      organization_id: organizationId
+    })
+    .select('id')
+    .single()
+
+  if (channelError || !channel) {
+    console.error('Error creating channel:', channelError)
+    return { error: 'Erreur lors de la création du channel.' }
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (user) {
+    await supabase.from('channel_members').insert({
+      channel_id: channel.id,
+      user_id: user.id
+    })
+  }
+
+  revalidatePath('/chats')
+  return { success: true, id: channel.id }
+}
+
+export async function addProjectMember(projectId: string, profileId: string, title: string) {
+  const supabase = await createClient()
+  
+  // In our current schema, we don't have a direct project_members table, 
+  // but we can use roles or simply allow access via organization membership.
+  // For now, let's assume we want to track it in a separate table if it existed,
+  // or use the RBAC system to assign a role.
+  
+  try {
+    await assignRoleToUser(profileId, 'Member', 'project', projectId)
+    revalidatePath('/work')
+    return { success: true }
+  } catch (error) {
+    console.error('Error adding project member:', error)
+    return { error: 'Erreur lors de l\'ajout du membre.' }
+  }
+}
+
 // --- GMAIL INTEGRATION (SIMULATED) ---
 
 export async function connectGmail() {

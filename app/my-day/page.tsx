@@ -52,12 +52,22 @@ export default function MyDayPage() {
 
   const handleToggleTask = async (taskId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'done' ? 'todo' : 'done'
+    
+    // Optimistic update
+    const originalTasks = [...tasks]
+    const updatedTasks = tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t)
+    // We can't set tasks directly because they come from the hook, 
+    // but the hook uses fetchData which will overwrite this.
+    // So we just rely on the server action + refresh for now, 
+    // but let's make sure the refresh is called correctly.
+    
     try {
       const result = await updateTaskStatus(taskId, newStatus)
       if (result?.error) {
         toast.error(result.error)
       } else {
-        refresh()
+        // Force immediate refresh
+        await refresh()
       }
     } catch (err) {
       toast.error("Erreur de mise à jour")

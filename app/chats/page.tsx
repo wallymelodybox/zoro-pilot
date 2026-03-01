@@ -13,6 +13,8 @@ import {
   Reply,
   MessageCircle,
   MessageSquare,
+  PlusCircle,
+  AtSign,
 } from "lucide-react"
 import {
   type Message,
@@ -38,10 +40,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { createClient } from "@/lib/supabase/client"
-import { bootstrapChat } from "@/app/actions"
+import { bootstrapChat, createChannel } from "@/app/actions"
+import { toast } from "sonner"
 
 export default function ChatsPage() {
   const [activeChannelId, setActiveChannelId] = React.useState<string | null>(null)
@@ -51,6 +56,13 @@ export default function ChatsPage() {
   const [draftAttachments, setDraftAttachments] = React.useState<MessageAttachment[]>([])
   const [draftEntityRef, setDraftEntityRef] = React.useState<MessageEntityRef | null>(null)
   const [isLinkOpen, setIsLinkOpen] = React.useState(false)
+  const [replyingTo, setReplyingTo] = React.useState<Message | null>(null)
+  const [isNewChannelDialogOpen, setIsNewChannelDialogOpen] = React.useState(false)
+  const [newChannelName, setNewChannelName] = React.useState("")
+  const [newChannelType, setNewChannelType] = React.useState<'public' | 'private' | 'direct'>('public')
+  const [creating, setCreating] = React.useState(false)
+  const [isMemberMentionOpen, setIsMemberMentionOpen] = React.useState(false)
+  const [mentionSearch, setMentionSearch] = React.useState("")
 
   const { projects, tasks } = useSupabaseData()
 
@@ -194,6 +206,7 @@ export default function ChatsPage() {
 
     void (async () => {
       setSendError(null)
+      const currentReplyingTo = replyingTo
       let uploadedAttachments: MessageAttachment[] | undefined
 
       if (draftAttachments.length > 0) {
@@ -222,6 +235,7 @@ export default function ChatsPage() {
         entity_type: draftEntityRef?.type ?? null,
         entity_id: draftEntityRef?.id ?? null,
         entity_title: draftEntityRef?.title ?? null,
+        reply_to_id: currentReplyingTo?.id,
       }
 
       const { data, error } = await supabase.from("messages").insert(payload).select("*").single()
@@ -234,8 +248,9 @@ export default function ChatsPage() {
         content: data.content,
         timestamp: data.created_at,
         type: data.type,
-        attachments: data.attachments ?? undefined,
-        entityRef: data.entity_type
+          attachments: data.attachments ?? undefined,
+          replyToId: data.reply_to_id ?? undefined,
+          entityRef: data.entity_type
           ? { type: data.entity_type, id: data.entity_id, title: data.entity_title }
           : undefined,
       }
@@ -244,10 +259,58 @@ export default function ChatsPage() {
       setNewMessage("")
       setDraftAttachments([])
       setDraftEntityRef(null)
+      setReplyingTo(null)
     })().catch((e) => {
       const msg = e instanceof Error ? e.message : "Erreur envoi message"
       setSendError(msg)
     })
+  }
+
+  const handleCreateChannel = async () => {
+    const currentOrgId = activeOrgId === "all" ? undefined : activeOrgId
+    if (!newChannelName.trim() || !currentOrgId) return
+    setCreating(true)
+
+    const formData = new FormData()
+    formData.append('name', newChannelName)
+    formData.append('type', newChannelType)
+    formData.append('organizationId', currentOrgId)
+
+    try {
+      const res = await createChannel(formData)
+      if (res.error) {
+        toast.error(res.error)
+      } else {
+        toast.success("Canal créé avec succès")
+        setIsNewChannelDialogOpen(false)
+        setNewChannelName("")
+        setReloadKey(prev => prev + 1)
+      }
+    } catch (err) {
+      toast.error("Erreur lors de la création")
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setNewMessage(value)
+
+    const lastWord = value.split(" ").pop() || ""
+    if (lastWord.startsWith("@")) {
+      setMentionSearch(lastWord.substring(1))
+      setIsMemberMentionOpen(true)
+    } else {
+      setIsMemberMentionOpen(false)
+    }
+  }
+
+  const handleMentionSelect = (member: any) => {
+    const words = newMessage.split(" ")
+    words.pop()
+    setNewMessage([...words, `@${member.name} `].join(" "))
+    setIsMemberMentionOpen(false)
   }
 
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
@@ -315,8 +378,9 @@ export default function ChatsPage() {
         content: m.content,
         timestamp: m.created_at,
         type: m.type,
-        attachments: m.attachments ?? undefined,
-        entityRef: m.entity_type
+          attachments: m.attachments ?? undefined,
+          replyToId: m.reply_to_id ?? undefined,
+          entityRef: m.entity_type
           ? { type: m.entity_type, id: m.entity_id, title: m.entity_title }
           : undefined,
       }))
@@ -331,7 +395,13 @@ export default function ChatsPage() {
         <div className="p-6 border-b border-border/40">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-xl font-bold tracking-tight">Messages</h1>
-            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8 rounded-full"
+              onClick={() => setIsNewChannelDialogOpen(true)}
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </div>
@@ -470,7 +540,7 @@ export default function ChatsPage() {
                         `[animation-delay:${Math.min(i, 20) * 30}ms]`
                       )}
                     >
-                      <UserAvatar name={sender?.name || "?"} fallback={sender?.avatar || "?"} className="h-8 w-8 mt-1 shrink-0" />
+                      <UserAvatar name={sender?.name || "?"} fallback={sender?.avatar || (sender?.name ? sender.name.substring(0, 2).toUpperCase() : "?")} className="h-8 w-8 mt-1 shrink-0" />
                       <div className={cn(
                         "flex flex-col gap-1",
                         isMe ? "items-end" : "items-start"
@@ -485,6 +555,17 @@ export default function ChatsPage() {
                         </div>
                         
                         <div className="relative">
+                          {msg.replyToId && (
+                            <div className="mb-1 flex items-center gap-2 px-3 py-1.5 bg-muted/30 border-l-2 border-primary rounded-r-lg text-[10px] text-muted-foreground max-w-md animate-in fade-in slide-in-from-left-1">
+                              <Reply className="h-3 w-3 text-primary shrink-0" />
+                              <span className="font-bold text-primary shrink-0">
+                                {profiles[localMessages.find(m => m.id === msg.replyToId)?.senderId || ""]?.name || "..."}
+                              </span>
+                              <span className="truncate italic">
+                                {localMessages.find(m => m.id === msg.replyToId)?.content || "Message supprimé"}
+                              </span>
+                            </div>
+                          )}
                           <div className={cn(
                             "p-3 rounded-2xl text-sm shadow-sm border border-border/40",
                             isMe 
@@ -523,12 +604,24 @@ export default function ChatsPage() {
 
                           {/* Actions on hover */}
                           <div className={cn(
-                            "absolute -top-8 bg-card border border-border/40 rounded-lg shadow-xl p-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all z-10",
+                            "absolute -top-4 opacity-0 group-hover:opacity-100 transition-opacity bg-card border border-border/40 rounded-xl p-0.5 flex items-center gap-0.5 shadow-lg z-10",
                             isMe ? "right-0" : "left-0"
                           )}>
-                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6"><Smile className="h-3.5 w-3.5" /></Button>
-                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6"><Reply className="h-3.5 w-3.5" /></Button>
-                            <Button type="button" variant="ghost" size="icon" className="h-6 w-6"><MessageCircle className="h-3.5 w-3.5" /></Button>
+                            <Button 
+                              type="button"
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 rounded-lg hover:bg-primary/10 hover:text-primary"
+                              onClick={() => setReplyingTo(msg)}
+                            >
+                              <Reply className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-primary/10 hover:text-primary">
+                              <Smile className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-primary/10 hover:text-primary">
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </div>
 
@@ -550,9 +643,27 @@ export default function ChatsPage() {
             </ScrollArea>
 
             {/* Input */}
-            <footer className="p-6 border-t border-border/40 bg-card/20 backdrop-blur-md">
+            <footer className="relative p-6 border-t border-border/40 bg-card/20 backdrop-blur-md">
               <div className="max-w-4xl mx-auto">
                 <div className="flex flex-col gap-2">
+                  {replyingTo && (
+                    <div className="flex items-center justify-between px-3 py-2 bg-primary/10 rounded-t-xl border-x border-t border-primary/20 animate-in slide-in-from-bottom-2">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <Reply className="h-4 w-4 text-primary shrink-0" />
+                        <div className="text-xs truncate">
+                          <span className="font-bold text-primary">Réponse à {profiles[replyingTo.senderId]?.name || "..."}</span>: {replyingTo.content}
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-6 w-6 rounded-full"
+                        onClick={() => setReplyingTo(null)}
+                      >
+                        <PlusCircle className="h-4 w-4 rotate-45" />
+                      </Button>
+                    </div>
+                  )} 
                   {draftEntityRef ? (
                     <div className="flex items-center justify-between gap-3 rounded-xl border border-border/40 bg-muted/30 px-3 py-2 text-xs">
                       <div className="min-w-0">
@@ -583,7 +694,30 @@ export default function ChatsPage() {
                     </div>
                   ) : null}
 
-                  <div className="flex items-center gap-2 bg-background/60 backdrop-blur-sm rounded-2xl p-2 border border-border/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                  {isMemberMentionOpen && (
+                    <div className="absolute bottom-full left-6 mb-2 w-64 bg-card border border-border/40 rounded-xl shadow-2xl overflow-hidden z-50">
+                      <div className="p-2 border-b text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Membres de l'organisation</div>
+                      <ScrollArea className="h-48">
+                        {Object.entries(profiles)
+                          .filter(([_, p]) => p.name.toLowerCase().includes(mentionSearch.toLowerCase()))
+                          .map(([id, profile]) => (
+                            <button
+                              key={id}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors text-sm text-left"
+                              onClick={() => handleMentionSelect({ id, name: profile.name })}
+                            >
+                              <UserAvatar name={profile.name} fallback={profile.avatar ?? profile.name.substring(0, 2).toUpperCase()} className="h-6 w-6" />
+                              <span className="font-medium truncate">{profile.name}</span>
+                            </button>
+                          ))}
+                      </ScrollArea>
+                    </div>
+                  )}
+
+                  <div className={cn(
+                    "flex items-center gap-2 bg-background/60 backdrop-blur-sm p-2 border border-border/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all",
+                    replyingTo ? "rounded-b-2xl border-t-0" : "rounded-2xl"
+                  )}>
                     <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full hover:bg-primary/10 hover:text-primary transition-colors" onClick={handlePickFiles}>
                       <Paperclip className="h-4.5 w-4.5" />
                     </Button>
@@ -615,7 +749,7 @@ export default function ChatsPage() {
                         placeholder="Écrire un message..." 
                         className="flex-1 border-0 focus-visible:ring-0 bg-transparent h-10 text-sm"
                         value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
+                        onChange={handleInputChange}
                         onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSendMessage()}
                       />
                     </div>
@@ -693,6 +827,56 @@ export default function ChatsPage() {
           </div>
         )}
       </div>
+      <Dialog open={isNewChannelDialogOpen} onOpenChange={setIsNewChannelDialogOpen}>
+        <DialogContent className="sm:max-w-106.25 bg-card/95 backdrop-blur-2xl border-border/40 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+              <PlusCircle className="h-6 w-6 text-primary" />
+              Nouveau Canal
+            </DialogTitle>
+            <DialogDescription>
+              Créez un nouvel espace de discussion ou un groupe d'échange.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nom du canal</Label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="name"
+                  placeholder="ex: projet-x, marketing..."
+                  className="h-12 pl-10 rounded-xl bg-background/50 border-border/40 focus:ring-primary/20"
+                  value={newChannelName}
+                  onChange={(e) => setNewChannelName(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="type" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Visibilité</Label>
+              <Select value={newChannelType} onValueChange={(v: any) => setNewChannelType(v)}>
+                <SelectTrigger id="type" className="h-12 rounded-xl bg-background/50 border-border/40">
+                  <SelectValue placeholder="Choisir un type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">Public (Tout le monde peut voir)</SelectItem>
+                  <SelectItem value="private">Privé (Sur invitation)</SelectItem>
+                  <SelectItem value="direct">Message Direct</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsNewChannelDialogOpen(false)} className="rounded-xl">
+              Annuler
+            </Button>
+            <Button onClick={handleCreateChannel} disabled={creating || !newChannelName.trim()} className="rounded-xl gap-2 shadow-lg shadow-primary/20">
+              {creating ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <PlusCircle className="h-4 w-4" />}
+              Créer le canal
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
