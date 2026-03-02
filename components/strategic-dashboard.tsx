@@ -52,6 +52,7 @@ import { useThemeVariant, type ThemeVariant } from "./theme/variant-provider";
 import { WidgetHub, WIDGETS } from "./widget-hub";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/use-user";
+import { WeeklySummary } from "./weekly-summary";
 
 // ─── UTILS ──────────────────────────────────────────────────────────────────
 
@@ -234,12 +235,14 @@ function CommandCenterDashboard({
   addedWidgets, 
   onToggleWidget,
   userName,
-  orgName
+  orgName,
+  user
 }: { 
   addedWidgets: string[], 
   onToggleWidget: (id: string) => void,
   userName: string,
-  orgName: string
+  orgName: string,
+  user: any
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
 
@@ -312,6 +315,14 @@ function CommandCenterDashboard({
             <Stat icon={<FolderKanban className="h-5 w-5" />} title="Projets Actifs" value="12" delta="+2" tone="good" />
             <Stat icon={<Activity className="h-5 w-5" />} title="Tâches du Jour" value="9" delta="+1" tone="good" />
             <Stat icon={<Target className="h-5 w-5" />} title="KPI Suivis" value="24" delta="+0%" tone="neutral" />
+          </div>
+
+          {/* Weekly Summary Snapshot (Generated every Monday at 00:00) */}
+          <div className="mb-2">
+            <WeeklySummary 
+              role={user?.role === 'admin' || user?.role === 'executive' ? 'admin' : 'member'} 
+              userName={user?.name || "Utilisateur"} 
+            />
           </div>
 
           {/* Dynamic Widgets Section */}
@@ -622,12 +633,14 @@ function AIProductivityDashboard({
   addedWidgets, 
   onToggleWidget,
   userName,
-  orgName
+  orgName,
+  user
 }: { 
   addedWidgets: string[], 
   onToggleWidget: (id: string) => void,
   userName: string,
-  orgName: string
+  orgName: string,
+  user: any
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [period, setPeriod] = useState<"1mois" | "1trimestre">("1mois");
@@ -715,6 +728,14 @@ function AIProductivityDashboard({
             <StatCard title="Projets actifs" value="12" hint="2 à risque" icon={<FolderKanban className="h-5 w-5 text-primary" />} />
             <StatCard title="Tâches du jour" value="9" hint="3 critiques" icon={<CheckSquare className="h-5 w-5 text-primary" />} />
             <StatCard title="KPI suivis" value="24" hint="Mensuel / Trimestriel" icon={<BarChart3 className="h-5 w-5 text-primary" />} />
+          </div>
+
+          {/* Weekly Summary Snapshot */}
+          <div className="mb-2">
+            <WeeklySummary 
+              role={user?.role === 'admin' || user?.role === 'executive' ? 'admin' : 'member'} 
+              userName={userName} 
+            />
           </div>
 
           {/* Dynamic Widgets Section */}
@@ -939,12 +960,14 @@ function ExecutiveFuturistDashboard({
   addedWidgets, 
   onToggleWidget,
   userName,
-  orgName
+  orgName,
+  user
 }: { 
   addedWidgets: string[], 
   onToggleWidget: (id: string) => void,
   userName: string,
-  orgName: string
+  orgName: string,
+  user: any
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<"idle" | "thinking">("idle");
@@ -1077,6 +1100,14 @@ function ExecutiveFuturistDashboard({
                 <div className="text-sm text-muted-foreground font-semibold">{stat.label}</div>
               </SurfaceCard>
             ))}
+          </div>
+
+          {/* Weekly Summary Snapshot */}
+          <div className="mb-2">
+            <WeeklySummary 
+              role={user?.role === 'admin' || user?.role === 'executive' ? 'admin' : 'member'} 
+              userName={userName} 
+            />
           </div>
 
           {/* Dynamic Widgets Section */}
@@ -1288,14 +1319,14 @@ export function StrategicDashboard() {
   const orgName = user?.organization_name || "Zoro Pilot";
 
   if (variant === "ai-productivity") {
-    return <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} />;
+    return <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} />;
   }
 
   if (variant === "executive-futurist") {
-    return <ExecutiveFuturistDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} />;
+    return <ExecutiveFuturistDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} />;
   }
 
-  return <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} />;
+  return <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} />;
 }
 
 export default StrategicDashboard;

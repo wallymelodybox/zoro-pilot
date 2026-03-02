@@ -706,7 +706,11 @@ export default function ChatsPage() {
                               className="w-full flex items-center gap-2 px-3 py-2 hover:bg-primary/10 transition-colors text-sm text-left"
                               onClick={() => handleMentionSelect({ id, name: profile.name })}
                             >
-                              <UserAvatar name={profile.name} fallback={profile.avatar ?? profile.name.substring(0, 2).toUpperCase()} className="h-6 w-6" />
+                              <UserAvatar 
+                                name={profile.name} 
+                                fallback={profile.avatar || profile.name.substring(0, 2).toUpperCase()} 
+                                className="h-6 w-6" 
+                              />
                               <span className="font-medium truncate">{profile.name}</span>
                             </button>
                           ))}

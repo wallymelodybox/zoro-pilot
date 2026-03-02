@@ -47,6 +47,7 @@ const navItems = [
   { href: "/my-day", label: "Ma journée", icon: Sun },
   { href: "/all-tasks", label: "Toutes les tâches", icon: Layers },
   { href: "/performance", label: "Performance & KPI", icon: BarChart3 },
+  { href: "/automations", label: "Automatisation", icon: Sparkles },
   { href: "/search", label: "Recherche", icon: Search },
   { href: "/inbox", label: "Boîte de réception", icon: Inbox },
   { href: "/chats", label: "Chats", icon: MessageSquare },
