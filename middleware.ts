@@ -6,7 +6,7 @@ export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
   const hostname = request.headers.get('host')
   const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.com'
-  const appDomain = process.env.APP_DOMAIN || 'app.zoro-pilot.company'
+  const appDomain = process.env.APP_DOMAIN || 'app-zoro-pilot.company'
 
   const sessionResponse = await updateSession(request)
 

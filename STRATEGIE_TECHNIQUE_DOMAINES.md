@@ -14,8 +14,8 @@ L'isolation est gérée au niveau de la couche "Edge" de Vercel via le fichier `
 
 ### Étape 1 : Domaine Principal (Application)
 1. Dans le dashboard Vercel, allez dans **Settings > Domains**.
-2. Ajoutez `app.zoro-pilot.com` (ou votre domaine choisi).
-3. Suivez les instructions pour configurer les enregistrements A ou CNAME chez votre registraire (ex: Namecheap, OVH).
+2. Ajoutez `app-zoro-pilot.company` (ou votre domaine choisi).
+3. Suivez les instructions de Vercel (souvent une simple validation TXT ou CNAME si acheté via Vercel).
 4. Vercel générera automatiquement le certificat SSL.
 
 ### Étape 2 : Sous-domaine Back Office (Admin)
@@ -29,7 +29,7 @@ Pour que le routage fonctionne, configurez les variables suivantes dans Vercel (
 
 | Variable | Valeur (Exemple) | Portée |
 | :--- | :--- | :--- |
-| `APP_DOMAIN` | `app.zoro-pilot.com` | Production |
+| `APP_DOMAIN` | `app-zoro-pilot.company` | Production |
 | `ADMIN_DOMAIN` | `zoro-secure-control-net.com` | Production |
 | `SUPABASE_SERVICE_ROLE_KEY` | `votre_cle_secrete` | Production (Secret) |
 
