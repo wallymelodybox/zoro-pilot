@@ -81,10 +81,6 @@ function SurfaceCard({
         className
       )}
     >
-      <div className="pointer-events-none absolute inset-0 opacity-(--glow-opacity)">
-        <div className="absolute -inset-16 blur-3xl bg-[radial-gradient(circle_at_30%_30%,var(--glow-1),transparent_55%)]" />
-        <div className="absolute -inset-16 blur-3xl bg-[radial-gradient(circle_at_70%_40%,var(--glow-2),transparent_55%)]" />
-      </div>
       <div className="relative z-10">{children}</div>
     </div>
   );
@@ -101,12 +97,12 @@ function Badge({
 }) {
   const toneCls =
     tone === "good"
-      ? "border-[color:var(--success-border)] bg-[color:var(--success-bg)] text-[color:var(--success-fg)]"
+      ? "border-green-500/20 bg-green-500/10 text-green-600"
       : tone === "warn"
-      ? "border-[color:var(--warning-border)] bg-[color:var(--warning-bg)] text-[color:var(--warning-fg)]"
+      ? "border-amber-500/20 bg-amber-500/10 text-amber-500"
       : tone === "bad"
-      ? "border-[color:var(--danger-border)] bg-[color:var(--danger-bg)] text-[color:var(--danger-fg)]"
-      : "border-border/70 bg-muted/40 text-muted-foreground";
+      ? "border-destructive/20 bg-destructive/10 text-destructive"
+      : "border-border/70 bg-muted/50 text-muted-foreground";
 
   return (
     <span
@@ -120,7 +116,6 @@ function Badge({
     </span>
   );
 }
-
 function ProgressBar({ value }: { value: number }) {
   const clamped = Math.max(0, Math.min(100, value));
   return (
@@ -128,12 +123,13 @@ function ProgressBar({ value }: { value: number }) {
       <div className="h-2.5 rounded-full bg-muted/50 overflow-hidden">
         <div
           className={cx(
-            "h-full rounded-full bg-primary shadow-[0_0_18px_var(--glow-primary)] transition-all w-(--progress-width)",
-            `[--progress-width:${clamped}%]`
+            "h-full rounded-full bg-primary shadow-[0_0_18px_var(--glow-primary)] transition-all"
           )}
+                    {/* eslint-disable-next-line react-dom/no-inline-styles */}
+          style={{ width: `${clamped}%` }}
         />
       </div>
-      <div className="mt-1 flex items-center justify-between text-[11px] text-muted-foreground">
+      <div className="mt-1 flex items-center justify-between text-[10px] font-medium text-muted-foreground">
         <span>0%</span>
         <span className="text-foreground/80">{clamped}%</span>
         <span>100%</span>
@@ -144,11 +140,9 @@ function ProgressBar({ value }: { value: number }) {
 
 function Donut({
   percent,
-  label,
   sub,
 }: {
   percent: number;
-  label: string;
   sub?: string;
 }) {
   const data = useMemo(
@@ -159,7 +153,7 @@ function Donut({
     [percent]
   );
 
-  const COLORS = ["var(--primary)", "var(--accent)"];
+  const COLORS = ["var(--primary)", "var(--muted)"];
 
   return (
     <div className="flex items-center gap-4">
@@ -186,13 +180,11 @@ function Donut({
       </div>
       <div>
         <div className="text-2xl font-semibold tracking-tight text-foreground">{percent}%</div>
-        <div className="text-sm text-muted-foreground">{label}</div>
         {sub ? <div className="text-xs text-muted-foreground/70">{sub}</div> : null}
       </div>
     </div>
   );
 }
-
 function Stat({
   icon,
   title,
@@ -207,15 +199,15 @@ function Stat({
   tone?: "neutral" | "good" | "warn" | "bad";
 }) {
   return (
-    <SurfaceCard className="p-4">
-      <div className="flex items-start justify-between gap-3">
+    <SurfaceCard className="p-5">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl border border-border/40 bg-card/20">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10">
             <div className="text-primary">{icon}</div>
           </div>
           <div>
             <div className="text-xs text-muted-foreground">{title}</div>
-            <div className="text-xl font-semibold text-foreground">{value}</div>
+            <div className="text-lg font-bold text-foreground">{value}</div>
           </div>
         </div>
         {delta ? (
@@ -229,20 +221,20 @@ function Stat({
   );
 }
 
-// ─── DASHBOARD VARIANT 1: COMMAND CENTER ────────────────────────────────────
+// ─── DASHBOARD VARIANT 1: COMMAND CENTER ───────────────────────────────────
 
-function CommandCenterDashboard({ 
-  addedWidgets, 
+function CommandCenterDashboard({
+  addedWidgets,
   onToggleWidget,
   userName,
   orgName,
-  user
-}: { 
-  addedWidgets: string[], 
-  onToggleWidget: (id: string) => void,
-  userName: string,
-  orgName: string,
-  user: any
+  user,
+}: {
+  addedWidgets: string[];
+  onToggleWidget: (id: string) => void;
+  userName: string;
+  orgName: string;
+  user: any;
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
 
@@ -266,7 +258,10 @@ function CommandCenterDashboard({
 
   return (
     <div className="min-h-screen w-full text-foreground p-5 lg:p-8 bg-transparent" suppressHydrationWarning>
-      <div className="mx-auto max-w-6xl flex flex-col gap-5" suppressHydrationWarning>
+
+        {/* Weekly Summary Section */}
+        <WeeklySummary />
+
         <div className="flex flex-col gap-3 rounded-2xl border border-border/40 bg-card/40 backdrop-blur-xl p-4" suppressHydrationWarning>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -315,14 +310,6 @@ function CommandCenterDashboard({
             <Stat icon={<FolderKanban className="h-5 w-5" />} title="Projets Actifs" value="12" delta="+2" tone="good" />
             <Stat icon={<Activity className="h-5 w-5" />} title="Tâches du Jour" value="9" delta="+1" tone="good" />
             <Stat icon={<Target className="h-5 w-5" />} title="KPI Suivis" value="24" delta="+0%" tone="neutral" />
-          </div>
-
-          {/* Weekly Summary Snapshot (Generated every Monday at 00:00) */}
-          <div className="mb-2">
-            <WeeklySummary 
-              role={user?.role === 'admin' || user?.role === 'executive' ? 'admin' : 'member'} 
-              userName={user?.name || "Utilisateur"} 
-            />
           </div>
 
           {/* Dynamic Widgets Section */}
@@ -521,7 +508,6 @@ function CommandCenterDashboard({
           addedWidgets={addedWidgets} 
           onToggleWidget={onToggleWidget}
         />
-      </div>
   );
 }
 
@@ -636,11 +622,11 @@ function AIProductivityDashboard({
   orgName,
   user
 }: { 
-  addedWidgets: string[], 
-  onToggleWidget: (id: string) => void,
-  userName: string,
-  orgName: string,
-  user: any
+  addedWidgets: string[]; 
+  onToggleWidget: (id: string) => void;
+  userName: string;
+  orgName: string;
+  user: any;
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [period, setPeriod] = useState<"1mois" | "1trimestre">("1mois");
@@ -732,10 +718,7 @@ function AIProductivityDashboard({
 
           {/* Weekly Summary Snapshot */}
           <div className="mb-2">
-            <WeeklySummary 
-              role={user?.role === 'admin' || user?.role === 'executive' ? 'admin' : 'member'} 
-              userName={userName} 
-            />
+            <WeeklySummary />
           </div>
 
           {/* Dynamic Widgets Section */}
@@ -963,11 +946,11 @@ function ExecutiveFuturistDashboard({
   orgName,
   user
 }: { 
-  addedWidgets: string[], 
-  onToggleWidget: (id: string) => void,
-  userName: string,
-  orgName: string,
-  user: any
+  addedWidgets: string[]; 
+  onToggleWidget: (id: string) => void;
+  userName: string;
+  orgName: string;
+  user: any;
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<"idle" | "thinking">("idle");
@@ -1000,6 +983,10 @@ function ExecutiveFuturistDashboard({
   return (
     <div className="min-h-screen w-full bg-transparent text-foreground font-sans selection:bg-pink-200/30 p-5 lg:p-10" suppressHydrationWarning>
       <div className="mx-auto flex flex-col max-w-6xl gap-8" suppressHydrationWarning>
+        
+        {/* Weekly Summary Section */}
+        <WeeklySummary />
+
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
@@ -1104,10 +1091,7 @@ function ExecutiveFuturistDashboard({
 
           {/* Weekly Summary Snapshot */}
           <div className="mb-2">
-            <WeeklySummary 
-              role={user?.role === 'admin' || user?.role === 'executive' ? 'admin' : 'member'} 
-              userName={userName} 
-            />
+            <WeeklySummary />
           </div>
 
           {/* Dynamic Widgets Section */}

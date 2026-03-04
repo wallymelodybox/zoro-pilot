@@ -3,10 +3,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { assignRoleToUser } from '@/lib/rbac'
+import { assignRoleToUser, hasPermission } from '@/lib/rbac'
 
 export async function createProject(formData: FormData) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return { error: 'Non autorisé' }
+  
+  const canCreate = await hasPermission(user.id, 'create_project')
+  if (!canCreate) return { error: 'Vous n\'avez pas la permission de créer des projets.' }
   
   const name = formData.get('name') as string
   
@@ -15,16 +21,14 @@ export async function createProject(formData: FormData) {
   }
 
   // Default values for a new project
-  // Using Marc Dubois (manager) and Team Produit from seed-data.sql
-  const ownerId = 'a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d' 
   const newProject = {
     name,
     status: 'on-track',
     progress: 0,
-    owner_id: ownerId,
-    team_id: 'b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e',
+    owner_id: user.id,
+    team_id: formData.get('teamId') as string || null,
     start_date: new Date().toISOString().split('T')[0],
-    end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // +90 days
+    end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
   }
 
   const { data, error } = await supabase
@@ -40,11 +44,9 @@ export async function createProject(formData: FormData) {
 
   // Assign 'Manager' role to the creator for this specific project
   try {
-    // Note: In a real app, ensure 'Manager' role exists in DB via migration/seed
-    await assignRoleToUser(ownerId, 'Manager', 'project', data.id)
+    await assignRoleToUser(user.id, 'Manager', 'project', data.id)
   } catch (e) {
     console.error('Failed to assign project role:', e)
-    // Don't fail the request, just log it. The project was created.
   }
 
   revalidatePath('/work')
@@ -72,13 +74,22 @@ export async function redirectToApp() {
 
 export async function createTask(formData: FormData) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
   
+  const projectId = formData.get('projectId') as string
+  
+  // Check permission: create_task on project scope
+  if (projectId && projectId !== "none") {
+    const canCreate = await hasPermission(user.id, 'create_task', projectId)
+    if (!canCreate) return { error: 'Vous n\'avez pas la permission de créer des tâches dans ce projet.' }
+  }
+
   const title = formData.get('title') as string
   const description = formData.get('description') as string
-  const projectId = formData.get('projectId') as string
   const priority = formData.get('priority') as string || 'medium'
   const status = formData.get('status') as string || 'todo'
-  const assigneeId = formData.get('assigneeId') as string || 'a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d' // Marc Dubois
+  const assigneeId = formData.get('assigneeId') as string || user.id
   const dueDate = formData.get('dueDate') as string
 
   if (!title) {
@@ -208,28 +219,186 @@ export async function bootstrapChat() {
   }
 }
 
-export async function createList(formData: FormData) {
-    // For "List", we can treat it as a Project with a specific type or tag, 
-    // or just a simple project for now as per the schema.
-    return createProject(formData)
+export async function getTeamHierarchy(managerId: string) {
+  const supabase = await createClient()
+  
+  // 1. Get all teams managed by this user
+  const { data: managedTeams } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('manager_id', managerId)
+    
+  if (!managedTeams || managedTeams.length === 0) return []
+  
+  const teamIds = managedTeams.map(t => t.id)
+  
+  // 2. Recursively find all sub-teams
+  // For a pilot, we'll do 2 levels or a simple flat search of sub-teams
+  const { data: subTeams } = await supabase
+    .from('teams')
+    .select('id')
+    .in('parent_team_id', teamIds)
+    
+  if (subTeams && subTeams.length > 0) {
+    teamIds.push(...subTeams.map(st => st.id))
+  }
+  
+  return teamIds
+}
+
+export async function getManagerViewData() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  
+  const teamIds = await getTeamHierarchy(user.id)
+  
+  // If no teams managed, user only sees their own stuff (handled by normal fetch)
+  if (teamIds.length === 0) return null
+  
+  // Fetch projects for these teams
+  const { data: teamProjects } = await supabase
+    .from('projects')
+    .select('*')
+    .in('team_id', teamIds)
+    
+  return { teamProjects, teamIds }
+}
+
+async function createNotification(userId: string, title: string, content: string, type: 'info' | 'alert' | 'success' = 'info') {
+  const supabase = await createClient()
+  
+  // Check if messages table can be used for system notifications
+  // or if we should create a dedicated notification table
+  // For now, we'll send a message to the user's personal channel or just log it
+  console.log(`Notification for ${userId}: ${title} - ${content}`)
+  
+  // In a real app, we'd insert into a 'notifications' table
+  // For the demo, let's use the 'messages' table with a 'system' type if a system channel exists
 }
 
 export async function updateTaskStatus(taskId: string, status: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   
-  const { error } = await supabase
+  // 1. Update the task status
+  const { data: task, error } = await supabase
     .from('tasks')
     .update({ status })
     .eq('id', taskId)
+    .select('*, projects(*)')
+    .single()
 
   if (error) {
     console.error('Error updating task status:', error)
     return { error: 'Erreur lors de la mise à jour du statut.' }
   }
 
+  // Notification: If task is DONE, notify the project owner
+  if (status === 'done' && task.projects?.owner_id && task.projects.owner_id !== user?.id) {
+    await createNotification(
+      task.projects.owner_id, 
+      'Tâche terminée', 
+      `La tâche "${task.title}" du projet "${task.projects.name}" a été marquée comme terminée.`
+    )
+  }
+
+  // 2. If the task is part of a project, recalculate project progress
+  if (task?.project_id) {
+    const { data: tasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('status')
+      .eq('project_id', task.project_id)
+
+    if (!tasksError && tasks && tasks.length > 0) {
+      const doneTasks = tasks.filter(t => t.status === 'done').length
+      const progress = Math.round((doneTasks / tasks.length) * 100)
+
+      const oldProgress = task.projects?.progress || 0
+      
+      await supabase
+        .from('projects')
+        .update({ progress })
+        .eq('id', task.project_id)
+
+      // Notification: If project hits 100%, notify the team
+      if (progress === 100 && oldProgress < 100) {
+         await createNotification(
+           task.projects.owner_id,
+           'Projet terminé !',
+           `Le projet "${task.projects.name}" est désormais à 100%.`,
+           'success'
+         )
+      }
+
+      // 3. If the project is linked to Key Results, update them too
+      const { data: linkedKRs } = await supabase
+        .from('project_key_results')
+        .select('key_result_id')
+        .eq('project_id', task.project_id)
+
+      if (linkedKRs && linkedKRs.length > 0) {
+        for (const kr of linkedKRs) {
+          const { data: krData } = await supabase
+            .from('key_results')
+            .select('unit, target_value, objective_id, title, owner_id')
+            .eq('id', kr.key_result_id)
+            .single()
+
+          if (krData && krData.unit === '%') {
+            const newValue = Math.min(krData.target_value, progress)
+            await supabase
+              .from('key_results')
+              .update({ current_value: newValue })
+              .eq('id', kr.key_result_id)
+
+            // 4. Recalculate Objective Progress
+            const { data: krs } = await supabase
+              .from('key_results')
+              .select('current_value, target_value, weight')
+              .eq('objective_id', krData.objective_id)
+
+            if (krs && krs.length > 0) {
+              let totalWeight = 0
+              let weightedProgress = 0
+              krs.forEach(k => {
+                const p = Math.min(100, (Number(k.current_value) / Number(k.target_value)) * 100)
+                weightedProgress += p * k.weight
+                totalWeight += k.weight
+              })
+              const objProgress = Math.round(weightedProgress / totalWeight)
+              
+              const { data: objData } = await supabase
+                .from('objectives')
+                .select('progress, title, owner_id')
+                .eq('id', krData.objective_id)
+                .single()
+
+              await supabase
+                .from('objectives')
+                .update({ progress: objProgress })
+                .eq('id', krData.objective_id)
+                
+              // Notification: Objective milestones
+              if (objProgress >= 50 && (objData?.progress || 0) < 50) {
+                 await createNotification(
+                   krData.owner_id,
+                   'Objectif à 50%',
+                   `L'objectif "${objData?.title}" a franchi la barre des 50% !`
+                 )
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   revalidatePath('/work')
   revalidatePath('/all-tasks')
   revalidatePath('/my-day')
+  revalidatePath('/strategy')
+  revalidatePath('/')
   return { success: true }
 }
 
@@ -367,6 +536,60 @@ export async function createKeyResult(formData: FormData) {
 
   revalidatePath('/strategy')
   return { success: true }
+}
+
+export async function getWeeklySummaryData(userId: string) {
+  const supabase = await createClient()
+  
+  // 1. Get user profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*, teams(name)')
+    .eq('id', userId)
+    .single()
+    
+  if (!profile) return null
+
+  // 2. Get tasks completed this week
+  const oneWeekAgo = new Date()
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+  const oneWeekAgoStr = oneWeekAgo.toISOString().split('T')[0]
+
+  const { data: recentTasks } = await supabase
+    .from('tasks')
+    .select('*, projects(name)')
+    .eq('assignee_id', userId)
+    .eq('status', 'done')
+    .gte('updated_at', oneWeekAgoStr)
+
+  // 3. Get pending/blocked tasks
+  const { data: pendingTasks } = await supabase
+    .from('tasks')
+    .select('*, projects(name)')
+    .eq('assignee_id', userId)
+    .in('status', ['in-progress', 'blocked'])
+
+  // 4. Get active projects for the user's team
+  const { data: activeProjects } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('team_id', profile.team_id)
+    .neq('status', 'done')
+
+  // 5. Get OKR progress
+  const { data: objectives } = await supabase
+    .from('objectives')
+    .select('*, key_results(*)')
+    .eq('owner_id', userId)
+
+  return {
+    profile,
+    recentTasks: recentTasks || [],
+    pendingTasks: pendingTasks || [],
+    activeProjects: activeProjects || [],
+    objectives: objectives || [],
+    generatedAt: new Date().toISOString()
+  }
 }
 
 export async function createOKRCheckin(formData: FormData) {

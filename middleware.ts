@@ -5,7 +5,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
   const hostname = request.headers.get('host')
-  const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.com'
+  const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.company'
   const appDomain = process.env.APP_DOMAIN || 'zoro-pilot.company'
 
   const sessionResponse = await updateSession(request)
