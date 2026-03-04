@@ -4,12 +4,14 @@ import React from "react"
 import { ThemeBackground } from "@/components/theme/theme-background"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { Shield, LayoutDashboard, Settings, LogOut, Command } from "lucide-react"
+import { Shield, LayoutDashboard, Settings, LogOut, Command, Activity } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { redirectToApp } from "@/app/actions"
+import { useUser } from "@/hooks/use-user"
 
 export default function BOLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const { user, loading } = useUser()
   const [isAdminDomain, setIsAdminDomain] = React.useState(false)
 
   React.useEffect(() => {
@@ -19,6 +21,21 @@ export default function BOLayout({ children }: { children: React.ReactNode }) {
       setIsAdminDomain(true)
     }
   }, [])
+
+  const isAuthorized = user?.rbac_role === 'super_admin' || user?.email === 'menannzoro@gmail.com'
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Activity className="h-10 w-10 animate-spin text-primary opacity-20" />
+      </div>
+    )
+  }
+
+  // If not authorized, let the page handle its own "Not Authorized" view without the BO layout
+  if (!isAuthorized) {
+    return <>{children}</>
+  }
 
   const navItems = [
     { href: "/bo-zoro-control-2026-secure", label: "Dashboard", icon: LayoutDashboard },

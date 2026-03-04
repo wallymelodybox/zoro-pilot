@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import styles from "./strategic-dashboard.module.css";
 import {
   Home,
   Target,
@@ -125,9 +126,10 @@ function ProgressBar({ value }: { value: number }) {
       <div className="h-2.5 rounded-full bg-muted/50 overflow-hidden">
         <div
           className={cx(
-            "h-full rounded-full bg-primary shadow-[0_0_18px_var(--glow-primary)] transition-all"
+            "h-full rounded-full bg-primary shadow-[0_0_18px_var(--glow-primary)] transition-all",
+            styles.progressBar
           )}
-          style={{ width: `${clamped}%` }}
+          {...{ style: { '--progress-width': `${clamped}%` } as React.CSSProperties }}
         />
       </div>
       <div className="mt-1 flex items-center justify-between text-[10px] font-medium text-muted-foreground">

@@ -5,8 +5,8 @@ import { useUser } from "@/hooks/use-user"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Shield, UserPlus, Key, Building, Activity, LayoutDashboard, Clock, AlertCircle } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Shield, UserPlus, Key, Building, Activity, LayoutDashboard, Clock, AlertCircle, LogOut } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { createDGAccount } from "./actions"
@@ -29,9 +29,11 @@ export default function BackOfficePage() {
       if (user?.rbac_role === 'super_admin' || user?.email === 'menannzoro@gmail.com') {
         setIsAuthorized(true)
         fetchStats()
-      } else {
-        redirect("/")
+      } else if (!user) {
+        // Redirect to login if not logged in
+        redirect("/login")
       }
+      // If user is logged in but not authorized, stay on page and show "Not Authorized" view
     }
   }, [user, loading])
 
@@ -50,6 +52,65 @@ export default function BackOfficePage() {
     } finally {
       setFetching(false)
     }
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut()
+    redirect("/login")
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-muted-foreground animate-pulse font-medium">Vérification des accès...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <Card className="max-w-md w-full border-destructive/20 bg-destructive/5 shadow-2xl">
+          <CardHeader className="text-center">
+            <div className="mx-auto h-16 w-16 bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+              <Shield className="h-8 w-8 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-destructive">Accès Restreint</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Votre compte ({user?.email}) n'a pas les privilèges requis pour accéder au Back Office.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-destructive/10 p-4 rounded-xl flex items-start gap-3 border border-destructive/20">
+              <AlertCircle className="h-5 w-5 text-destructive mt-0.5 shrink-0" />
+              <p className="text-sm text-destructive/80 leading-relaxed">
+                Seuls les comptes avec le rôle <strong>super_admin</strong> peuvent accéder à cette zone de contrôle.
+              </p>
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-3">
+            <Button 
+              onClick={handleSignOut}
+              variant="outline" 
+              className="w-full h-11 rounded-xl border-border/40 hover:bg-background/80"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Se déconnecter pour changer de compte
+            </Button>
+            <Button 
+              onClick={() => redirect("/")}
+              variant="ghost" 
+              className="w-full h-11 rounded-xl text-muted-foreground hover:text-foreground"
+            >
+              Retourner au dashboard client
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    )
   }
 
   const handleCreateDG = async (e: React.FormEvent) => {
