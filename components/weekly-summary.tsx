@@ -89,22 +89,22 @@ export function WeeklySummary({ userId }: WeeklyReportProps) {
   return (
     <div className="space-y-6">
       {/* Header with Dynamic Gradient Border */}
-      <div className="relative group p-0.5 rounded-3xl overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary via-blue-500 to-purple-600 animate-tilt group-hover:duration-200" />
-        <div className="relative bg-card/95 backdrop-blur-xl rounded-[22px] p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="relative overflow-hidden rounded-3xl p-0.5 group">
+        <div className="absolute inset-0 bg-linear-to-r via-blue-500 to-purple-600 group-hover:duration-200 from-primary animate-tilt" />
+        <div className="relative flex flex-col items-center justify-between gap-6 rounded-[22px] p-6 backdrop-blur-xl md:flex-row md:p-8 bg-card/95">
           <div className="flex items-center gap-6">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl shadow-inner bg-primary/10 text-primary">
               <FileText className="h-8 w-8" />
             </div>
             <div className="space-y-1">
-              <h2 className="text-2xl font-black tracking-tight font-sans">Résumé de la Semaine</h2>
+              <h2 className="font-sans text-2xl font-black tracking-tight">Résumé de la Semaine</h2>
               <div className="flex items-center gap-3 text-muted-foreground">
-                <Badge variant="outline" className="rounded-full bg-muted/50 border-border/50 font-mono text-[10px] uppercase tracking-wider px-2 py-0.5">
-                  <Calendar className="h-3 w-3 mr-1 text-primary" />
+                <Badge variant="outline" className="rounded-full px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase bg-muted/50 border-border-/50">
+                  <Calendar className="mr-1 h-3 w-3 text-primary" />
                   Semaine du {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })}
                 </Badge>
-                <Badge variant="outline" className="rounded-full bg-muted/50 border-border/50 font-mono text-[10px] uppercase tracking-wider px-2 py-0.5">
-                  <Clock className="h-3 w-3 mr-1 text-blue-500" />
+                <Badge variant="outline" className="rounded-full px-2 py-0.5 font-mono text-[10px] tracking-wider uppercase bg-muted/50 border-border-/50">
+                  <Clock className="mr-1 h-3 w-3 text-blue-500" />
                   {new Date().toLocaleDateString('fr-FR', { year: 'numeric' })}
                 </Badge>
               </div>
@@ -112,24 +112,24 @@ export function WeeklySummary({ userId }: WeeklyReportProps) {
           </div>
           
           <div className="flex items-center gap-3">
-            <Button variant="outline" className="rounded-xl border-border/40 hover:bg-muted/50 transition-all font-sans text-sm font-semibold" onClick={() => setHistoryOpen(!historyOpen)}>
-              <Clock className="h-4 w-4 mr-2" />
+            <Button variant="outline" className="rounded-xl font-sans text-sm font-semibold transition-all border-border-/40 hover:bg-muted/50" onClick={() => setHistoryOpen(!historyOpen)}>
+              <Clock className="mr-2 h-4 w-4" />
               Historique
             </Button>
-            <Button className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-sm font-bold shadow-lg shadow-primary/25 transition-all active:scale-95" onClick={handleExportPDF}>
-              <Download className="h-4 w-4 mr-2" />
+            <Button className="rounded-xl font-sans text-sm font-bold shadow-lg transition-all active:scale-95 bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/25" onClick={handleExportPDF}>
+              <Download className="mr-2 h-4 w-4" />
               Exporter en PDF
             </Button>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* Main Insights (DG View or Employee View) */}
-        <div className="md:col-span-2 space-y-6">
-          <Card className="rounded-3xl border-border/40 bg-card/40 backdrop-blur-sm overflow-hidden">
+        <div className="space-y-6 md:col-span-2">
+          <Card className="overflow-hidden rounded-3xl backdrop-blur-sm border-border-/40 bg-card/40">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg font-bold">
                 <TrendingUp className="h-5 w-5 text-green-500" />
                 {isDG ? "KPIs & Performance Globale" : "Mes Réalisations Clés"}
               </CardTitle>
@@ -140,18 +140,18 @@ export function WeeklySummary({ userId }: WeeklyReportProps) {
             <CardContent className="space-y-6">
               {isDG ? (
                 // DG VIEW: Strategy & High Level
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   {data.objectives.map((obj: any) => (
-                    <div key={obj.id} className="p-4 rounded-2xl bg-muted/20 border border-border/30 space-y-3">
-                      <div className="flex justify-between items-start gap-2">
-                        <span className="text-sm font-bold leading-tight">{obj.title}</span>
+                    <div key={obj.id} className="space-y-3 rounded-2xl border p-4 bg-muted/20 border-border-/30">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm leading-tight font-bold">{obj.title}</span>
                         <Badge variant={obj.progress > 80 ? 'default' : 'secondary'}>{obj.progress}%</Badge>
                       </div>
                       <Progress value={obj.progress} className="h-1.5" />
                       <div className="flex flex-col gap-1">
                         {obj.key_results?.slice(0, 2).map((kr: any) => (
                           <div key={kr.id} className="flex items-center justify-between text-[10px] text-muted-foreground">
-                            <span className="truncate max-w-30">{kr.title}</span>
+                            <span className="max-w-30 truncate">{kr.title}</span>
                             <span className="font-mono">{Math.round((kr.current_value / kr.target_value) * 100)}%</span>
                           </div>
                         ))}
@@ -165,17 +165,17 @@ export function WeeklySummary({ userId }: WeeklyReportProps) {
                   {data.recentTasks.length > 0 ? (
                     <div className="space-y-3">
                       {data.recentTasks.slice(0, 5).map((task: any) => (
-                        <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/20 border border-border/30 group hover:bg-muted/40 transition-colors">
-                          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                        <div key={task.id} className="flex items-center gap-3 rounded-xl border p-3 transition-colors bg-muted/20 border-border-/30 group hover:bg-muted/40">
+                          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-500" />
                           <div className="flex-1 overflow-hidden">
-                            <p className="text-sm font-medium truncate">{task.title}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{task.projects?.name || 'Sans Projet'}</p>
+                            <p className="truncate text-sm font-medium">{task.title}</p>
+                            <p className="text-[10px] font-bold tracking-wider uppercase text-muted-foreground">{task.projects?.name || 'Sans Projet'}</p>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-8 text-muted-foreground">
+                    <div className="py-8 text-center text-muted-foreground">
                       Aucune tâche terminée cette semaine.
                     </div>
                   )}
@@ -185,9 +185,9 @@ export function WeeklySummary({ userId }: WeeklyReportProps) {
           </Card>
 
           {/* Blockers & Priorities */}
-          <Card className="rounded-3xl border-border/40 bg-card/40 backdrop-blur-sm">
+          <Card className="rounded-3xl backdrop-blur-sm border-border-/40 bg-card/40">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-lg font-bold">
                 <AlertCircle className="h-5 w-5 text-destructive" />
                 {isDG ? "Risques & Points de Vigilance" : "Bloquages & Prochaines Étapes"}
               </CardTitle>
@@ -196,16 +196,16 @@ export function WeeklySummary({ userId }: WeeklyReportProps) {
               <div className="space-y-4">
                 {data.pendingTasks.filter((t: any) => t.status === 'blocked').length > 0 ? (
                   data.pendingTasks.filter((t: any) => t.status === 'blocked').map((t: any) => (
-                    <div key={t.id} className="flex items-start gap-3 p-3 rounded-xl bg-destructive/10 border border-destructive/20">
-                      <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    <div key={t.id} className="flex items-start gap-3 rounded-xl border p-3 bg-destructive/10 border-destructive/20">
+                      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
                       <div>
                         <p className="text-sm font-bold text-destructive">{t.title}</p>
-                        <p className="text-xs text-destructive/80 mt-1">{t.description || "Besoin d'assistance ou d'approbation pour avancer."}</p>
+                        <p className="mt-1 text-xs text-destructive/80">{t.description || "Besoin d'assistance ou d'approbation pour avancer."}</p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600">
+                  <div className="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/10 p-4 text-green-600">
                     <CheckCircle2 className="h-5 w-5 shrink-0" />
                     <p className="text-sm font-medium">Aucun point bloquant critique identifié.</p>
                   </div>
@@ -217,18 +217,18 @@ export function WeeklySummary({ userId }: WeeklyReportProps) {
 
         {/* Sidebar Info */}
         <div className="space-y-6">
-          <Card className="rounded-3xl border-border/40 bg-card/40 backdrop-blur-sm p-6">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <div className="h-20 w-20 rounded-full border-4 border-primary/20 p-1">
-                <div className="h-full w-full rounded-full bg-muted flex items-center justify-center text-2xl font-black text-primary overflow-hidden">
+          <Card className="rounded-3xl p-6 backdrop-blur-sm border-border-/40 bg-card/40">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="h-20 w-20 rounded-full border-4 p-1 border-primary/20">
+                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full text-2xl font-black bg-muted text-primary">
                   {data.profile.avatar_url ? <img src={data.profile.avatar_url} alt={data.profile.name} className="h-full w-full object-cover" /> : data.profile.name.charAt(0)}
                 </div>
               </div>
               <div>
-                <h3 className="text-lg font-black font-sans">{data.profile.name}</h3>
-                <p className="text-xs text-muted-foreground font-medium">{data.profile.role}</p>
+                <h3 className="font-sans text-lg font-black">{data.profile.name}</h3>
+                <p className="text-xs font-medium text-muted-foreground">{data.profile.role}</p>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest">
+              <div className="flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-bold tracking-widest uppercase bg-primary/10 text-primary">
                 <Users className="h-3 w-3" />
                 {data.profile.teams?.name || 'Zoro Pilot'}
               </div>
@@ -237,28 +237,28 @@ export function WeeklySummary({ userId }: WeeklyReportProps) {
             <Separator className="my-6 opacity-50" />
             
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground font-sans">Tâches Finies</span>
+              <div className="flex items-center justify-between">
+                <span className="font-sans text-xs text-muted-foreground">Tâches Finies</span>
                 <span className="text-sm font-bold">{data.recentTasks.length}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground font-sans">En cours</span>
+              <div className="flex items-center justify-between">
+                <span className="font-sans text-xs text-muted-foreground">En cours</span>
                 <span className="text-sm font-bold">{data.pendingTasks.length}</span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground font-sans">Projets Actifs</span>
+              <div className="flex items-center justify-between">
+                <span className="font-sans text-xs text-muted-foreground">Projets Actifs</span>
                 <span className="text-sm font-bold">{data.activeProjects.length}</span>
               </div>
             </div>
           </Card>
 
-          <div className="p-6 rounded-3xl bg-primary flex flex-col items-center justify-center text-center space-y-3 shadow-xl shadow-primary/20">
-             <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center text-white">
+          <div className="flex flex-col items-center justify-center space-y-3 rounded-3xl p-6 text-center shadow-xl bg-primary shadow-primary/20">
+             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 text-white">
                 <Target className="h-6 w-6" />
              </div>
              <div className="text-white">
-                <p className="text-xs font-bold uppercase tracking-widest opacity-80">Objectif du mois</p>
-                <p className="text-lg font-black leading-tight mt-1">Lancement Zoro V2</p>
+                <p className="text-xs font-bold tracking-widest uppercase opacity-80">Objectif du mois</p>
+                <p className="mt-1 text-lg leading-tight font-black">Lancement Zoro V2</p>
              </div>
              <Progress value={65} className="h-1.5 w-full bg-white/20" />
              <p className="text-[10px] font-bold text-white/90">65% de progression globale</p>

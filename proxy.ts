@@ -1,8 +1,8 @@
 
 import { type NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase/middleware'
+import { updateSession } from '@/lib/supabase/session'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone()
   const hostname = request.headers.get('host')
   const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.company'

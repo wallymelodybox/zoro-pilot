@@ -125,7 +125,7 @@ function ProgressBar({ value }: { value: number }) {
           className={cx(
             "h-full rounded-full bg-primary shadow-[0_0_18px_var(--glow-primary)] transition-all"
           )}
-                    {/* eslint-disable-next-line react-dom/no-inline-styles */}
+          {/* eslint-disable-next-line react-dom/no-inline-styles */}
           style={{ width: `${clamped}%` }}
         />
       </div>
@@ -258,7 +258,7 @@ function CommandCenterDashboard({
 
   return (
     <div className="min-h-screen w-full text-foreground p-5 lg:p-8 bg-transparent" suppressHydrationWarning>
-
+      <div className="mx-auto max-w-6xl flex flex-col gap-5">
         {/* Weekly Summary Section */}
         <WeeklySummary />
 
@@ -508,6 +508,7 @@ function CommandCenterDashboard({
           addedWidgets={addedWidgets} 
           onToggleWidget={onToggleWidget}
         />
+      </div>
   );
 }
 
