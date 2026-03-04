@@ -104,7 +104,12 @@ export async function login(formData: FormData) {
 
   revalidatePath('/', 'layout')
 
-  // Logique de redirection selon le domaine
+  // Logique de redirection après connexion
+  const next = formData.get('next') as string
+  if (next) {
+    redirect(next)
+  }
+
   const headersList = await (await import('next/headers')).headers()
   const hostname = headersList.get('host')
   const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.com'
