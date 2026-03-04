@@ -52,6 +52,8 @@ import { useThemeVariant, type ThemeVariant } from "./theme/variant-provider";
 import { WidgetHub, WIDGETS } from "./widget-hub";
 import { toast } from "sonner";
 import { useUser } from "@/hooks/use-user";
+import { useSupabaseData } from "@/hooks/use-supabase";
+import { useDashboardMetrics, type DashboardMetrics } from "@/hooks/use-dashboard-metrics";
 import { WeeklySummary } from "./weekly-summary";
 
 // ─── UTILS ──────────────────────────────────────────────────────────────────
@@ -125,7 +127,6 @@ function ProgressBar({ value }: { value: number }) {
           className={cx(
             "h-full rounded-full bg-primary shadow-[0_0_18px_var(--glow-primary)] transition-all"
           )}
-          {/* eslint-disable-next-line react-dom/no-inline-styles */}
           style={{ width: `${clamped}%` }}
         />
       </div>
@@ -229,31 +230,16 @@ function CommandCenterDashboard({
   userName,
   orgName,
   user,
+  metrics,
 }: {
   addedWidgets: string[];
   onToggleWidget: (id: string) => void;
   userName: string;
   orgName: string;
   user: any;
+  metrics: DashboardMetrics;
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
-
-  const radarData = [
-    { axe: "Délai", value: 72 },
-    { axe: "Budget", value: 85 },
-    { axe: "Scope", value: 65 },
-    { axe: "Risque", value: 45 },
-    { axe: "Qualité", value: 90 },
-  ];
-
-  const barData = [
-    { label: "J-3", value: 5 },
-    { label: "J-2", value: 9 },
-    { label: "Hier", value: 10 },
-    { label: "Aujourd'hui", value: 12 },
-    { label: "Demain", value: 6 },
-  ];
-
   const [period, setPeriod] = useState<"1mois" | "1trimestre">("1mois");
 
   return (
@@ -265,7 +251,7 @@ function CommandCenterDashboard({
         <div className="flex flex-col gap-3 rounded-2xl border border-border/40 bg-card/40 backdrop-blur-xl p-4" suppressHydrationWarning>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="text-xs text-foreground/55">Jeudi 26 février</div>
+                <div className="text-xs text-foreground/55">{metrics.formattedDate}</div>
                 <div className="text-3xl font-semibold tracking-tight">
                   Bonjour, <span className="text-foreground/90">{userName}</span> !
                 </div>
@@ -306,10 +292,10 @@ function CommandCenterDashboard({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            <Stat icon={<BarChart3 className="h-5 w-5" />} title="Score d'Exécution" value="78%" delta="+4%" tone="good" />
-            <Stat icon={<FolderKanban className="h-5 w-5" />} title="Projets Actifs" value="12" delta="+2" tone="good" />
-            <Stat icon={<Activity className="h-5 w-5" />} title="Tâches du Jour" value="9" delta="+1" tone="good" />
-            <Stat icon={<Target className="h-5 w-5" />} title="KPI Suivis" value="24" delta="+0%" tone="neutral" />
+            <Stat icon={<BarChart3 className="h-5 w-5" />} title="Score d'Exécution" value={`${metrics.executionScore}%`} delta={metrics.executionDelta} tone={metrics.executionScore >= 60 ? "good" : "warn"} />
+            <Stat icon={<FolderKanban className="h-5 w-5" />} title="Projets Actifs" value={`${metrics.activeProjectsCount}`} delta={metrics.activeProjectsDelta} tone="good" />
+            <Stat icon={<Activity className="h-5 w-5" />} title="Tâches du Jour" value={`${metrics.todayTasksCount}`} delta={metrics.todayTasksDelta} tone="good" />
+            <Stat icon={<Target className="h-5 w-5" />} title="KPI Suivis" value={`${metrics.kpiCount}`} delta="+0%" tone="neutral" />
           </div>
 
           {/* Dynamic Widgets Section */}
@@ -347,48 +333,43 @@ function CommandCenterDashboard({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-sm text-muted-foreground">Score d'Exécution</div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">78%</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{metrics.executionScore}%</div>
                   <div className="mt-2 max-w-xl text-xs text-muted-foreground/70">
                     Indice consolidé (OKR, avancement projet, charge, risques, dépendances).
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge tone="good">Santé stratégique : Stable</Badge>
-                  <Badge tone="warn">Risque global : Modéré</Badge>
+                  <Badge tone={metrics.strategicHealth === 'Stable' ? 'good' : 'warn'}>Santé stratégique : {metrics.strategicHealth}</Badge>
+                  <Badge tone={metrics.riskLevel === 'Faible' ? 'good' : metrics.riskLevel === 'Modéré' ? 'warn' : 'bad'}>Risque global : {metrics.riskLevel}</Badge>
                 </div>
               </div>
 
               <div className="mt-4">
-                <ProgressBar value={78} />
+                <ProgressBar value={metrics.executionScore} />
               </div>
             </SurfaceCard>
 
             <SurfaceCard className="p-5">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-muted-foreground">Alertes</div>
-                <Badge tone="warn">2</Badge>
+                <Badge tone="warn">{metrics.alerts.length}</Badge>
               </div>
               <div className="mt-3 space-y-3">
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3">
-                  <div className="flex items-start gap-2">
-                    <ShieldAlert className="h-4 w-4 text-amber-500 mt-0.5" />
-                    <div>
-                      <div className="text-sm font-medium text-foreground">Dépendance critique</div>
-                      <div className="text-xs text-muted-foreground">
-                        Une dépendance bloque <span className="text-foreground/85">Lancement Beta V2</span>.
+                {metrics.alerts.length > 0 ? metrics.alerts.map((alert, i) => (
+                  <div key={i} className={cx("rounded-xl border p-3", alert.type === 'critical' ? "border-destructive/20 bg-destructive/10" : "border-amber-500/20 bg-amber-500/10")}>
+                    <div className="flex items-start gap-2">
+                      <ShieldAlert className={cx("h-4 w-4 mt-0.5", alert.type === 'critical' ? "text-destructive" : "text-amber-500")} />
+                      <div>
+                        <div className="text-sm font-medium text-foreground">{alert.title}</div>
+                        <div className="text-xs text-muted-foreground">{alert.description}</div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3">
-                  <div className="flex items-start gap-2">
-                    <ShieldAlert className="h-4 w-4 text-destructive mt-0.5" />
-                    <div>
-                      <div className="text-sm font-medium text-foreground">Priorité urgente</div>
-                      <div className="text-xs text-muted-foreground">Valider les maquettes UX (deadline aujourd'hui).</div>
-                    </div>
+                )) : (
+                  <div className="rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-green-600 text-sm">
+                    Aucune alerte active.
                   </div>
-                </div>
+                )}
               </div>
             </SurfaceCard>
           </div>
@@ -403,36 +384,40 @@ function CommandCenterDashboard({
                 </Link>
               </div>
 
-              <div className="mt-4 rounded-2xl border border-border/40 bg-card/20 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl border border-border/40 bg-card/20">
-                      <FolderKanban className="h-5 w-5 text-primary" />
+              {metrics.topProjects.length > 0 ? metrics.topProjects.slice(0, 2).map(proj => (
+                <div key={proj.id} className="mt-4 rounded-2xl border border-border/40 bg-card/20 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-10 w-10 place-items-center rounded-xl border border-border/40 bg-card/20">
+                        <FolderKanban className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-foreground">{proj.name}</div>
+                        <div className="text-xs text-muted-foreground">{proj.taskCount} tâche(s) · {proj.progress}%</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-medium text-foreground">Lancement Beta V2</div>
-                      <div className="text-xs text-muted-foreground">Pas de tâches, pour le moment</div>
-                    </div>
+                    <Badge tone={proj.status === 'on-track' ? 'good' : proj.status === 'at-risk' ? 'warn' : 'bad'}>{proj.status === 'on-track' ? 'En bonne voie' : proj.status === 'at-risk' ? 'À risque' : 'En retard'}</Badge>
                   </div>
-                  <Badge>Projets</Badge>
                 </div>
-              </div>
+              )) : (
+                <div className="mt-4 rounded-2xl border border-border/40 bg-card/20 p-4 text-center text-sm text-muted-foreground">Aucun projet actif</div>
+              )}
 
               <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div className="rounded-2xl border border-border/40 bg-card/20 p-4">
                   <div className="text-xs text-muted-foreground">Lancements</div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">5</div>
-                  <div className="mt-2 text-xs text-muted-foreground">+2% vs période</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{metrics.projectStats.launches}</div>
+                  <div className="mt-2 text-xs text-muted-foreground">projets &gt; 80%</div>
                 </div>
                 <div className="rounded-2xl border border-border/40 bg-card/20 p-4">
                   <div className="text-xs text-muted-foreground">Tâches terminées</div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">32</div>
-                  <div className="mt-2 text-xs text-muted-foreground">+5% vs période</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{metrics.projectStats.completedTasks}</div>
+                  <div className="mt-2 text-xs text-muted-foreground">total complétées</div>
                 </div>
                 <div className="rounded-2xl border border-border/40 bg-card/20 p-4">
                   <div className="text-xs text-muted-foreground">Dépendances</div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">8</div>
-                  <div className="mt-2 text-xs text-muted-foreground">+1% vs période</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{metrics.projectStats.dependencies}</div>
+                  <div className="mt-2 text-xs text-muted-foreground">bloqueurs + risques</div>
                 </div>
               </div>
             </SurfaceCard>
@@ -1278,6 +1263,8 @@ function ExecutiveFuturistDashboard({
 export function StrategicDashboard() {
   const { variant } = useThemeVariant();
   const { user, loading: userLoading } = useUser();
+  const { projects, tasks, objectives, keyResults, loading: dataLoading } = useSupabaseData();
+  const metrics = useDashboardMetrics(projects, tasks, objectives, keyResults);
   const [addedWidgets, setAddedWidgets] = useState<string[]>([]);
 
   const handleToggleWidget = (id: string, config?: any) => {
@@ -1292,7 +1279,7 @@ export function StrategicDashboard() {
     });
   };
 
-  if (userLoading) {
+  if (userLoading || dataLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-transparent" suppressHydrationWarning>
         <Activity className="h-10 w-10 animate-spin text-primary opacity-20" />
@@ -1304,14 +1291,14 @@ export function StrategicDashboard() {
   const orgName = user?.organization_name || "Zoro Pilot";
 
   if (variant === "ai-productivity") {
-    return <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} />;
+    return <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
   }
 
   if (variant === "executive-futurist") {
-    return <ExecutiveFuturistDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} />;
+    return <ExecutiveFuturistDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
   }
 
-  return <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} />;
+  return <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
 }
 
 export default StrategicDashboard;
