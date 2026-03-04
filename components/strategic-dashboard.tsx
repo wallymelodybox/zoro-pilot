@@ -453,7 +453,7 @@ function CommandCenterDashboard({
 
               <div className="mt-4 h-65">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData}>
+                  <RadarChart data={metrics.radarData}>
                     <PolarGrid stroke="var(--border)" />
                     <PolarAngleAxis dataKey="axe" tick={{ fill: "var(--muted-foreground)", fontSize: 12 }} />
                     <Radar
@@ -478,8 +478,8 @@ function CommandCenterDashboard({
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge tone="good">Qualité stable</Badge>
-                <Badge tone="warn">Risque modéré</Badge>
+                <Badge tone={metrics.strategicHealth === 'Stable' ? 'good' : 'warn'}>Qualité {metrics.strategicHealth === 'Stable' ? 'stable' : 'dégradée'}</Badge>
+                <Badge tone={metrics.riskLevel === 'Faible' ? 'good' : metrics.riskLevel === 'Modéré' ? 'warn' : 'bad'}>Risque {metrics.riskLevel.toLowerCase()}</Badge>
               </div>
             </SurfaceCard>
           </div>
