@@ -18,16 +18,16 @@ L'isolation est gérée au niveau de la couche "Edge" de Vercel via le fichier `
 3. Suivez les instructions de Vercel (souvent une simple validation TXT ou CNAME si acheté via Vercel).
 4. Vercel générera automatiquement le certificat SSL.
 
-### Étape 2 : Sous-domaine Back Office (Admin)
+### Étape 2 : Domaine Back Office (Admin) - Option Sécurisée
 1. Dans le même projet Vercel, ajoutez un second domaine : `zoro-secure-control-net.com`.
 2. **Important** : Ne pas rediriger ce domaine vers le premier. Il doit être configuré comme un domaine indépendant pointant vers le même projet.
-3. Configurez les DNS de la même manière.
+3. Puisque vous l'achetez via Vercel, les certificats et DNS seront configurés automatiquement.
 
 ## 3. Variables d'Environnement (Vercel)
 
 Pour que le routage fonctionne, configurez les variables suivantes dans Vercel (**Settings > Environment Variables**) :
 
-| Variable | Valeur (Exemple) | Portée |
+| Variable | Valeur | Portée |
 | :--- | :--- | :--- |
 | `APP_DOMAIN` | `app-zoro-pilot.company` | Production |
 | `ADMIN_DOMAIN` | `zoro-secure-control-net.com` | Production |
@@ -38,11 +38,11 @@ Pour que le routage fonctionne, configurez les variables suivantes dans Vercel (
 ## 4. Authentification & Sécurité
 
 ### Isolation Supabase
-1. **Redirect URLs** : Ajoutez `https://zoro-secure-control-net.com/**` dans **Supabase > Auth > URL Configuration**.
+1. **Redirect URLs** : Ajoutez `https://zoro-secure-control-net.com/**` ET `https://app-zoro-pilot.company/**` dans **Supabase > Auth > URL Configuration**.
 2. **RBAC** : La sécurité finale repose sur le rôle `rbac_role` dans la table `profiles`. Le middleware vérifie la session, mais la page admin vérifie explicitement le rôle `super_admin`.
 
 ### Tests de Validation
-- [ ] Accéder à `app.zoro-pilot.com/bo-zoro-control-2026-secure` -> Doit renvoyer **403**.
+- [ ] Accéder à `app-zoro-pilot.company/bo-zoro-control-2026-secure` -> Doit renvoyer **403**.
 - [ ] Accéder à `zoro-secure-control-net.com` -> Doit afficher le Dashboard Admin (après login).
 - [ ] Inspecter le code source (Network tab) -> Aucune trace de l'URL admin ne doit apparaître sur le domaine client.
 
