@@ -46,17 +46,18 @@ export function useSupabaseData() {
         supabase.from('okr_checkins').select('*').order('date', { ascending: false })
       ])
 
-      // If no data (e.g. tables empty), fallback to mock data for demo continuity
-      // Only fallback if we have NO projects AND NO tasks
+      // If no data, keep empty arrays (no mock fallback)
       const hasNoData = (!projectsData || projectsData.length === 0) && (!tasksData || tasksData.length === 0);
-      
+
       if (hasNoData) {
-         console.warn('Supabase data empty, falling back to mock data')
-         setProjects(mockProjects)
-         setTasks(mockTasks)
-         setObjectives(mockObjectives)
-         setPillars(mockPillars)
-         setUsingMockData(true)
+         console.info('Supabase data empty — all counters at 0')
+         setProjects([])
+         setTasks([])
+         setObjectives([])
+         setPillars([])
+         setKeyResults([])
+         setCheckins([])
+         setUsingMockData(false)
       } else {
         // Map DB fields to our frontend types
         const mappedProjects = projectsData.map((p: any) => ({
@@ -139,11 +140,13 @@ export function useSupabaseData() {
       }
     } catch (e) {
       console.error("Unexpected error fetching data", e)
-      setProjects(mockProjects)
-      setTasks(mockTasks)
-      setObjectives(mockObjectives)
-      setPillars(mockPillars)
-      setUsingMockData(true)
+      setProjects([])
+      setTasks([])
+      setObjectives([])
+      setPillars([])
+      setKeyResults([])
+      setCheckins([])
+      setUsingMockData(false)
     } finally {
       setLoading(false)
     }

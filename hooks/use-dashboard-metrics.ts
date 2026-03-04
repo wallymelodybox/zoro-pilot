@@ -73,9 +73,9 @@ export function useDashboardMetrics(
     const urgentTasks = tasks.filter(t => t.priority === 'urgent' || t.priority === 'high')
 
     // ── Execution score ──
-    const totalTasks = tasks.length || 1
-    const doneRatio = doneTasks.length / totalTasks
-    const blockedPenalty = (blockedTasks.length / totalTasks) * 30
+    const totalTasks = tasks.length
+    const doneRatio = totalTasks > 0 ? doneTasks.length / totalTasks : 0
+    const blockedPenalty = totalTasks > 0 ? (blockedTasks.length / totalTasks) * 30 : 0
     const avgProjectProgress = activeProjects.length > 0
       ? activeProjects.reduce((s, p) => s + p.progress, 0) / activeProjects.length
       : 0
@@ -89,11 +89,11 @@ export function useDashboardMetrics(
     // ── Radar data (project health dimensions) ──
     const atRiskProjects = projects.filter(p => p.status === 'at-risk').length
     const offTrackProjects = projects.filter(p => p.status === 'off-track').length
-    const scopeScore = totalTasks > 1 ? Math.round(100 - (blockedTasks.length / totalTasks) * 100) : 75
-    const riskScore = Math.round(100 - ((atRiskProjects + offTrackProjects * 2) / Math.max(1, projects.length)) * 100)
-    const qualityScore = Math.round(100 - (blockedTasks.length / Math.max(1, totalTasks)) * 50)
-    const delayScore = Math.round(avgProjectProgress > 0 ? Math.min(100, avgProjectProgress * 1.2) : 70)
-    const budgetScore = Math.round(Math.min(100, executionScore + 10))
+    const scopeScore = totalTasks > 0 ? Math.round(100 - (blockedTasks.length / totalTasks) * 100) : 0
+    const riskScore = projects.length > 0 ? Math.round(100 - ((atRiskProjects + offTrackProjects * 2) / projects.length) * 100) : 0
+    const qualityScore = totalTasks > 0 ? Math.round(100 - (blockedTasks.length / totalTasks) * 50) : 0
+    const delayScore = avgProjectProgress > 0 ? Math.round(Math.min(100, avgProjectProgress * 1.2)) : 0
+    const budgetScore = executionScore > 0 ? Math.round(Math.min(100, executionScore + 10)) : 0
 
     const radarData = [
       { axe: 'Délai', value: delayScore },
@@ -109,7 +109,7 @@ export function useDashboardMetrics(
       d.setDate(d.getDate() - (4 - i))
       const ds = d.toISOString().split('T')[0]
       const count = doneTasks.filter(t => t.dueDate === ds).length
-      return { label, value: count || Math.floor(Math.random() * 3) }
+      return { label, value: count }
     })
 
     // ── Weekly bar data ──
@@ -129,7 +129,7 @@ export function useDashboardMetrics(
         if (!t.dueDate) return false
         return new Date(t.dueDate).getDay() === ((i + 1) % 7)
       }).length
-      return { name, manual: Math.max(1, dayTasks), ai: Math.max(0, Math.round(dayTasks * 0.6)) }
+      return { name, manual: dayTasks, ai: 0 }
     })
 
     // ── Alerts ──
@@ -175,25 +175,20 @@ export function useDashboardMetrics(
       time: t.dueDate === todayStr ? "Aujourd'hui" : (t.dueDate || 'Bientôt'),
       color: t.priority === 'urgent' ? 'bg-destructive' : t.priority === 'high' ? 'bg-amber-500' : 'bg-primary',
     }))
-    // Ensure at least 3 items for the UI
-    while (topPriorities.length < 3 && todoTasks.length > topPriorities.length) {
-      const t = todoTasks[topPriorities.length]
-      topPriorities.push({ label: t.title, time: t.dueDate || 'À planifier', color: 'bg-primary' })
-    }
+    // No padding with fake items — show only real data
 
     // ── Executive stats ──
-    const productivityPct = Math.round((doneTasks.length / Math.max(1, totalTasks)) * 100)
+    const productivityPct = totalTasks > 0 ? Math.round((doneTasks.length / totalTasks) * 100) : 0
     const activeGoals = objectives.filter(o => o.progress < 100).length
-    const aiSavedHours = Math.round(doneTasks.length * 0.15 * 10) / 10
     const executiveStats = [
-      { label: 'Productivity', value: `${productivityPct}%`, delta: `+${Math.round(productivityPct * 0.05)}%` },
-      { label: 'Tasks Done', value: `${doneTasks.length}`, delta: `+${Math.min(doneTasks.length, 12)}` },
+      { label: 'Productivity', value: `${productivityPct}%`, delta: '0%' },
+      { label: 'Tasks Done', value: `${doneTasks.length}`, delta: '0' },
       { label: 'Active Goals', value: `${activeGoals}`, delta: '0' },
-      { label: 'AI Saved Time', value: `${aiSavedHours}h`, delta: `+${Math.round(aiSavedHours * 0.25 * 10) / 10}h` },
+      { label: 'AI Saved Time', value: '0h', delta: '0h' },
     ]
 
     // ── Completion donut ──
-    const completionPercent = Math.round((doneTasks.length / Math.max(1, totalTasks)) * 100)
+    const completionPercent = totalTasks > 0 ? Math.round((doneTasks.length / totalTasks) * 100) : 0
     const completionLabel = `${doneTasks.length} / ${totalTasks}`
 
     // ── Health / Risk ──
@@ -202,11 +197,11 @@ export function useDashboardMetrics(
 
     return {
       executionScore,
-      executionDelta: `+${Math.max(0, Math.round(executionScore * 0.05))}%`,
+      executionDelta: '0%',
       activeProjectsCount,
-      activeProjectsDelta: `+${Math.min(activeProjectsCount, 3)}`,
+      activeProjectsDelta: '0',
       todayTasksCount: todayTasks.length,
-      todayTasksDelta: `+${Math.min(todayTasks.length, 3)}`,
+      todayTasksDelta: '0',
       kpiCount: keyResults.length,
       radarData,
       taskBarData,
