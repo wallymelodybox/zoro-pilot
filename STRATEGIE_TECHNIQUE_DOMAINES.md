@@ -14,7 +14,7 @@ L'isolation est gérée au niveau de la couche "Edge" de Vercel via le fichier `
 
 ### Étape 1 : Domaine Principal (Application)
 1. Dans le dashboard Vercel, allez dans **Settings > Domains**.
-2. Ajoutez `app-zoro-pilot.company` (ou votre domaine choisi).
+2. Ajoutez `zoro-pilot.company` (ou votre domaine choisi).
 3. Suivez les instructions de Vercel (souvent une simple validation TXT ou CNAME si acheté via Vercel).
 4. Vercel générera automatiquement le certificat SSL.
 
@@ -29,7 +29,7 @@ Pour que le routage fonctionne, configurez les variables suivantes dans Vercel (
 
 | Variable | Valeur | Portée |
 | :--- | :--- | :--- |
-| `APP_DOMAIN` | `app-zoro-pilot.company` | Production |
+| `APP_DOMAIN` | `zoro-pilot.company` | Production |
 | `ADMIN_DOMAIN` | `zoro-secure-control-net.com` | Production |
 | `SUPABASE_SERVICE_ROLE_KEY` | `votre_cle_secrete` | Production (Secret) |
 
@@ -38,11 +38,11 @@ Pour que le routage fonctionne, configurez les variables suivantes dans Vercel (
 ## 4. Authentification & Sécurité
 
 ### Isolation Supabase
-1. **Redirect URLs** : Ajoutez `https://zoro-secure-control-net.com/**` ET `https://app-zoro-pilot.company/**` dans **Supabase > Auth > URL Configuration**.
+1. **Redirect URLs** : Ajoutez `https://zoro-secure-control-net.com/**` ET `https://zoro-pilot.company/**` dans **Supabase > Auth > URL Configuration**.
 2. **RBAC** : La sécurité finale repose sur le rôle `rbac_role` dans la table `profiles`. Le middleware vérifie la session, mais la page admin vérifie explicitement le rôle `super_admin`.
 
 ### Tests de Validation
-- [ ] Accéder à `app-zoro-pilot.company/bo-zoro-control-2026-secure` -> Doit renvoyer **403**.
+- [ ] Accéder à `zoro-pilot.company/bo-zoro-control-2026-secure` -> Doit renvoyer **403**.
 - [ ] Accéder à `zoro-secure-control-net.com` -> Doit afficher le Dashboard Admin (après login).
 - [ ] Inspecter le code source (Network tab) -> Aucune trace de l'URL admin ne doit apparaître sur le domaine client.
 
