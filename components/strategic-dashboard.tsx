@@ -601,39 +601,23 @@ function DonutLight({
   );
 }
 
-function AIProductivityDashboard({ 
-  addedWidgets, 
+function AIProductivityDashboard({
+  addedWidgets,
   onToggleWidget,
   userName,
   orgName,
-  user
-}: { 
-  addedWidgets: string[]; 
+  user,
+  metrics,
+}: {
+  addedWidgets: string[];
   onToggleWidget: (id: string) => void;
   userName: string;
   orgName: string;
   user: any;
+  metrics: DashboardMetrics;
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [period, setPeriod] = useState<"1mois" | "1trimestre">("1mois");
-
-  const radarData = [
-    { axe: "Productivité", value: 85 },
-    { axe: "Précision IA", value: 92 },
-    { axe: "Vitesse", value: 78 },
-    { axe: "Qualité Code", value: 88 },
-    { axe: "Docs", value: 70 },
-  ];
-
-  const barData = [
-    { label: "Lun", value: 12 },
-    { label: "Mar", value: 18 },
-    { label: "Mer", value: 15 },
-    { label: "Jeu", value: 24 },
-    { label: "Ven", value: 20 },
-    { label: "Sam", value: 8 },
-    { label: "Dim", value: 5 },
-  ];
 
   return (
     <div className="min-h-screen bg-transparent text-foreground p-5 lg:p-8" suppressHydrationWarning>
@@ -641,7 +625,7 @@ function AIProductivityDashboard({
         <SurfaceCard className="p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="text-xs text-muted-foreground">Jeudi 26 février</div>
+                <div className="text-xs text-muted-foreground">{metrics.formattedDate}</div>
                 <div className="text-3xl font-semibold tracking-tight">
                   Bonjour, <span className="text-foreground">{userName}</span> !
                 </div>
@@ -680,12 +664,14 @@ function AIProductivityDashboard({
               <div className="flex-1">
                 <div className="text-sm font-semibold text-foreground">Synthèse IA du jour</div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  Aujourd'hui vous êtes à <span className="font-semibold text-foreground">42%</span> de votre capacité d'exécution.
+                  Aujourd&apos;hui vous êtes à <span className="font-semibold text-foreground">{metrics.executionScore}%</span> de votre capacité d&apos;exécution.
                 </div>
                 <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                  <li>• 2 projets sont à risque.</li>
-                  <li>• 1 dépendance bloque le lancement <span className="font-medium text-foreground">Beta V2</span>.</li>
-                  <li>• Vous avez 3 actions critiques aujourd'hui.</li>
+                  {metrics.alerts.length > 0 ? metrics.alerts.slice(0, 3).map((a, i) => (
+                    <li key={i}>• {a.description}</li>
+                  )) : (
+                    <li>• Aucune alerte critique. Continuez ainsi !</li>
+                  )}
                 </ul>
               </div>
               <Badge tone="warn">
@@ -696,10 +682,10 @@ function AIProductivityDashboard({
           </SurfaceCard>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-            <StatCard title="Score d'exécution" value="78%" hint="Consolidé OKR + Projets" icon={<Target className="h-5 w-5 text-primary" />} />
-            <StatCard title="Projets actifs" value="12" hint="2 à risque" icon={<FolderKanban className="h-5 w-5 text-primary" />} />
-            <StatCard title="Tâches du jour" value="9" hint="3 critiques" icon={<CheckSquare className="h-5 w-5 text-primary" />} />
-            <StatCard title="KPI suivis" value="24" hint="Mensuel / Trimestriel" icon={<BarChart3 className="h-5 w-5 text-primary" />} />
+            <StatCard title="Score d'exécution" value={`${metrics.executionScore}%`} hint="Consolidé OKR + Projets" icon={<Target className="h-5 w-5 text-primary" />} />
+            <StatCard title="Projets actifs" value={`${metrics.activeProjectsCount}`} hint={`${metrics.alerts.filter(a => a.title.includes('risque')).length} à risque`} icon={<FolderKanban className="h-5 w-5 text-primary" />} />
+            <StatCard title="Tâches du jour" value={`${metrics.todayTasksCount}`} hint={`${metrics.activeTasks.filter(t => t.priority === 'urgent' || t.priority === 'high').length} critiques`} icon={<CheckSquare className="h-5 w-5 text-primary" />} />
+            <StatCard title="KPI suivis" value={`${metrics.kpiCount}`} hint="Mensuel / Trimestriel" icon={<BarChart3 className="h-5 w-5 text-primary" />} />
           </div>
 
           {/* Weekly Summary Snapshot */}
@@ -747,36 +733,40 @@ function AIProductivityDashboard({
                 </Link>
               </div>
 
-              <div className="mt-4 rounded-3xl bg-card/70 ring-1 ring-border/50 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-2xl bg-accent/20 ring-1 ring-border/50">
-                      <FolderKanban className="h-5 w-5 text-foreground/70" />
+              {metrics.topProjects.length > 0 ? metrics.topProjects.slice(0, 2).map(proj => (
+                <div key={proj.id} className="mt-4 rounded-3xl bg-card/70 ring-1 ring-border/50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-10 w-10 place-items-center rounded-2xl bg-accent/20 ring-1 ring-border/50">
+                        <FolderKanban className="h-5 w-5 text-foreground/70" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-foreground">{proj.name}</div>
+                        <div className="text-xs text-muted-foreground">{proj.taskCount} tâche(s) · {proj.progress}%</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-medium text-foreground">Lancement Beta V2</div>
-                      <div className="text-xs text-muted-foreground">Pas de tâches, pour le moment</div>
-                    </div>
+                    <Badge tone={proj.status === 'on-track' ? 'good' : proj.status === 'at-risk' ? 'warn' : 'bad'}>{proj.status === 'on-track' ? 'En bonne voie' : proj.status === 'at-risk' ? 'À risque' : 'En retard'}</Badge>
                   </div>
-                  <Badge>Projet</Badge>
                 </div>
-              </div>
+              )) : (
+                <div className="mt-4 rounded-3xl bg-card/70 ring-1 ring-border/50 p-4 text-center text-sm text-muted-foreground">Aucun projet actif</div>
+              )}
 
               <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                 <SurfaceCard className="p-4 bg-card/70 shadow-none ring-0">
                   <div className="text-xs text-muted-foreground">Lancements</div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">5</div>
-                  <div className="mt-2 text-xs text-muted-foreground">+2% vs période</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{metrics.projectStats.launches}</div>
+                  <div className="mt-2 text-xs text-muted-foreground">projets &gt; 80%</div>
                 </SurfaceCard>
                 <SurfaceCard className="p-4 bg-card/70 shadow-none ring-0">
                   <div className="text-xs text-muted-foreground">Tâches terminées</div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">32</div>
-                  <div className="mt-2 text-xs text-muted-foreground">+5% vs période</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{metrics.projectStats.completedTasks}</div>
+                  <div className="mt-2 text-xs text-muted-foreground">total complétées</div>
                 </SurfaceCard>
                 <SurfaceCard className="p-4 bg-card/70 shadow-none ring-0">
                   <div className="text-xs text-muted-foreground">Dépendances</div>
-                  <div className="mt-1 text-2xl font-semibold text-foreground">8</div>
-                  <div className="mt-2 text-xs text-muted-foreground">+1% vs période</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{metrics.projectStats.dependencies}</div>
+                  <div className="mt-2 text-xs text-muted-foreground">bloqueurs + risques</div>
                 </SurfaceCard>
               </div>
             </SurfaceCard>
@@ -808,7 +798,7 @@ function AIProductivityDashboard({
 
               <div className="mt-4 h-65">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData}>
+                  <RadarChart data={metrics.radarData}>
                     <PolarGrid stroke="var(--border)" />
                     <PolarAngleAxis dataKey="axe" tick={{ fill: "var(--muted-foreground)", fontSize: 12 }} />
                     <Radar
@@ -833,8 +823,8 @@ function AIProductivityDashboard({
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
-                <Badge tone="good">Qualité stable</Badge>
-                <Badge tone="warn">Risque modéré</Badge>
+                <Badge tone={metrics.strategicHealth === 'Stable' ? 'good' : 'warn'}>Qualité {metrics.strategicHealth === 'Stable' ? 'stable' : 'dégradée'}</Badge>
+                <Badge tone={metrics.riskLevel === 'Faible' ? 'good' : metrics.riskLevel === 'Modéré' ? 'warn' : 'bad'}>Risque {metrics.riskLevel.toLowerCase()}</Badge>
               </div>
             </SurfaceCard>
           </div>
@@ -848,7 +838,7 @@ function AIProductivityDashboard({
 
               <div className="mt-4 h-65">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={barData}>
+                  <BarChart data={metrics.weeklyBarData}>
                     <CartesianGrid stroke="var(--border)" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: "var(--muted-foreground)", fontSize: 12 }} />
                     <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 12 }} />
@@ -871,37 +861,26 @@ function AIProductivityDashboard({
             <SurfaceCard className="p-5">
               <div className="flex items-center justify-between">
                 <div className="text-lg font-semibold text-foreground">Items en cours</div>
-                <Badge>3</Badge>
+                <Badge>{metrics.activeTasks.length}</Badge>
               </div>
 
               <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between rounded-2xl bg-card/70 ring-1 ring-border/50 p-3">
-                  <div>
-                    <div className="text-sm font-medium text-foreground">Rédiger les specs fonctionnelles</div>
-                    <div className="text-xs text-muted-foreground">Priorité : High</div>
+                {metrics.activeTasks.slice(0, 3).map(task => (
+                  <div key={task.id} className="flex items-center justify-between rounded-2xl bg-card/70 ring-1 ring-border/50 p-3">
+                    <div>
+                      <div className="text-sm font-medium text-foreground">{task.title}</div>
+                      <div className="text-xs text-muted-foreground">Priorité : {task.priority}{task.projectName ? ` · ${task.projectName}` : ''}</div>
+                    </div>
+                    <Badge tone={task.priority === 'urgent' ? 'bad' : task.priority === 'high' ? 'warn' : 'neutral'}>{task.priority}</Badge>
                   </div>
-                  <Badge tone="warn">High</Badge>
-                </div>
-
-                <div className="flex items-center justify-between rounded-2xl bg-card/70 ring-1 ring-border/50 p-3">
-                  <div>
-                    <div className="text-sm font-medium text-foreground">Valider les maquettes UX</div>
-                    <div className="text-xs text-slate-500">Priorité : Urgent</div>
-                  </div>
-                  <Badge tone="bad">Urgent</Badge>
-                </div>
-
-                <div className="flex items-center justify-between rounded-2xl bg-card/70 ring-1 ring-border/50 p-3">
-                  <div>
-                    <div className="text-sm font-medium text-foreground">Configurer le serveur de staging</div>
-                    <div className="text-xs text-slate-500">Priorité : Medium</div>
-                  </div>
-                  <Badge>Medium</Badge>
-                </div>
+                ))}
+                {metrics.activeTasks.length === 0 && (
+                  <div className="text-center text-sm text-muted-foreground py-4">Aucune tâche en cours</div>
+                )}
               </div>
 
               <div className="mt-5 rounded-3xl bg-card/70 ring-1 ring-border/50 p-4">
-                <DonutLight percent={71} sub="32 / 45" />
+                <DonutLight percent={metrics.completionPercent} sub={metrics.completionLabel} />
               </div>
 
               <button className="mt-4 w-full rounded-2xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-[0_18px_50px_var(--glow-primary)] hover:opacity-90 transition">
@@ -925,44 +904,35 @@ function AIProductivityDashboard({
 
 // ─── DASHBOARD VARIANT 3: EXECUTIVE FUTURIST ────────────────────────────────
 
-function ExecutiveFuturistDashboard({ 
-  addedWidgets, 
+function ExecutiveFuturistDashboard({
+  addedWidgets,
   onToggleWidget,
   userName,
   orgName,
-  user
-}: { 
-  addedWidgets: string[]; 
+  user,
+  metrics,
+}: {
+  addedWidgets: string[];
   onToggleWidget: (id: string) => void;
   userName: string;
   orgName: string;
   user: any;
+  metrics: DashboardMetrics;
 }) {
   const [isWidgetHubOpen, setIsWidgetHubOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<"idle" | "thinking">("idle");
 
-  const chartData = useMemo(
-    () => [
-      { name: "Mon", manual: 40, ai: 24 },
-      { name: "Tue", manual: 30, ai: 13 },
-      { name: "Wed", manual: 20, ai: 98 },
-      { name: "Thu", manual: 27, ai: 39 },
-      { name: "Fri", manual: 18, ai: 48 },
-      { name: "Sat", manual: 23, ai: 38 },
-      { name: "Sun", manual: 34, ai: 43 },
-    ],
-    []
-  );
+  const statsIcons = [
+    <Zap key="zap" className="h-5 w-5 text-amber-500" />,
+    <CheckSquare key="cs" className="h-5 w-5 text-emerald-600" />,
+    <Target key="tgt" className="h-5 w-5 text-pink-600" />,
+    <Cpu key="cpu" className="h-5 w-5 text-purple-600" />,
+  ];
 
-  const stats = useMemo(
-    () => [
-      { label: "Productivity", value: "92%", delta: "+4.2%", icon: <Zap className="h-5 w-5 text-amber-500" /> },
-      { label: "Tasks Done", value: "48", delta: "+12", icon: <CheckSquare className="h-5 w-5 text-emerald-600" /> },
-      { label: "Active Goals", value: "6", delta: "0", icon: <Target className="h-5 w-5 text-pink-600" /> },
-      { label: "AI Saved Time", value: "4.5h", delta: "+1.2h", icon: <Cpu className="h-5 w-5 text-purple-600" /> },
-    ],
-    []
-  );
+  const stats = metrics.executiveStats.map((s, i) => ({
+    ...s,
+    icon: statsIcons[i],
+  }));
 
   const aiReady = aiStatus !== "thinking";
 
@@ -979,7 +949,7 @@ function ExecutiveFuturistDashboard({
                 Executive Overview
               </h1>
               <p className="text-muted-foreground mt-1">
-                Bonjour {userName}, l'IA a analysé vos <span className="font-semibold text-foreground">12</span> tâches prioritaires.
+                Bonjour {userName}, l&apos;IA a analysé vos <span className="font-semibold text-foreground">{metrics.todayTasksCount}</span> tâches prioritaires.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button 
@@ -1036,13 +1006,14 @@ function ExecutiveFuturistDashboard({
                 <div>
                   <div className="text-sm font-semibold text-foreground">Synthèse IA stratégique</div>
                   <div className="text-sm text-muted-foreground mt-1">
-                    Vous êtes à <span className="font-semibold text-primary">67%</span> de votre capacité d'exécution.
+                    Vous êtes à <span className="font-semibold text-primary">{metrics.executionScore}%</span> de votre capacité d&apos;exécution.
                     <span className="ml-2">Focus recommandé : priorités critiques avant 14h.</span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Badge tone="bad">2 projets à risque</Badge>
-                    <Badge tone="neutral">1 dépendance bloque Beta V2</Badge>
-                    <Badge tone="warn">3 actions critiques</Badge>
+                    {metrics.alerts.slice(0, 3).map((a, i) => (
+                      <Badge key={i} tone={a.type === 'critical' ? 'bad' : 'warn'}>{a.description}</Badge>
+                    ))}
+                    {metrics.alerts.length === 0 && <Badge tone="good">Aucune alerte critique</Badge>}
                   </div>
                 </div>
               </div>
@@ -1131,7 +1102,7 @@ function ExecutiveFuturistDashboard({
 
               <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
+                  <AreaChart data={metrics.performanceFlowData}>
                     <defs>
                       <linearGradient id="manualFill" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.16} />
@@ -1210,11 +1181,7 @@ function ExecutiveFuturistDashboard({
                 </div>
 
                 <div className="mt-4 space-y-4">
-                  {[
-                    { label: "Finalize OKR Q3", time: "2h left", color: "bg-primary" },
-                    { label: "API Documentation", time: "Tomorrow", color: "bg-amber-500" },
-                    { label: "Client Workshop", time: "Today, 4PM", color: "bg-destructive" },
-                  ].map((task, i) => (
+                  {metrics.topPriorities.map((task, i) => (
                     <div key={i} className="flex items-center justify-between group cursor-pointer">
                       <div className="flex items-center gap-3">
                         <div className={cn("h-2 w-2 rounded-full", task.color)} />

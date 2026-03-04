@@ -2,16 +2,16 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/session'
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const url = request.nextUrl.clone()
-  const hostname = request.headers.get('host')
-  const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.company'
-  const appDomain = process.env.APP_DOMAIN || 'zoro-pilot.company'
+  const hostname = request.nextUrl.hostname
+  const adminDomain = process.env.ADMIN_DOMAIN
+  const appDomain = process.env.APP_DOMAIN
 
   const sessionResponse = await updateSession(request)
 
   // 1. Logic for Admin Domain
-  if (hostname === adminDomain) {
+  if (adminDomain && hostname === adminDomain) {
     // If updateSession already decided to redirect (e.g. to /login or /onboarding), respect it
     if (sessionResponse.status >= 300 && sessionResponse.status < 400) {
       return sessionResponse
@@ -45,7 +45,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // 2. Logic for Main App Domain
-  if (hostname === appDomain) {
+  if (appDomain && hostname === appDomain) {
     // If updateSession already decided to redirect, respect it
     if (sessionResponse.status >= 300 && sessionResponse.status < 400) {
       return sessionResponse
@@ -62,10 +62,10 @@ export async function proxy(request: NextRequest) {
   }
 
   // 3. Fallback for localhost (local development)
-  if (hostname?.includes('localhost') || hostname?.includes('127.0.0.1')) {
+  if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
     // Keep standard behavior for dev
     return sessionResponse
-  } else if (hostname !== adminDomain && hostname !== appDomain && process.env.NODE_ENV === 'production') {
+  } else if (adminDomain && appDomain && hostname !== adminDomain && hostname !== appDomain && process.env.NODE_ENV === 'production') {
     // In production, only allow our two domains
     return new NextResponse('Domain Not Allowed', { status: 403 })
   }
