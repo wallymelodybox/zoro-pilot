@@ -255,21 +255,10 @@ export default function BackOfficePage() {
           <CardContent>
             <div className="text-4xl font-black">{organizations.filter(o => o.setup_completed).length}</div>
             <div className="mt-4 h-1.5 w-full bg-muted rounded-full overflow-hidden">
+              {/* eslint-disable-next-line react/forbid-dom-props */}
               <div className="h-full bg-green-500" style={{ width: `${(organizations.filter(o => o.setup_completed).length / (organizations.length || 1)) * 100}%` }} />
             </div>
             <p className="text-[10px] text-green-500 mt-2 font-black uppercase tracking-widest">Health: optimal</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">
-          <CardHeader>
-            <CardTitle className="text-xs font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-[0.2em]">
-              <Building className="h-4 w-4" />
-              Total Organizations
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-4xl font-black">{organizations.length}</div>
-            <p className="text-[10px] text-blue-500 mt-2 font-black uppercase tracking-widest">Growth: +12% this month</p>
           </CardContent>
         </Card>
         <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">

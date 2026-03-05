@@ -46,18 +46,37 @@ export async function updateSession(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const isDG = profile?.rbac_role === 'admin'
-    const needsOnboarding = isDG && !profile?.onboarding_completed
-    const isLoginPage = request.nextUrl.pathname.startsWith('/login')
-    const isOnboardingPage = request.nextUrl.pathname.startsWith('/onboarding')
+    const isDG = profile?.rbac_role === 'admin' || profile?.rbac_role === 'executive'
+    const isEmployee = profile?.rbac_role === 'member' || profile?.rbac_role === 'manager'
 
-    if (needsOnboarding && !isOnboardingPage) {
+    const needsDGOnboarding = isDG && !profile?.onboarding_completed
+    const needsEmployeeOnboarding = isEmployee && !profile?.onboarding_completed
+
+    const isLoginPage = request.nextUrl.pathname.startsWith('/login')
+    const isDGOnboardingPage = request.nextUrl.pathname.startsWith('/onboarding')
+    const isEmployeeOnboardingPage = request.nextUrl.pathname.startsWith('/employee-onboarding')
+
+    // Redirect DG to their onboarding
+    if (needsDGOnboarding && !isDGOnboardingPage) {
       const url = request.nextUrl.clone()
       url.pathname = '/onboarding'
       return NextResponse.redirect(url)
     }
 
-    if (!needsOnboarding && isOnboardingPage) {
+    // Redirect employee to their onboarding
+    if (needsEmployeeOnboarding && !isEmployeeOnboardingPage) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/employee-onboarding'
+      return NextResponse.redirect(url)
+    }
+
+    // If user is on the wrong onboarding page, redirect to correct one or home
+    if (isDGOnboardingPage && !needsDGOnboarding) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/'
+      return NextResponse.redirect(url)
+    }
+    if (isEmployeeOnboardingPage && !needsEmployeeOnboarding) {
       const url = request.nextUrl.clone()
       url.pathname = '/'
       return NextResponse.redirect(url)

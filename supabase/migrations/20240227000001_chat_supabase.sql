@@ -24,17 +24,30 @@ create policy "Public Insert" on public.message_user_state for insert with check
 create policy "Public Update" on public.message_user_state for update using (true) with check (true);
 
 -- 3) Storage bucket for chat media
--- Note: Supabase storage tables live in schema 'storage'
-insert into storage.buckets (id, name, public)
-values ('chat-media', 'chat-media', true)
-on conflict (id) do nothing;
+-- Note: Supabase storage tables live in schema 'storage', which is only
+-- available on hosted Supabase instances (not plain PostgreSQL).
+do $$ begin
+  insert into storage.buckets (id, name, public)
+  values ('chat-media', 'chat-media', true)
+  on conflict (id) do nothing;
+exception when invalid_schema_name or undefined_table then
+  raise notice 'storage schema not available – skipping bucket creation';
+end $$;
 
 -- Public read objects (demo)
-create policy "Chat Media Public Read" on storage.objects
-  for select
-  using (bucket_id = 'chat-media');
+do $$ begin
+  create policy "Chat Media Public Read" on storage.objects
+    for select
+    using (bucket_id = 'chat-media');
+exception when invalid_schema_name or undefined_table or duplicate_object then
+  raise notice 'storage.objects not available or policy exists – skipping';
+end $$;
 
 -- Public insert objects (demo)
-create policy "Chat Media Public Insert" on storage.objects
-  for insert
-  with check (bucket_id = 'chat-media');
+do $$ begin
+  create policy "Chat Media Public Insert" on storage.objects
+    for insert
+    with check (bucket_id = 'chat-media');
+exception when invalid_schema_name or undefined_table or duplicate_object then
+  raise notice 'storage.objects not available or policy exists – skipping';
+end $$;

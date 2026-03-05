@@ -1,9 +1,9 @@
-
 'use server'
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { headers } from 'next/headers'
 
 async function ensureProfile(fullName?: string) {
   const supabase = await createClient()
@@ -21,7 +21,6 @@ async function ensureProfile(fullName?: string) {
   const name = user.user_metadata.full_name || fullName || (email.includes('@') ? email.split('@')[0] : email)
 
   // --- SUPER ADMIN LOGIC ---
-  // This block must be first and must be isolated.
   if (email === 'menannzoro@gmail.com') {
     const { error: upsertError } = await supabase
       .from('profiles')
@@ -37,10 +36,10 @@ async function ensureProfile(fullName?: string) {
       })
     
     if (upsertError) return { error: upsertError.message }
-    return { success: true } // Exit immediately after handling super admin
+    return { success: true }
   }
 
-  // --- STANDARD USER LOGIC (INVITE-BASED) ---
+  // --- STANDARD USER LOGIC ---
   const { data: invite, error: inviteError } = await supabase
     .from('invites')
     .select('*')
@@ -53,7 +52,6 @@ async function ensureProfile(fullName?: string) {
     return { error: "Accès refusé. Une invitation valide est requise pour se connecter." }
   }
 
-  // Mark invite as used and get organization_id
   await supabase
     .from('invites')
     .update({ is_used: true, used_at: new Date().toISOString(), used_by: user.id })
@@ -65,7 +63,7 @@ async function ensureProfile(fullName?: string) {
       id: user.id,
       email,
       name,
-      role: invite.role_assigned || 'Membre',
+      role: invite.role_assigned,
       avatar_url: null,
       team_id: null,
       rbac_role: invite.rbac_role_assigned || 'member',
@@ -100,22 +98,12 @@ export async function login(formData: FormData) {
 
   revalidatePath('/', 'layout')
 
-  // Logique de redirection après connexion
   const next = formData.get('next') as string
   if (next) {
     redirect(next)
   }
 
-  const headersList = await (await import('next/headers')).headers()
-  const hostname = headersList.get('host')
-  const adminDomain = process.env.ADMIN_DOMAIN || 'zoro-secure-control-net.com'
-  const appDomain = process.env.APP_DOMAIN || 'app.zoro-pilot.company'
-  
-  if (hostname === adminDomain) {
-    redirect('/') // Le middleware réécrira vers le BO
-  } else {
-    redirect('/') // Le domaine app restera sur le dashboard client
-  }
+  redirect('/')
 }
 
 export async function signup(formData: FormData) {
@@ -169,4 +157,3 @@ export async function signInWithOAuth(provider: 'google' | 'apple' | 'azure') {
     redirect(data.url)
   }
 }
-

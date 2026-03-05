@@ -330,6 +330,7 @@ export function AppSidebar() {
                       }
                     }}
                     className={cn(getItemClass(isActive), "animate-in fade-in slide-in-from-left-4 duration-300 fill-mode-both")}
+                    // eslint-disable-next-line react/forbid-dom-props
                     style={{ animationDelay: `${i * 40}ms` }}
                   >
                     <div className={cn("transition-transform group-hover:scale-110 shrink-0")} suppressHydrationWarning>
@@ -352,6 +353,7 @@ export function AppSidebar() {
               <div className="text-xs text-muted-foreground mb-1">Tâches terminées</div>
               <div className="font-bold text-foreground">{tasks.filter(t => t.status === 'done').length} / {tasks.length}</div>
               <div className="mt-2 h-1.5 w-full bg-accent/40 rounded-full overflow-hidden">
+                {/* eslint-disable-next-line react/forbid-dom-props */}
                 <div className="h-full bg-primary rounded-full" style={{ width: `${(tasks.filter(t => t.status === 'done').length / tasks.length) * 100}%` }} />
               </div>
             </div>

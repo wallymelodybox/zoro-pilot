@@ -74,6 +74,7 @@ import { toast } from "sonner"
 import { useThemeVariant, type ThemeVariant } from "@/components/theme/variant-provider"
 import { useUser } from "@/hooks/use-user"
 import { createClient } from "@/lib/supabase/client"
+import { AvatarUpload } from "@/components/avatar-upload"
 
 type SettingsSection =
   | "account"
@@ -227,7 +228,35 @@ export default function SettingsPage() {
 // --- Sub-Components for Settings Sections ---
 
 function AccountSettings() {
-  const { user } = useUser()
+  const { user, refresh } = useUser()
+  const [name, setName] = useState(user?.name || "")
+  const [role, setRole] = useState(user?.role || "")
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || null)
+  const [saving, setSaving] = useState(false)
+  const supabase = createClient()
+
+  const handleSave = async () => {
+    if (!user) return
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: name,
+          role: role,
+          avatar_url: avatarUrl,
+        })
+        .eq('id', user.id)
+
+      if (error) throw error
+      toast.success("Profil mis à jour !")
+      refresh() // Refresh user context
+    } catch (error) {
+      toast.error("Erreur lors de la mise à jour.")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -239,17 +268,22 @@ function AccountSettings() {
       
       <div className="grid gap-6 max-w-2xl">
         <div className="flex items-center gap-6">
-          <UserAvatar name={user?.name || "?"} avatarUrl={user?.avatar_url} fallback={user?.avatar_url || "?"} className="h-20 w-20 text-xl" />
+          <AvatarUpload 
+            uid={user?.id || null}
+            url={avatarUrl}
+            size={80}
+            onUpload={(url) => setAvatarUrl(url)}
+          />
           <div className="space-y-2">
-            <Button variant="outline" size="sm">Changer l'avatar</Button>
-            <p className="text-xs text-muted-foreground">JPG, GIF ou PNG. Max 1MB.</p>
+            <p className="text-sm font-medium">{user?.name}</p>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
 
         <div className="grid gap-4">
           <div className="grid gap-2">
             <label className="text-sm font-medium">Nom complet</label>
-            <Input defaultValue={user?.name || ""} />
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="grid gap-2">
             <label className="text-sm font-medium">Email</label>
@@ -258,11 +292,13 @@ function AccountSettings() {
           </div>
           <div className="grid gap-2">
             <label className="text-sm font-medium">Rôle (Titre)</label>
-            <Input defaultValue={user?.role || ""} placeholder="Votre poste" />
+            <Input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Votre poste" />
           </div>
         </div>
 
-        <Button className="w-fit">Enregistrer les modifications</Button>
+        <Button className="w-fit" onClick={handleSave} disabled={saving}>
+          {saving ? "Enregistrement..." : "Enregistrer les modifications"}
+        </Button>
       </div>
     </div>
   )
