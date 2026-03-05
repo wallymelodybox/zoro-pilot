@@ -55,6 +55,7 @@ import {
   Clock,
   History
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 function KRCard({ kr, checkins }: { kr: KeyResult, checkins: OKRCheckin[] }) {
   const [expanded, setExpanded] = useState(false)

@@ -53,5 +53,26 @@ export function useUser() {
     getUser()
   }, [])
 
-  return { user, loading }
+  const refresh = () => {
+    setLoading(true)
+    ;(async () => {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      if (!authUser) { setUser(null); setLoading(false); return }
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*, organizations(name, logo_url)')
+        .eq('id', authUser.id)
+        .single()
+      if (profile) {
+        setUser({
+          ...profile,
+          organization_name: profile.organizations?.name,
+          organization_logo: profile.organizations?.logo_url
+        })
+      }
+      setLoading(false)
+    })()
+  }
+
+  return { user, loading, refresh }
 }

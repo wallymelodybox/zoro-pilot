@@ -66,26 +66,27 @@ export async function hasPermission(
 
   // Iterate to find if any role grants the permission
   for (const ur of userRoles) {
-    // @ts-ignore - Supabase types might be deep
-    const role = ur.role
-    if (!role) continue
+    // Supabase may return the joined `role` as an array or single object depending on the relationship
+    const roleRaw = ur.role as any
+    const roles = Array.isArray(roleRaw) ? roleRaw : roleRaw ? [roleRaw] : []
 
-    // Check Global Roles (Organization Scope)
-    if (role.scope === 'organization') {
-       // Check if this role has the requested action
-       // @ts-ignore
-       const hasAction = role.role_permissions.some((rp: any) => rp.permission.action === action)
-       if (hasAction) return true
-       
-       // Special case: 'Propriétaire' or 'Admin' might have implicit * access depending on logic
-       if (role.name === 'Propriétaire') return true
-    }
+    for (const role of roles) {
+      if (!role) continue
 
-    // Check Project Roles (Project Scope)
-    if (role.scope === 'project' && ur.scope_id === scopeId) {
-       // @ts-ignore
-       const hasAction = role.role_permissions.some((rp: any) => rp.permission.action === action)
-       if (hasAction) return true
+      // Check Global Roles (Organization Scope)
+      if (role.scope === 'organization') {
+        const hasAction = (role.role_permissions ?? []).some((rp: any) => rp.permission?.action === action)
+        if (hasAction) return true
+
+        // Special case: 'Propriétaire' or 'Admin' might have implicit * access
+        if (role.name === 'Propriétaire') return true
+      }
+
+      // Check Project Roles (Project Scope)
+      if (role.scope === 'project' && ur.scope_id === scopeId) {
+        const hasAction = (role.role_permissions ?? []).some((rp: any) => rp.permission?.action === action)
+        if (hasAction) return true
+      }
     }
   }
 

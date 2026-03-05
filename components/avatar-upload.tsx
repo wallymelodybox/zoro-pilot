@@ -72,6 +72,7 @@ export function AvatarUpload({
   }
 
   return (
+    // eslint-disable-next-line react/forbid-dom-props
     <div className="relative" style={{ height: size, width: size }}>
       <UserAvatar 
         name={uid || 'Avatar'}
@@ -91,6 +92,7 @@ export function AvatarUpload({
           onChange={uploadAvatar}
           disabled={uploading}
           className="hidden"
+          aria-label="Upload avatar"
         />
       </label>
       {uploading && (

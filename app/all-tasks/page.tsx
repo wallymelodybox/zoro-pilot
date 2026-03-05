@@ -534,6 +534,7 @@ function SortableTaskCard({ task }: { task: Task }) {
   }
 
   return (
+    // eslint-disable-next-line react/forbid-dom-props
     <div
       ref={setNodeRef}
       className={cn(

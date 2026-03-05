@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
@@ -65,7 +65,8 @@ import {
   TableProperties,
   UserPlus,
   Settings2,
-  CheckCircle2
+  CheckCircle2,
+  FolderKanban
 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
@@ -207,7 +208,7 @@ function KanbanBoard({
               
               <div className="flex flex-col gap-3 flex-1">
                 {columnTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} canEdit={canEdit} />
+                  <TaskCard key={task.id} task={task} canEdit={canEdit} profiles={profiles} />
                 ))}
                 
                 {columnTasks.length === 0 && (
@@ -517,14 +518,14 @@ export default function WorkPage() {
           {currentView === "kanban" && (
             <KanbanBoard 
               projectTasks={projectTasks} 
-              canEdit={canEditProject} 
+              canEdit={canEditProject ?? false}
               projectId={selectedProject.id}
               profiles={profiles}
               onRefresh={refresh}
             />
           )}
           {currentView === "list" && (
-            <ProjectTaskList projectTasks={projectTasks} onCanEdit={canEditProject} profiles={profiles} />
+            <ProjectTaskList projectTasks={projectTasks} onCanEdit={canEditProject ?? false} profiles={profiles} />
           )}
           {currentView === "calendar" && (
             <div className="flex items-center justify-center h-full text-muted-foreground">

@@ -791,14 +791,14 @@ function MembersSettings() {
                         )}
                       >
                          <div className="flex items-center gap-3">
-                            <UserAvatar 
-                              name={i === 1 ? currentUser.name : `User ${i}`} 
-                              fallback={i === 1 ? currentUser.avatar : `U${i}`}
-                              className="h-8 w-8" 
+                            <UserAvatar
+                              name={i === 1 ? (user?.name ?? "Moi") : `User ${i}`}
+                              fallback={i === 1 ? (user?.name?.[0] ?? "M") : `U${i}`}
+                              className="h-8 w-8"
                             />
                             <div>
-                               <div className="text-sm font-medium">{i === 1 ? currentUser.name : `Membre ${i}`}</div>
-                               <div className="text-xs text-muted-foreground">{i === 1 ? currentUser.email : `user${i}@example.com`}</div>
+                               <div className="text-sm font-medium">{i === 1 ? (user?.name ?? "Moi") : `Membre ${i}`}</div>
+                               <div className="text-xs text-muted-foreground">{i === 1 ? (user?.email ?? "") : `user${i}@example.com`}</div>
                             </div>
                          </div>
                          <div>
