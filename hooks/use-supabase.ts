@@ -77,7 +77,7 @@ export function useSupabaseData() {
          setUsingMockData(false)
       } else {
         // Map DB fields to our frontend types
-        const mappedProjects = projectsData.map((p: any) => ({
+        const mappedProjects = projectsData ? projectsData.map((p: any) => ({
           id: p.id,
           name: p.name,
           teamId: p.team_id,
@@ -88,7 +88,7 @@ export function useSupabaseData() {
           progress: p.progress,
           linkedObjectiveIds: [], 
           linkedKRIds: [] 
-        }))
+        })) : []
         setProjects(mappedProjects)
 
         if (tasksData) {
