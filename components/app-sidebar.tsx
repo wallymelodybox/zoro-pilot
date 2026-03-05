@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/tooltip"
 import { useThemeVariant } from "@/components/theme/variant-provider"
 import { useUser } from "@/hooks/use-user"
+import { useSupabaseData } from "@/hooks/use-supabase"
+import { UserAvatar } from "./user-avatar"
 
 const cx = cn
 
@@ -232,6 +234,7 @@ export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { variant } = useThemeVariant()
   const { user } = useUser()
+  const { tasks } = useSupabaseData()
 
   const items = useMemo<NavItem[]>(() => {
     return [...navItems]
@@ -346,10 +349,10 @@ export function AppSidebar() {
           {/* AI PRODUCTIVITY: mini card (sans hardcode) */}
           {!collapsed && variant === "ai-productivity" && (
             <div className="mb-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <div className="text-xs text-muted-foreground mb-1">AI Tokens</div>
-              <div className="font-bold text-foreground">84% Capacity</div>
+              <div className="text-xs text-muted-foreground mb-1">Tâches terminées</div>
+              <div className="font-bold text-foreground">{tasks.filter(t => t.status === 'done').length} / {tasks.length}</div>
               <div className="mt-2 h-1.5 w-full bg-accent/40 rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full w-[84%]" />
+                <div className="h-full bg-primary rounded-full" style={{ width: `${(tasks.filter(t => t.status === 'done').length / tasks.length) * 100}%` }} />
               </div>
             </div>
           )}
@@ -366,6 +369,30 @@ export function AppSidebar() {
               </div>
             </div>
           )}
+
+          {/* User Profile Section */}
+          <div className={cn("mb-4 px-2", collapsed && "px-0 flex justify-center")}>
+            <Link 
+              href="/settings" 
+              className={cn(
+                "flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-accent/35 group",
+                collapsed && "p-1"
+              )}
+            >
+              <UserAvatar 
+                name={user?.name || "Utilisateur"} 
+                avatarUrl={user?.avatar_url} 
+                fallback={user?.name?.charAt(0) || "U"} 
+                className="h-9 w-9 border border-border/50 group-hover:border-primary/50 transition-colors"
+              />
+              {!collapsed && (
+                <div className="flex flex-col overflow-hidden">
+                  <span className="text-sm font-bold text-foreground truncate">{user?.name}</span>
+                  <span className="text-[10px] text-muted-foreground truncate uppercase tracking-wider font-medium">{user?.role || "Membre"}</span>
+                </div>
+              )}
+            </Link>
+          </div>
 
           <button
             onClick={() => setCollapsed(!collapsed)}

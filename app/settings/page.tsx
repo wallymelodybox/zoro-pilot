@@ -70,26 +70,10 @@ import {
   Edit2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { integrations as initialIntegrations } from "@/lib/store"
 import { toast } from "sonner"
 import { useThemeVariant, type ThemeVariant } from "@/components/theme/variant-provider"
 import { useUser } from "@/hooks/use-user"
 import { createClient } from "@/lib/supabase/client"
-
-// --- MOCK DATA ---
-const currentUser = {
-  name: "Menann Zoro",
-  email: "menannzoro@gmail.com",
-  role: "Propriétaire de l'organisation",
-  avatar: "MZ"
-}
-
-const organization = {
-  name: "L'organisation de Menann Zoro",
-  role: "Propriétaire de l'organisation",
-  plan: "Gratuit",
-  membersCount: 1,
-}
 
 type SettingsSection =
   | "account"
@@ -243,6 +227,8 @@ export default function SettingsPage() {
 // --- Sub-Components for Settings Sections ---
 
 function AccountSettings() {
+  const { user } = useUser()
+
   return (
     <div className="space-y-6">
       <div>
@@ -253,7 +239,7 @@ function AccountSettings() {
       
       <div className="grid gap-6 max-w-2xl">
         <div className="flex items-center gap-6">
-          <UserAvatar name={currentUser.name} fallback={currentUser.avatar} className="h-20 w-20 text-xl" />
+          <UserAvatar name={user?.name || "?"} avatarUrl={user?.avatar_url} fallback={user?.avatar_url || "?"} className="h-20 w-20 text-xl" />
           <div className="space-y-2">
             <Button variant="outline" size="sm">Changer l'avatar</Button>
             <p className="text-xs text-muted-foreground">JPG, GIF ou PNG. Max 1MB.</p>
@@ -263,16 +249,16 @@ function AccountSettings() {
         <div className="grid gap-4">
           <div className="grid gap-2">
             <label className="text-sm font-medium">Nom complet</label>
-            <Input defaultValue={currentUser.name} />
+            <Input defaultValue={user?.name || ""} />
           </div>
           <div className="grid gap-2">
             <label className="text-sm font-medium">Email</label>
-            <Input defaultValue={currentUser.email} disabled />
+            <Input defaultValue={user?.email || ""} disabled />
             <p className="text-xs text-muted-foreground">Contactez l'administrateur pour changer votre email.</p>
           </div>
           <div className="grid gap-2">
             <label className="text-sm font-medium">Rôle (Titre)</label>
-            <Input defaultValue="Product Designer" placeholder="Votre poste" />
+            <Input defaultValue={user?.role || ""} placeholder="Votre poste" />
           </div>
         </div>
 
@@ -451,7 +437,7 @@ function SecuritySettings() {
 }
 
 function IntegrationsSettings() {
-  const [integrations, setIntegrations] = useState(initialIntegrations)
+  const [integrations, setIntegrations] = useState<any[]>([])
   const [connecting, setConnecting] = useState<string | null>(null)
 
   const handleToggle = (id: string, name: string, status: string) => {
@@ -525,6 +511,8 @@ function IntegrationsSettings() {
 }
 
 function OrganizationSettings() {
+  const { user } = useUser()
+
   return (
     <div className="space-y-6">
       <div>
@@ -536,14 +524,14 @@ function OrganizationSettings() {
       <div className="grid gap-6 max-w-2xl">
         <div className="grid gap-2">
           <label className="text-sm font-medium">Nom de l'organisation</label>
-          <Input defaultValue={organization.name} />
+          <Input defaultValue={user?.organization_name || ""} />
         </div>
         
         <div className="grid gap-2">
            <label className="text-sm font-medium">URL de l'espace de travail</label>
            <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">zoropilot.com/</span>
-              <Input defaultValue="menann-zoro-org" className="flex-1" />
+              <Input defaultValue={user?.organization_name?.toLowerCase().replace(/\s+/g, '-') || ""} className="flex-1" />
            </div>
         </div>
 

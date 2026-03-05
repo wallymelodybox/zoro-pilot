@@ -75,8 +75,47 @@ export default function AllTasksPage() {
   const { tasks, projects, loading, refresh } = useSupabaseData()
   const [currentView, setCurrentView] = useState("list")
 
+  const [isCreateOpen, setIsCreateOpen] = React.useState(false)
+  const [createStatus, setCreateStatus] = React.useState<TaskStatus>("todo")
+  const [createTitle, setCreateTitle] = React.useState("")
+  const [createDescription, setCreateDescription] = React.useState("")
+  const [createPriority, setCreatePriority] = React.useState("medium")
+  const [createDueDate, setCreateDueDate] = React.useState("")
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen text-muted-foreground">Chargement des tâches...</div>
+  }
+
+  const openCreate = (status: TaskStatus = "todo") => {
+    setCreateStatus(status)
+    setCreateTitle("")
+    setCreateDescription("")
+    setCreatePriority("medium")
+    setCreateDueDate("")
+    setIsCreateOpen(true)
+  }
+
+  const handleCreate = async () => {
+    if (!createTitle.trim()) return
+
+    const fd = new FormData()
+    fd.set("title", createTitle)
+    fd.set("description", createDescription)
+    fd.set("status", createStatus)
+    fd.set("priority", createPriority)
+    fd.set("projectId", "none")
+    fd.set("assigneeId", "a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d")
+    if (createDueDate) fd.set("dueDate", createDueDate)
+
+    const res = await createTask(fd)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+
+    toast.success("Tâche créée")
+    setIsCreateOpen(false)
+    refresh?.()
   }
 
   const doneTasks = tasks.filter(t => t.status === "done")
@@ -107,6 +146,10 @@ export default function AllTasksPage() {
                <Button variant="outline" size="sm" className="h-9 gap-2">
                   <ArrowUpDown className="h-4 w-4" />
                   Trier
+               </Button>
+               <Button size="sm" className="h-9 gap-2" onClick={() => openCreate()}>
+                  <Plus className="h-4 w-4" />
+                  Ajouter une tâche
                </Button>
             </div>
          </div>
@@ -166,6 +209,51 @@ export default function AllTasksPage() {
             </div>
          )}
       </main>
+
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nouvelle tâche</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <Input
+              value={createTitle}
+              onChange={(e) => setCreateTitle(e.target.value)}
+              placeholder="Titre"
+              autoFocus
+            />
+            <Textarea
+              value={createDescription}
+              onChange={(e) => setCreateDescription(e.target.value)}
+              placeholder="Description"
+              className="min-h-24"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                value={createPriority}
+                onChange={(e) => setCreatePriority(e.target.value)}
+                placeholder="Priorité (low/medium/high/urgent)"
+              />
+              <Input
+                value={createDueDate}
+                onChange={(e) => setCreateDueDate(e.target.value)}
+                type="date"
+              />
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Statut: {getTaskStatusLabel(createStatus)}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+              Annuler
+            </Button>
+            <Button onClick={handleCreate} disabled={!createTitle.trim()}>
+              Créer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

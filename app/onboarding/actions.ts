@@ -7,6 +7,8 @@ import { redirect } from 'next/navigation'
 export async function completeOnboarding(formData: FormData) {
   const supabase = await createClient()
   
+  const userName = formData.get('userName') as string
+  const avatarUrl = formData.get('avatarUrl') as string
   const orgName = formData.get('orgName') as string
   const logoUrl = formData.get('logoUrl') as string
   
@@ -36,7 +38,11 @@ export async function completeOnboarding(formData: FormData) {
   // 2. Update Profile
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ onboarding_completed: true })
+    .update({ 
+      name: userName,
+      avatar_url: avatarUrl,
+      onboarding_completed: true 
+    })
     .eq('id', user.id)
 
   if (profileError) throw profileError

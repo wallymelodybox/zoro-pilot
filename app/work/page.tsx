@@ -81,8 +81,8 @@ const STATUSES: { key: TaskStatus; label: string }[] = [
 
 // --- COMPONENTS ---
 
-function TaskCard({ task, canEdit }: { task: Task; canEdit: boolean }) {
-  const assignee = getUserById(task.assigneeId)
+function TaskCard({ task, canEdit, profiles }: { task: Task; canEdit: boolean; profiles: any[] }) {
+  const assignee = profiles.find(p => p.id === task.assigneeId)
   const linkedKR = task.linkedKRId
     ? objectives
         .flatMap((o) => o.keyResults)
@@ -115,7 +115,7 @@ function TaskCard({ task, canEdit }: { task: Task; canEdit: boolean }) {
       <div className="flex items-center gap-2">
         {assignee && (
           <div className="flex items-center gap-1.5">
-            <UserAvatar name={assignee.name} fallback={assignee.avatar} className="h-5 w-5 text-xs" />
+            <UserAvatar name={assignee.name} avatarUrl={assignee.avatar_url} fallback={assignee.name.charAt(0)} className="h-5 w-5 text-xs" />
             <span className="text-xs text-muted-foreground font-sans truncate max-w-20">{assignee.name.split(" ")[0]}</span>
           </div>
         )}
@@ -134,11 +134,13 @@ function KanbanBoard({
   projectTasks, 
   canEdit,
   projectId,
+  profiles,
   onRefresh
 }: { 
   projectTasks: Task[]; 
   canEdit: boolean;
   projectId: string;
+  profiles: any[];
   onRefresh: () => void;
 }) {
   const [isAddOpen, setIsAddOpen] = useState(false)
@@ -286,41 +288,17 @@ function KanbanBoard({
   )
 }
 
-function MembersColumn({ project, onRefresh }: { project: Project; onRefresh: () => void }) {
+function MembersColumn({ project, profiles, onRefresh }: { project: Project; profiles: any[]; onRefresh: () => void }) {
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState("")
   const [adding, setAdding] = useState(false)
   
-  const { user } = useUser() // We need the current user's org
-  const supabase = createClient()
-  const [orgMembers, setOrgMembers] = useState<any[]>([])
+  const { user } = useUser()
 
-  // Fetch organization members to add to project
-  useState(() => {
-    async function fetchOrgMembers() {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('organization_id')
-        .eq('id', user.id)
-        .single()
-      
-      if (profile?.organization_id) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, name, avatar_url, role')
-          .eq('organization_id', profile.organization_id)
-        if (data) setOrgMembers(data)
-      }
-    }
-    fetchOrgMembers()
-  })
-
-  const owner = getUserById(project.ownerId)
-  // Mock members list - in real app fetch from team
-  const members = owner ? [owner] : []
+  // Filter profiles that are actually in this project 
+  // For now, we'll just show the project owner. 
+  // In a real app, you'd have a project_members table.
+  const members = profiles.filter(p => p.id === project.ownerId)
 
   const handleAddMember = async () => {
     if (!selectedMemberId) return
@@ -350,7 +328,7 @@ function MembersColumn({ project, onRefresh }: { project: Project; onRefresh: ()
         <div className="space-y-4">
           {members.map((member) => (
             <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
-              <UserAvatar name={member.name} fallback={member.avatar} className="h-8 w-8" />
+              <UserAvatar name={member.name} avatarUrl={member.avatar_url} fallback={member.name.charAt(0)} className="h-8 w-8" />
               <div className="flex flex-col overflow-hidden">
                 <span className="text-sm font-medium truncate">{member.name}</span>
                 <span className="text-xs text-muted-foreground truncate">{member.id === project.ownerId ? 'Proprietaire' : 'Membre'}</span>
@@ -363,10 +341,6 @@ function MembersColumn({ project, onRefresh }: { project: Project; onRefresh: ()
         <Button variant="outline" className="w-full justify-start gap-2" size="sm" onClick={() => setIsAddMemberOpen(true)}>
           <UserPlus className="h-4 w-4" />
           Ajouter un membre
-        </Button>
-        <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground" size="sm">
-          <Settings2 className="h-4 w-4" />
-          Gerer les acces
         </Button>
       </div>
 
@@ -389,7 +363,7 @@ function MembersColumn({ project, onRefresh }: { project: Project; onRefresh: ()
                   <SelectValue placeholder="Choisir un collaborateur" />
                 </SelectTrigger>
                 <SelectContent>
-                  {orgMembers.map(m => (
+                  {profiles.map(m => (
                     <SelectItem key={m.id} value={m.id}>{m.name} ({m.role})</SelectItem>
                   ))}
                 </SelectContent>
@@ -410,32 +384,48 @@ function MembersColumn({ project, onRefresh }: { project: Project; onRefresh: ()
 }
 
 export default function WorkPage() {
-  const { projects, tasks, loading, refresh } = useSupabaseData()
+  const { user } = useUser()
+  const { projects, tasks, objectives, profiles, loading, refresh } = useSupabaseData()
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
-  const [currentUserId, setCurrentUserId] = useState<string>("u1") // Default: Sarah Chen (Admin)
   const [currentView, setCurrentView] = useState("kanban")
   
   // Set initial selected project once projects are loaded
-  if (projects.length > 0 && !selectedProjectId) {
-    setSelectedProjectId(projects[0].id)
-  }
+  useEffect(() => {
+    if (projects.length > 0 && !selectedProjectId) {
+      setSelectedProjectId(projects[0].id)
+    }
+  }, [projects, selectedProjectId])
 
-  const currentUser = getUserById(currentUserId)
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   // Filter tasks for the selected project locally
   const projectTasks = selectedProject ? tasks.filter(t => t.projectId === selectedProject.id) : []
 
   // Check permissions
-  const canEditProject = currentUser && selectedProject 
-    ? checkCanEdit(currentUser, selectedProject.ownerId) 
-    : false
+  const isDG = user?.rbac_role === 'admin' || user?.rbac_role === 'executive' || user?.rbac_role === 'super_admin'
+  const canEditProject = isDG || (selectedProject && selectedProject.ownerId === user?.id)
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen text-sm text-muted-foreground">Chargement des projets...</div>
   }
 
   if (!selectedProject) {
-    return <div className="flex items-center justify-center h-screen text-sm text-muted-foreground">Aucun projet trouve.</div>
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <div className="h-16 w-16 bg-muted rounded-2xl flex items-center justify-center">
+          <FolderKanban className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <div className="text-center">
+          <h3 className="text-lg font-bold font-sans">Aucun projet trouvé</h3>
+          <p className="text-sm text-muted-foreground font-sans">Créez votre premier projet pour commencer.</p>
+        </div>
+        {isDG && (
+          <Button className="h-11 rounded-xl font-bold font-sans gap-2 px-5 shadow-lg shadow-primary/20 mt-4">
+            <Plus className="h-4 w-4" />
+            Nouveau Projet
+          </Button>
+        )}
+      </div>
+    )
   }
 
   return (
@@ -447,27 +437,9 @@ export default function WorkPage() {
            <div className="flex items-center gap-2 text-sm text-muted-foreground">
              <Home className="h-4 w-4" />
              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-             <span className="font-medium text-foreground">ZORO PILOT SAS</span>
-             <span className="px-1.5 py-0.5 rounded-full bg-muted text-xs text-muted-foreground">Free</span>
+             <span className="font-medium text-foreground uppercase tracking-wider">{user?.organization_name || "ZORO PILOT"}</span>
              <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
              <span>Projets</span>
-           </div>
-           
-           <div className="flex items-center gap-4">
-              {/* Role Switcher for Demo */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Simuler:</span>
-                <Select value={currentUserId} onValueChange={setCurrentUserId}>
-                  <SelectTrigger className="h-7 w-40 text-xs border-input bg-transparent focus:ring-0">
-                    <SelectValue placeholder="Utilisateur" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map(u => (
-                      <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
            </div>
         </div>
 
@@ -475,8 +447,16 @@ export default function WorkPage() {
         <div className="flex items-center justify-between px-4 py-3">
            <div className="flex items-center gap-6">
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-foreground">{selectedProject.name}</h1>
-                <ChevronRight className="h-5 w-5 text-muted-foreground rotate-90" />
+                <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
+                  <SelectTrigger className="h-9 border-none bg-transparent hover:bg-muted/50 transition-colors font-bold text-xl tracking-tight p-0 px-2 focus:ring-0">
+                    <SelectValue placeholder="Sélectionner un projet" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-border/40">
+                    {projects.map(p => (
+                      <SelectItem key={p.id} value={p.id} className="font-sans font-medium">{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               
               <Tabs value={currentView} onValueChange={setCurrentView} className="h-8">
@@ -493,17 +473,6 @@ export default function WorkPage() {
                     <Calendar className="h-4 w-4" />
                     Calendrier
                   </TabsTrigger>
-                  <TabsTrigger value="gantt" className="h-8 px-3 data-[state=active]:bg-muted data-[state=active]:text-foreground rounded-md gap-2 text-muted-foreground">
-                    <GanttChart className="h-4 w-4" />
-                    Gantt
-                  </TabsTrigger>
-                  <TabsTrigger value="table" className="h-8 px-3 data-[state=active]:bg-muted data-[state=active]:text-foreground rounded-md gap-2 text-muted-foreground">
-                    <TableProperties className="h-4 w-4" />
-                    Tableur
-                  </TabsTrigger>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 ml-1">
-                    <Plus className="h-4 w-4" />
-                  </Button>
                 </TabsList>
               </Tabs>
            </div>
@@ -513,16 +482,9 @@ export default function WorkPage() {
                 <ArrowUpDown className="h-4 w-4" />
                 Trier
               </Button>
-              <Button variant="ghost" size="sm" className="h-8 gap-2 text-muted-foreground">
-                <LayoutGrid className="h-4 w-4" />
-                Etape
-              </Button>
               <Separator orientation="vertical" className="h-4 mx-1" />
               <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
                 <Search className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                <Filter className="h-4 w-4" />
               </Button>
               <div className="ml-2">
                 <ChatPanel 
@@ -535,6 +497,12 @@ export default function WorkPage() {
                    }
                  />
               </div>
+              {isDG && (
+                <Button size="sm" className="h-8 rounded-lg font-bold font-sans gap-2 ml-2">
+                  <Plus className="h-4 w-4" />
+                  Action
+                </Button>
+              )}
            </div>
         </div>
       </header>
@@ -542,7 +510,7 @@ export default function WorkPage() {
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Members Column */}
-        <MembersColumn project={selectedProject} onRefresh={refresh} />
+        <MembersColumn project={selectedProject} profiles={profiles} onRefresh={refresh} />
 
         {/* Right Board Area */}
         <main className="flex-1 flex flex-col min-w-0 bg-muted/10 p-6 overflow-hidden">
@@ -551,25 +519,17 @@ export default function WorkPage() {
               projectTasks={projectTasks} 
               canEdit={canEditProject} 
               projectId={selectedProject.id}
+              profiles={profiles}
               onRefresh={refresh}
             />
           )}
           {currentView === "list" && (
-            <ProjectTaskList projectTasks={projectTasks} onCanEdit={canEditProject} />
+            <ProjectTaskList projectTasks={projectTasks} onCanEdit={canEditProject} profiles={profiles} />
           )}
           {currentView === "calendar" && (
             <div className="flex items-center justify-center h-full text-muted-foreground">
-              Vue calendrier détaillée en cours d&apos;amélioration (les échéances restent visibles dans la
-              vue Calendrier globale).
+              Vue calendrier en cours de chargement...
             </div>
-          )}
-          {currentView === "gantt" && (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              Vue Gantt en cours de développement.
-            </div>
-          )}
-          {currentView === "table" && (
-            <ProjectTaskTable projectTasks={projectTasks} />
           )}
         </main>
       </div>
@@ -577,12 +537,12 @@ export default function WorkPage() {
   )
 }
 
-function ProjectTaskList({ projectTasks, onCanEdit }: { projectTasks: Task[]; onCanEdit: boolean }) {
+function ProjectTaskList({ projectTasks, onCanEdit, profiles }: { projectTasks: Task[]; onCanEdit: boolean; profiles: any[] }) {
   return (
     <ScrollArea className="h-full pr-4">
       <div className="space-y-2">
         {projectTasks.map((task) => {
-          const assignee = getUserById(task.assigneeId)
+          const assignee = profiles.find(p => p.id === task.assigneeId)
           return (
             <div
               key={task.id}
@@ -616,7 +576,7 @@ function ProjectTaskList({ projectTasks, onCanEdit }: { projectTasks: Task[]; on
                 <div className="flex items-center gap-2 min-w-30">
                   {assignee ? (
                     <>
-                      <UserAvatar name={assignee.name} fallback={assignee.avatar} className="h-6 w-6" />
+                      <UserAvatar name={assignee.name} avatarUrl={assignee.avatar_url} fallback={assignee.name.charAt(0)} className="h-6 w-6" />
                       <span className="text-xs text-muted-foreground truncate max-w-20">
                         {assignee.name.split(" ")[0]}
                       </span>

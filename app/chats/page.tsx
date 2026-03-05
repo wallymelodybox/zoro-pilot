@@ -473,7 +473,11 @@ export default function ChatsPage() {
                     `[animation-delay:${i * 50}ms]`
                   )}
                 >
-                  <UserAvatar name={channel.name} fallback={channel.name.substring(0, 2).toUpperCase()} className="h-10 w-10 shrink-0" />
+                  <UserAvatar 
+                    name={channel.name} 
+                    fallback={channel.name.substring(0, 2).toUpperCase()} 
+                    className="h-10 w-10 shrink-0" 
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
                       <span className={cn("text-sm font-semibold truncate", isActive ? "text-primary" : "text-foreground")}>
@@ -540,7 +544,12 @@ export default function ChatsPage() {
                         `[animation-delay:${Math.min(i, 20) * 30}ms]`
                       )}
                     >
-                      <UserAvatar name={sender?.name || "?"} fallback={sender?.avatar || (sender?.name ? sender.name.substring(0, 2).toUpperCase() : "?")} className="h-8 w-8 mt-1 shrink-0" />
+                      <UserAvatar 
+                        name={sender?.name || "?"} 
+                        avatarUrl={sender?.avatar} 
+                        fallback={sender?.name ? sender.name.substring(0, 2).toUpperCase() : "?"} 
+                        className="h-8 w-8 mt-1 shrink-0" 
+                      />
                       <div className={cn(
                         "flex flex-col gap-1",
                         isMe ? "items-end" : "items-start"
@@ -708,7 +717,8 @@ export default function ChatsPage() {
                             >
                               <UserAvatar 
                                 name={profile.name} 
-                                fallback={profile.avatar || profile.name.substring(0, 2).toUpperCase()} 
+                                avatarUrl={profile.avatar}
+                                fallback={profile.name.substring(0, 2).toUpperCase()} 
                                 className="h-6 w-6" 
                               />
                               <span className="font-medium truncate">{profile.name}</span>

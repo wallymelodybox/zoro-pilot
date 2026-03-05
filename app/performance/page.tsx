@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { cn } from "@/lib/utils"
+import { formatNumber } from "@/lib/store"
 import { 
   BarChart3, 
   TrendingUp, 
@@ -19,22 +20,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { kpis, formatNumber } from "@/lib/store"
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell
-} from "recharts"
 
 export default function PerformancePage() {
-  const { projects, objectives, loading } = useSupabaseData()
+  const { projects, objectives, keyResults, loading } = useSupabaseData()
 
   const chartData = [
     { name: "Jan", mrr: 62000, nps: 38 },
@@ -59,40 +47,48 @@ export default function PerformancePage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {kpis.map(kpi => (
-          <Card key={kpi.id} className="overflow-hidden border-white/5 bg-card/50 backdrop-blur-sm">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start mb-4">
-                <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                  <Activity className="h-5 w-5" />
+        {keyResults.map(kr => {
+          const trend: "up" | "down" | "stable" = kr.confidence === 'on-track' ? "up" : kr.confidence === 'at-risk' ? "stable" : "down"
+          return (
+            <Card key={kr.id} className="overflow-hidden border-white/5 bg-card/50 backdrop-blur-sm">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="p-2 rounded-xl bg-primary/10 text-primary">
+                    <Activity className="h-5 w-5" />
+                  </div>
+                  <Badge variant="outline" className={
+                    trend === 'up' ? "text-success border-success/20 bg-success/5" : 
+                    trend === 'down' ? "text-destructive border-destructive/20 bg-destructive/5" : ""
+                  }>
+                    {trend === 'up' ? <ArrowUpRight className="h-3 w-3 mr-1" /> : 
+                     trend === 'down' ? <ArrowDownRight className="h-3 w-3 mr-1" /> : 
+                     <Minus className="h-3 w-3 mr-1" />}
+                    {trend === 'up' ? '+5.2%' : trend === 'down' ? '-2.1%' : 'Stable'}
+                  </Badge>
                 </div>
-                <Badge variant="outline" className={
-                  kpi.trend === 'up' ? "text-success border-success/20 bg-success/5" : 
-                  kpi.trend === 'down' ? "text-destructive border-destructive/20 bg-destructive/5" : ""
-                }>
-                  {kpi.trend === 'up' ? <ArrowUpRight className="h-3 w-3 mr-1" /> : 
-                   kpi.trend === 'down' ? <ArrowDownRight className="h-3 w-3 mr-1" /> : 
-                   <Minus className="h-3 w-3 mr-1" />}
-                  {kpi.trend === 'up' ? '+5.2%' : kpi.trend === 'down' ? '-2.1%' : 'Stable'}
-                </Badge>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{kpi.name}</p>
-                <div className="flex items-baseline gap-2">
-                  <h3 className="text-3xl font-bold">{formatNumber(kpi.value)}{kpi.unit}</h3>
-                  <span className="text-sm text-muted-foreground">/ {formatNumber(kpi.target)}{kpi.unit}</span>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider">{kr.title}</p>
+                  <div className="flex items-baseline gap-2">
+                    <h3 className="text-3xl font-bold">{formatNumber(kr.current)}{kr.unit}</h3>
+                    <span className="text-sm text-muted-foreground">/ {formatNumber(kr.target)}{kr.unit}</span>
+                  </div>
                 </div>
-              </div>
-              <div className="mt-6 space-y-2">
-                <div className="flex justify-between text-xs font-medium">
-                  <span>Progression cible</span>
-                  <span>{Math.round((kpi.value / kpi.target) * 100)}%</span>
+                <div className="mt-6 space-y-2">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span>Progression cible</span>
+                    <span>{Math.round((kr.current / kr.target) * 100)}%</span>
+                  </div>
+                  <Progress value={(kr.current / kr.target) * 100} className="h-1.5" />
                 </div>
-                <Progress value={(kpi.value / kpi.target) * 100} className="h-1.5" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          )
+        })}
+        {keyResults.length === 0 && (
+          <div className="md:col-span-3 text-center py-10 border border-dashed rounded-xl">
+            <p className="text-muted-foreground">Aucun Key Result (KPI) défini pour cette organisation.</p>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

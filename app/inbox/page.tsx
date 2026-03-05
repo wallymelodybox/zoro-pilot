@@ -27,11 +27,6 @@ import {
 import { connectGmail, fetchGmailMessages } from "@/app/actions"
 import {
   type GmailMessage,
-  getChannelMessages,
-  channels,
-  getUserById,
-  getOrganizationById,
-  getUserOrgTitle,
 } from "@/lib/store"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -75,44 +70,7 @@ export default function InboxPage() {
   }
 
   const buildChatItems = (): InboxItem[] => {
-    return channels
-      .map((ch) => {
-        const msgs = getChannelMessages(ch.id)
-        if (!msgs || msgs.length === 0) return null
-        const last = msgs[msgs.length - 1]
-        const sender = getUserById(last.senderId)
-        const senderChatName =
-          getUserOrgTitle(last.senderId, ch.organizationId) || sender?.role || sender?.name || "?"
-        const isComment = ch.type === "context" || ch.contextType === "task"
-        const orgName = ch.organizationId ? getOrganizationById(ch.organizationId)?.name : undefined
-
-        const mentionNeedle = (() => {
-          const me = getUserById(CURRENT_USER_ID)
-          const nameNeedle = me?.name ? `@${me.name.split(" ")[0]}` : ""
-          return nameNeedle
-        })()
-
-        const hasMention =
-          last.content.includes("@") &&
-          (last.content.includes("@all") || (mentionNeedle ? last.content.includes(mentionNeedle) : false))
-
-        const id = `chat:${last.id}`
-        const isUnread = !readIds.has(id)
-
-        return {
-          id,
-          source: "chat",
-          category: isComment ? "comment" : "message",
-          title: ch.name,
-          subtitle: senderChatName,
-          snippet: last.content,
-          date: last.timestamp,
-          isUnread,
-          hasMention,
-          organizationName: orgName,
-        } satisfies InboxItem
-      })
-      .filter(Boolean) as InboxItem[]
+    return []
   }
 
   const buildGmailItems = (): InboxItem[] => {

@@ -70,40 +70,7 @@ interface Automation {
 
 // --- MOCK DATA ---
 
-const MOCK_AUTOMATIONS: Automation[] = [
-  {
-    id: "auto-1",
-    name: "Notification de fin de tâche",
-    description: "Envoie un message dans le chat 'Général' quand une tâche critique est terminée.",
-    active: true,
-    trigger: {
-      type: "task_completed",
-      config: { priority: "urgent" }
-    },
-    action: {
-      type: "send_chat",
-      config: { channelId: "gen", message: "🚀 Une tâche critique vient d'être terminée !" }
-    },
-    lastRun: "Il y a 2 heures",
-    runsCount: 124
-  },
-  {
-    id: "auto-2",
-    name: "Rappel d'échéance",
-    description: "Alerte le manager si un projet est à 24h de sa date de fin sans être à 100%.",
-    active: true,
-    trigger: {
-      type: "deadline_approaching",
-      config: { timeframe: "24h" }
-    },
-    action: {
-      type: "send_email",
-      config: { recipient: "manager@zoro-pilot.com", subject: "Attention : Échéance proche" }
-    },
-    lastRun: "Hier",
-    runsCount: 45
-  }
-]
+const MOCK_AUTOMATIONS: Automation[] = []
 
 // --- COMPONENTS ---
 
@@ -230,6 +197,13 @@ export default function AutomationsPage() {
           {/* Automations List */}
           <ScrollArea className="flex-1 -mx-4 px-4">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-8">
+              {automations.length === 0 && (
+                <div className="col-span-full text-center py-20 border border-dashed rounded-xl">
+                  <Zap className="mx-auto h-12 w-12 text-muted-foreground/30" />
+                  <h3 className="mt-4 text-lg font-semibold">Aucune automatisation créée</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Cliquez sur "Créer un flux" pour commencer.</p>
+                </div>
+              )}
               {automations.map((auto) => (
                 <Card 
                   key={auto.id} 

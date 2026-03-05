@@ -8,6 +8,7 @@ import { Shield, LayoutDashboard, Settings, LogOut, Command, Activity } from "lu
 import { cn } from "@/lib/utils"
 import { redirectToApp } from "@/app/actions"
 import { useUser } from "@/hooks/use-user"
+import { UserAvatar } from "@/components/user-avatar"
 
 export default function BOLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -88,7 +89,20 @@ export default function BOLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="pt-6 border-t border-border/40">
+        <div className="pt-6 border-t border-border/40 space-y-4">
+          <div className="flex items-center gap-3 px-2">
+            <UserAvatar 
+              name={user?.name || "Admin"} 
+              avatarUrl={user?.avatar_url} 
+              fallback={user?.name?.charAt(0) || "A"} 
+              className="h-9 w-9 border border-primary/20"
+            />
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-bold text-foreground truncate">{user?.name}</span>
+              <span className="text-[10px] text-primary truncate font-black uppercase tracking-widest">SUPER ADMIN</span>
+            </div>
+          </div>
+
           <Link
             href="#"
             onClick={(e) => {

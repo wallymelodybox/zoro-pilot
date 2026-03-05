@@ -24,6 +24,7 @@ export function useSupabaseData() {
   const [pillars, setPillars] = useState<Pillar[]>([])
   const [keyResults, setKeyResults] = useState<KeyResult[]>([])
   const [checkins, setCheckins] = useState<OKRCheckin[]>([])
+  const [profiles, setProfiles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [usingMockData, setUsingMockData] = useState(false)
   const supabase = createClient()
@@ -38,6 +39,7 @@ export function useSupabaseData() {
       setPillars([])
       setKeyResults([])
       setCheckins([])
+      setProfiles([])
       return
     }
 
@@ -53,14 +55,16 @@ export function useSupabaseData() {
         { data: objectivesData },
         { data: pillarsData },
         { data: krsData },
-        { data: checkinsData }
+        { data: checkinsData },
+        { data: profilesData }
       ] = await Promise.all([
         supabase.from('projects').select('*').eq('organization_id', orgId),
         supabase.from('tasks').select('*').eq('organization_id', orgId),
         supabase.from('objectives').select('*').eq('organization_id', orgId),
         supabase.from('pillars').select('*').eq('organization_id', orgId),
         supabase.from('key_results').select('*').eq('organization_id', orgId),
-        supabase.from('okr_checkins').select('*').eq('organization_id', orgId).order('date', { ascending: false })
+        supabase.from('okr_checkins').select('*').eq('organization_id', orgId).order('date', { ascending: false }),
+        supabase.from('profiles').select('*').eq('organization_id', orgId)
       ])
 
       // If no data, keep empty arrays (no mock fallback)
@@ -74,8 +78,12 @@ export function useSupabaseData() {
          setPillars([])
          setKeyResults([])
          setCheckins([])
+         setProfiles([])
          setUsingMockData(false)
       } else {
+        if (profilesData) {
+          setProfiles(profilesData)
+        }
         // Map DB fields to our frontend types
         const mappedProjects = projectsData ? projectsData.map((p: any) => ({
           id: p.id,
@@ -173,6 +181,6 @@ export function useSupabaseData() {
     fetchData()
   }, [user])
 
-  return { projects, tasks, objectives, pillars, keyResults, checkins, loading, usingMockData, refresh: fetchData }
+  return { projects, tasks, objectives, pillars, keyResults, checkins, profiles, loading, usingMockData, refresh: fetchData }
 }
 
