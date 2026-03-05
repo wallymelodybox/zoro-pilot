@@ -7,6 +7,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Camera, UploadCloud } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface AvatarUploadProps {
   uid: string | null
@@ -64,7 +65,7 @@ export function AvatarUpload({
 
       onUpload(filePath)
     } catch (error) {
-      alert('Erreur lors de l'upload de l'avatar!')
+      toast.error("Erreur lors de l'upload de l'avatar!")
     } finally {
       setUploading(false)
     }
