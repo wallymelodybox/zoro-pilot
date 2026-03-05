@@ -18,7 +18,7 @@ async function ensureProfile(fullName?: string) {
   }
 
   const email = user.email || `user-${user.id}@example.com`
-  const name = fullName || (email.includes('@') ? email.split('@')[0] : email)
+  const name = user.user_metadata.full_name || fullName || (email.includes('@') ? email.split('@')[0] : email)
 
   // --- SUPER ADMIN LOGIC ---
   // This block must be first and must be isolated.
