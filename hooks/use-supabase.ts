@@ -14,7 +14,10 @@ import {
   pillars as mockPillars
 } from '@/lib/store'
 
+import { useUser } from '@/hooks/use-user'
+
 export function useSupabaseData() {
+  const { user } = useUser()
   const [projects, setProjects] = useState<Project[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [objectives, setObjectives] = useState<Objective[]>([])
@@ -26,10 +29,24 @@ export function useSupabaseData() {
   const supabase = createClient()
 
   async function fetchData() {
+    if (!user?.organization_id) {
+      setLoading(false)
+      // If no org ID, we are sure there is no data to fetch.
+      setProjects([])
+      setTasks([])
+      setObjectives([])
+      setPillars([])
+      setKeyResults([])
+      setCheckins([])
+      return
+    }
+
     setLoading(true)
     
     try {
-      // Fetch everything in parallel
+      const orgId = user.organization_id
+
+      // Fetch everything in parallel, filtered by organization_id
       const [
         { data: projectsData, error: projectsError },
         { data: tasksData },
@@ -38,12 +55,12 @@ export function useSupabaseData() {
         { data: krsData },
         { data: checkinsData }
       ] = await Promise.all([
-        supabase.from('projects').select('*'),
-        supabase.from('tasks').select('*'),
-        supabase.from('objectives').select('*'),
-        supabase.from('pillars').select('*'),
-        supabase.from('key_results').select('*'),
-        supabase.from('okr_checkins').select('*').order('date', { ascending: false })
+        supabase.from('projects').select('*').eq('organization_id', orgId),
+        supabase.from('tasks').select('*').eq('organization_id', orgId),
+        supabase.from('objectives').select('*').eq('organization_id', orgId),
+        supabase.from('pillars').select('*').eq('organization_id', orgId),
+        supabase.from('key_results').select('*').eq('organization_id', orgId),
+        supabase.from('okr_checkins').select('*').eq('organization_id', orgId).order('date', { ascending: false })
       ])
 
       // If no data, keep empty arrays (no mock fallback)
@@ -154,7 +171,7 @@ export function useSupabaseData() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [user])
 
   return { projects, tasks, objectives, pillars, keyResults, checkins, loading, usingMockData, refresh: fetchData }
 }
