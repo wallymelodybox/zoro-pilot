@@ -65,8 +65,11 @@ export async function proxy(request: NextRequest) {
   if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
     // Keep standard behavior for dev
     return sessionResponse
-  } else if (adminDomain && appDomain && hostname !== adminDomain && hostname !== appDomain && process.env.NODE_ENV === 'production') {
-    // In production, only allow our two domains
+  }
+
+  // 4. In deployed environments, only allow our two configured domains.
+  // Any other hostname (preview URLs, unknown domains) is blocked.
+  if (adminDomain && appDomain && hostname !== adminDomain && hostname !== appDomain) {
     return new NextResponse('Domain Not Allowed', { status: 403 })
   }
 
@@ -86,6 +89,6 @@ export const config = {
      * - auth (auth callback routes)
      * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico|login|auth|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

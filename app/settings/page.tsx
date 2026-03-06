@@ -196,11 +196,24 @@ function SettingsContent() {
         </ScrollArea>
         
         <div className="p-4 border-t border-border/50 space-y-1">
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-muted text-foreground transition-colors">
+          <button
+            type="button"
+            onClick={() => window.open("mailto:support@zoro-pilot.company?subject=Aide%20Zoro%20Pilot", "_blank")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-muted text-foreground transition-colors"
+          >
               <HelpCircle className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium">Aide & Support</span>
           </button>
-          <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-destructive/10 text-destructive transition-colors">
+          <button
+            type="button"
+            onClick={async () => {
+              const { createClient } = await import("@/lib/supabase/client")
+              const supabase = createClient()
+              await supabase.auth.signOut()
+              window.location.href = "/login"
+            }}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left hover:bg-destructive/10 text-destructive transition-colors"
+          >
               <LogOut className="h-4 w-4" />
               <span className="text-sm font-medium">Se déconnecter</span>
           </button>
