@@ -3,9 +3,8 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { headers } from 'next/headers'
 
-async function ensureProfile(fullName?: string) {
+async function ensureProfile() {
   const supabase = await createClient()
 
   const {
@@ -18,9 +17,9 @@ async function ensureProfile(fullName?: string) {
   }
 
   const email = user.email || `user-${user.id}@example.com`
-  const name = user.user_metadata.full_name || fullName || (email.includes('@') ? email.split('@')[0] : email)
+  const name = user.user_metadata.full_name || (email.includes('@') ? email.split('@')[0] : email)
 
-  // --- SUPER ADMIN LOGIC ---
+  // ── 1. SUPER ADMIN — accès inconditionnel
   if (email === 'menannzoro@gmail.com') {
     const { error: upsertError } = await supabase
       .from('profiles')
@@ -34,12 +33,24 @@ async function ensureProfile(fullName?: string) {
         rbac_role: 'super_admin',
         manager_id: null,
       })
-    
     if (upsertError) return { error: upsertError.message }
     return { success: true }
   }
 
-  // --- STANDARD USER LOGIC ---
+  // ── 2. UTILISATEUR EXISTANT — DG ou membre déjà provisionné
+  //    Un profil existe s'il a été créé par le BO (DG) ou via une invitation (membre).
+  const { data: existingProfile } = await supabase
+    .from('profiles')
+    .select('id, organization_id, rbac_role')
+    .eq('id', user.id)
+    .single()
+
+  if (existingProfile && existingProfile.organization_id) {
+    // Profil valide, rattaché à une organisation → OK
+    return { success: true }
+  }
+
+  // ── 3. NOUVELLE INVITATION — premier login d'un membre invité
   const { data: invite, error: inviteError } = await supabase
     .from('invites')
     .select('*')
@@ -49,14 +60,19 @@ async function ensureProfile(fullName?: string) {
     .single()
 
   if (inviteError || !invite) {
-    return { error: "Accès refusé. Une invitation valide est requise pour se connecter." }
+    // Pas de profil existant, pas d'invitation valide → accès refusé
+    // On déconnecte aussi le user Supabase Auth pour éviter les cookies orphelins
+    await supabase.auth.signOut()
+    return { error: "Accès refusé. Votre compte doit être créé par un administrateur ou via une invitation valide." }
   }
 
+  // Consommer l'invitation
   await supabase
     .from('invites')
     .update({ is_used: true, used_at: new Date().toISOString(), used_by: user.id })
     .eq('id', invite.id)
 
+  // Créer/mettre à jour le profil avec les données de l'invitation
   const { error: upsertError } = await supabase
     .from('profiles')
     .upsert({
@@ -106,54 +122,8 @@ export async function login(formData: FormData) {
   redirect('/')
 }
 
-export async function signup(formData: FormData) {
-  const supabase = await createClient()
-
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
-  const fullName = formData.get('fullName') as string
-
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: fullName,
-      },
-    },
-  })
-
-  if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`)
-  }
-
-  if (!data.session) {
-    redirect(
-      `/login?error=${encodeURIComponent(
-        "Compte créé. Confirmez l'email reçu pour activer la connexion."
-      )}`
-    )
-  }
-
-  const ensured = await ensureProfile(fullName)
-  if ('error' in ensured && ensured.error) {
-    redirect(`/login?error=${encodeURIComponent(ensured.error)}`)
-  }
-
-  revalidatePath('/', 'layout')
-  redirect('/')
-}
-
-export async function signInWithOAuth(provider: 'google' | 'apple' | 'azure') {
-  const supabase = await createClient()
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider,
-    options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/callback`,
-    },
-  })
-
-  if (data.url) {
-    redirect(data.url)
-  }
-}
+// ── signup et signInWithOAuth sont désactivés.
+// La création de comptes se fait exclusivement via :
+//   • Super Admin (BO) → crée les comptes DG
+//   • DG → invite les membres de son organisation
+// Aucune inscription publique n'est possible.

@@ -1,43 +1,19 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Chrome, Apple, Command, Globe, CheckCircle2, Beaker, Shield } from "lucide-react"
+import { Command, Globe, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { login, signup } from "./actions"
+import { login } from "./actions"
 import { LoginCarousel } from "./login-carousel"
-import { useRouter } from "next/navigation"
 import { use } from "react"
-
-// Microsoft icon custom component
-function MicrosoftIcon(props: React.SVGProps<SVGSVGElement>) {
-  return (
-    <svg viewBox="0 0 23 23" {...props}>
-      <path fill="#f35325" d="M1 1h10v10H1z"/>
-      <path fill="#81bc06" d="M12 1h10v10H12z"/>
-      <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-      <path fill="#ffba08" d="M12 12h10v10H12z"/>
-    </svg>
-  )
-}
 
 export default function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string; next?: string }>
 }) {
-  const router = useRouter()
   const resolvedSearchParams = use(searchParams)
   
   const isBORoute = resolvedSearchParams?.next?.includes('bo-zoro-control-2026-secure')

@@ -136,56 +136,45 @@ export async function bootstrapChat() {
       return { error: "Utilisateur non authentifié." }
     }
 
-    const email = user.email || `user-${user.id}@example.com`
-
-    const { error: profileError } = await supabase
+    // Le profil doit déjà exister (créé par le BO pour les DG, ou par invitation pour les membres).
+    // On ne crée jamais de profil ni d'organisation ici.
+    const { data: profile } = await supabase
       .from("profiles")
-      .upsert({
-        id: user.id,
-        email,
-        name: email.split("@")[0],
-        role: "Membre",
-        avatar_url: null,
-        team_id: null,
-        rbac_role: "member",
-        manager_id: null,
-      })
-
-    if (profileError) {
-      console.error("bootstrapChat profile error", profileError)
-      return { error: profileError.message }
-    }
-
-    const { data: org, error: orgError } = await supabase
-      .from("organizations")
-      .insert({ name: "Mon organisation" })
-      .select("id,name")
+      .select("id, organization_id")
+      .eq("id", user.id)
       .single()
 
-    if (orgError || !org) {
-      console.error("bootstrapChat org error", orgError)
-      return { error: orgError?.message || "Erreur création organisation" }
+    if (!profile || !profile.organization_id) {
+      return { error: "Profil ou organisation introuvable. Contactez votre administrateur." }
     }
 
-    const { error: memberError } = await supabase
-      .from("organization_members")
-      .insert({
-        organization_id: org.id,
-        profile_id: user.id,
-        title: "Owner",
-      })
+    const orgId = profile.organization_id
 
-    if (memberError) {
-      console.error("bootstrapChat member error", memberError)
-      return { error: memberError.message }
+    // Vérifier s'il existe déjà un canal "Général" pour cette organisation
+    const { data: existingChannel } = await supabase
+      .from("channels")
+      .select("id")
+      .eq("organization_id", orgId)
+      .eq("name", "Général")
+      .single()
+
+    if (existingChannel) {
+      // S'assurer que l'utilisateur est membre du canal
+      const { error: cmError } = await supabase
+        .from("channel_members")
+        .upsert({ channel_id: existingChannel.id, user_id: user.id })
+
+      if (cmError) console.error("bootstrapChat channel_members upsert error", cmError)
+      return { success: true }
     }
 
+    // Créer le canal "Général" s'il n'existe pas encore
     const { data: channel, error: channelError } = await supabase
       .from("channels")
       .insert({
         name: "Général",
         type: "public",
-        organization_id: org.id,
+        organization_id: orgId,
         context_id: null,
         context_type: null,
       })
@@ -197,17 +186,9 @@ export async function bootstrapChat() {
       return { error: channelError?.message || "Erreur création channel" }
     }
 
-    const { error: cmError } = await supabase
+    await supabase
       .from("channel_members")
-      .insert({
-        channel_id: channel.id,
-        user_id: user.id,
-      })
-
-    if (cmError) {
-      console.error("bootstrapChat channel_members error", cmError)
-      return { error: cmError.message }
-    }
+      .insert({ channel_id: channel.id, user_id: user.id })
 
     revalidatePath("/chats")
     revalidatePath("/inbox")
