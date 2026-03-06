@@ -68,11 +68,11 @@ export default function BOSettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Domaine Applicatif Principal</Label>
-                  <Input defaultValue="app.zoro-pilot.com" className="bg-background/50 border-border/40" />
+                  <Input defaultValue="app.zoro-pilot.company" className="bg-background/50 border-border/40" />
                 </div>
                 <div className="space-y-2">
                   <Label>Domaine Back Office (Secure)</Label>
-                  <Input defaultValue="zoro-secure-control-net.com" className="bg-background/50 border-border/40" />
+                  <Input defaultValue="zoro-secure-control-net.company" className="bg-background/50 border-border/40" />
                 </div>
               </div>
               <Separator className="bg-border/20" />
