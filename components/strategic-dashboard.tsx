@@ -1204,13 +1204,21 @@ function ExecutiveFuturistDashboard({
               <SurfaceCard className="p-5 lg:hidden shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="text-xs text-muted-foreground font-semibold">AI Tokens</div>
-                    <div className="text-xl font-bold text-foreground">84% Capacity</div>
+                    <div className="text-xs text-muted-foreground font-semibold">Tâches terminées</div>
+                    <div className="text-xl font-bold text-foreground">
+                      {metrics.activeTasks.length > 0
+                        ? `${Math.round((metrics.taskBarData.reduce((s, d) => s + d.value, 0) / Math.max(metrics.activeTasks.length, 1)) * 100)}%`
+                        : "0%"}
+                    </div>
                   </div>
-                  <Cpu className="h-5 w-5 text-primary" />
+                  <CheckSquare className="h-5 w-5 text-primary" />
                 </div>
                 <div className="mt-3">
-                  <ProgressBar value={84} />
+                  <ProgressBar
+                    value={metrics.activeTasks.length > 0
+                      ? Math.round((metrics.taskBarData.reduce((s, d) => s + d.value, 0) / Math.max(metrics.activeTasks.length, 1)) * 100)
+                      : 0}
+                  />
                 </div>
               </SurfaceCard>
             </div>

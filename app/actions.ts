@@ -471,10 +471,9 @@ export async function connectGmail() {
 }
 
 export async function fetchGmailMessages() {
-  // Simulating API call delay
-  await new Promise(resolve => setTimeout(resolve, 500))
-  const { mockGmailMessages } = await import('@/lib/store')
-  return { messages: mockGmailMessages }
+  // TODO: Implement real Gmail API integration
+  // For now, return empty array — no mock data
+  return { messages: [] as import('@/lib/store').GmailMessage[] }
 }
 
 // --- OKR ACTIONS ---

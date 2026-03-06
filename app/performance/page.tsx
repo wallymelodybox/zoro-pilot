@@ -33,11 +33,17 @@ import { Button } from "@/components/ui/button"
 export default function PerformancePage() {
   const { projects, objectives, keyResults, loading } = useSupabaseData()
 
-  const chartData = [
-    { name: "Jan", mrr: 62000, nps: 38 },
-    { name: "Fév", mrr: 68000, nps: 42 },
-    { name: "Mar", mrr: 75000, nps: 45 },
-  ]
+  // Build chart data dynamically from keyResults progression
+  const chartData = React.useMemo(() => {
+    if (keyResults.length === 0) return []
+    // Group KRs by category and show current vs target as a trend
+    // Use up to 6 KRs as data points for the chart
+    return keyResults.slice(0, 6).map(kr => ({
+      name: kr.title.length > 18 ? kr.title.slice(0, 18) + "…" : kr.title,
+      current: kr.current,
+      target: kr.target,
+    }))
+  }, [keyResults])
 
   if (loading) {
     return (
@@ -101,30 +107,36 @@ export default function PerformancePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Consolidated Chart */}
+        {/* KPI Progress Chart */}
         <Card className="border-white/5 bg-card/50">
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-blue-500" />
-              Évolution du MRR & NPS
+              Progression des KPIs
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-80 w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 12}} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 12}} />
-                  <Tooltip 
-                    contentStyle={{backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
-                    itemStyle={{fontSize: '12px'}}
-                  />
-                  <Line type="monotone" dataKey="mrr" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} activeDot={{r: 6}} name="MRR (€)" />
-                  <Line type="monotone" dataKey="nps" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: '#10b981'}} activeDot={{r: 6}} name="NPS (Score)" />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {chartData.length > 0 ? (
+              <div className="h-80 w-full mt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 11}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#888', fontSize: 12}} />
+                    <Tooltip
+                      contentStyle={{backgroundColor: '#1a1a1a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px'}}
+                      itemStyle={{fontSize: '12px'}}
+                    />
+                    <Line type="monotone" dataKey="current" stroke="#3b82f6" strokeWidth={3} dot={{r: 4, fill: '#3b82f6'}} activeDot={{r: 6}} name="Valeur actuelle" />
+                    <Line type="monotone" dataKey="target" stroke="#10b981" strokeWidth={3} dot={{r: 4, fill: '#10b981'}} activeDot={{r: 6}} name="Cible" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-80 flex items-center justify-center text-muted-foreground text-sm">
+                Aucun KPI défini. Créez des Key Results pour voir la progression.
+              </div>
+            )}
           </CardContent>
         </Card>
 
