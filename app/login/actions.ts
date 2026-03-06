@@ -119,6 +119,16 @@ export async function login(formData: FormData) {
     redirect(next)
   }
 
+  // Super Admin → rediriger vers le BO (domaine admin)
+  if (email === 'menannzoro@gmail.com') {
+    const adminDomain = process.env.ADMIN_DOMAIN
+    if (adminDomain) {
+      redirect(`https://${adminDomain}`)
+    }
+    // Fallback local : accès direct au BO
+    redirect('/bo-zoro-control-2026-secure')
+  }
+
   redirect('/')
 }
 
