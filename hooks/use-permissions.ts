@@ -1,21 +1,15 @@
 "use client"
 
-import {
-  getUserById,
-  canEdit as checkCanEdit,
-  canView as checkCanView,
-  canApprove as checkCanApprove,
-  canCreateOKR as checkCanCreateOKR,
-  User,
-} from "@/lib/store"
+import { useUser } from "@/hooks/use-user"
 
-// Mock hook - in real app this would use session context
-const CURRENT_USER_ID = "u1" // Sarah Chen (Admin)
-
+/**
+ * Hook de permissions basé sur l'utilisateur réel connecté via Supabase.
+ * Remplace l'ancien mock hardcodé.
+ */
 export function usePermissions() {
-  const currentUser = getUserById(CURRENT_USER_ID)
+  const { user, loading } = useUser()
 
-  if (!currentUser) {
+  if (!user || loading) {
     return {
       user: null,
       canEdit: () => false,
@@ -26,12 +20,20 @@ export function usePermissions() {
     }
   }
 
+  const role = user.rbac_role as string | null
+
+  const isAdmin = role === 'super_admin' || role === 'admin'
+  const isManager = isAdmin || role === 'manager'
+
   return {
-    user: currentUser,
-    role: currentUser.rbacRole,
-    canEdit: (targetOwnerId: string) => checkCanEdit(currentUser, targetOwnerId),
-    canView: (targetOwnerId: string) => checkCanView(currentUser, targetOwnerId),
-    canApprove: (targetOwnerId: string) => checkCanApprove(currentUser, targetOwnerId),
-    canCreateOKR: checkCanCreateOKR(currentUser),
+    user,
+    role,
+    canEdit: (targetOwnerId: string) =>
+      isAdmin || user.id === targetOwnerId,
+    canView: (_targetOwnerId: string) =>
+      true, // Visible si RLS l'autorise
+    canApprove: (targetOwnerId: string) =>
+      isManager && user.id !== targetOwnerId,
+    canCreateOKR: isManager,
   }
 }

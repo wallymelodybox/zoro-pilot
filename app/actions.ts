@@ -55,6 +55,11 @@ export async function createProject(formData: FormData) {
 }
 
 export async function redirectToAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user || user.email !== 'menannzoro@gmail.com') {
+    return { error: 'Accès refusé.' }
+  }
   const adminDomain = process.env.ADMIN_DOMAIN
   if (adminDomain) {
     redirect(`https://${adminDomain}/`)
@@ -64,6 +69,9 @@ export async function redirectToAdmin() {
 }
 
 export async function redirectToApp() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non authentifié.' }
   const appDomain = process.env.APP_DOMAIN
   if (appDomain) {
     redirect(`https://${appDomain}/`)
@@ -385,7 +393,9 @@ export async function updateTaskStatus(taskId: string, status: string) {
 
 export async function createChannel(formData: FormData) {
   const supabase = await createClient()
-  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
   const name = formData.get('name') as string
   const type = formData.get('type') as string || 'public'
   const organizationId = formData.get('organizationId') as string
@@ -409,16 +419,10 @@ export async function createChannel(formData: FormData) {
     return { error: 'Erreur lors de la création du channel.' }
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (user) {
-    await supabase.from('channel_members').insert({
-      channel_id: channel.id,
-      user_id: user.id
-    })
-  }
+  await supabase.from('channel_members').insert({
+    channel_id: channel.id,
+    user_id: user.id
+  })
 
   revalidatePath('/chats')
   return { success: true, id: channel.id }
@@ -461,11 +465,13 @@ export async function fetchGmailMessages() {
 
 export async function createObjective(formData: FormData) {
   const supabase = await createClient()
-  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
   const title = formData.get('title') as string
   const pillarId = formData.get('pillarId') as string
   const period = formData.get('period') as string || 'T1 2026'
-  const ownerId = formData.get('ownerId') as string || 'a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d' // Marc Dubois
+  const ownerId = formData.get('ownerId') as string || user.id
 
   if (!title) return { error: 'Le titre de l\'objectif est requis.' }
 
@@ -484,29 +490,31 @@ export async function createObjective(formData: FormData) {
 
 export async function createKeyResult(formData: FormData) {
   const supabase = await createClient()
-  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
   const objectiveId = formData.get('objectiveId') as string
   const title = formData.get('title') as string
   const type = formData.get('type') as string || 'metric'
   const targetValue = parseFloat(formData.get('targetValue') as string || '100')
   const unit = formData.get('unit') as string || '%'
   const weight = parseInt(formData.get('weight') as string || '1')
-  const ownerId = formData.get('ownerId') as string || 'a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d'
+  const ownerId = formData.get('ownerId') as string || user.id
 
   if (!title || !objectiveId) return { error: 'Le titre et l\'objectif sont requis.' }
 
   const { error } = await supabase
     .from('key_results')
-    .insert([{ 
-      objective_id: objectiveId, 
-      title, 
-      type, 
-      target_value: targetValue, 
-      current_value: 0, 
-      unit, 
-      weight, 
+    .insert([{
+      objective_id: objectiveId,
+      title,
+      type,
+      target_value: targetValue,
+      current_value: 0,
+      unit,
+      weight,
       confidence: 'on-track',
-      owner_id: ownerId 
+      owner_id: ownerId
     }])
 
   if (error) {
@@ -574,7 +582,9 @@ export async function getWeeklySummaryData(userId: string) {
 
 export async function createOKRCheckin(formData: FormData) {
   const supabase = await createClient()
-  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
   const krId = formData.get('krId') as string
   const progressDelta = parseFloat(formData.get('progressDelta') as string || '0')
   const confidence = formData.get('confidence') as string || 'on-track'
@@ -657,7 +667,23 @@ export async function createOKRCheckin(formData: FormData) {
 
 export async function deleteTask(taskId: string) {
   const supabase = await createClient()
-  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  // Vérifier que l'utilisateur a le droit de supprimer cette tâche
+  const canDelete = await hasPermission(user.id, 'delete_task')
+  if (!canDelete) {
+    // Fallback: permettre si l'utilisateur est assigné à la tâche
+    const { data: task } = await supabase
+      .from('tasks')
+      .select('assignee_id')
+      .eq('id', taskId)
+      .single()
+    if (!task || task.assignee_id !== user.id) {
+      return { error: 'Vous n\'avez pas la permission de supprimer cette tâche.' }
+    }
+  }
+
   const { error } = await supabase
     .from('tasks')
     .delete()

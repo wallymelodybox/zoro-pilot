@@ -119,16 +119,11 @@ export async function login(formData: FormData) {
     redirect(next)
   }
 
-  // Super Admin → rediriger vers le BO (domaine admin)
-  if (email === 'menannzoro@gmail.com') {
-    const adminDomain = process.env.ADMIN_DOMAIN
-    if (adminDomain) {
-      redirect(`https://${adminDomain}`)
-    }
-    // Fallback local : accès direct au BO
-    redirect('/bo-zoro-control-2026-secure')
-  }
-
+  // Redirection post-login :
+  // - Le super admin doit se connecter sur le domaine admin (zoro-secure-control-net.company)
+  //   où le proxy réécrit `/` vers le BO automatiquement.
+  // - S'il se connecte sur le domaine app, il arrive sur le dashboard client (normal).
+  // - Pas de redirect cross-domain car les cookies de session ne traversent pas les domaines.
   redirect('/')
 }
 
