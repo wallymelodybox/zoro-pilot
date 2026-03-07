@@ -1,15 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useUser } from "@/hooks/use-user"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Shield, UserPlus, Key, Building, Activity, Clock, AlertCircle, LogOut, Users, Globe } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Shield, UserPlus, Key, Building, Activity, Clock, AlertCircle, LogOut, Users, Globe, Trash2, X, Eye } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
-import { createDGAccount } from "./actions"
+import { createDGAccount, deleteOrganization, getOrganizationsWithDetails } from "./actions"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
 
@@ -26,6 +27,17 @@ export default function BackOfficePage() {
   const [totalProfiles, setTotalProfiles] = useState(0)
   const [fetching, setFetching] = useState(true)
   const supabase = createClient()
+
+  // Dialog states
+  const [activeDialog, setActiveDialog] = useState<'orgs' | 'users' | 'active' | 'pending' | null>(null)
+  const [orgDetails, setOrgDetails] = useState<any[]>([])
+  const [allProfiles, setAllProfiles] = useState<any[]>([])
+  const [orphanProfiles, setOrphanProfiles] = useState<any[]>([])
+
+  // Delete confirmation
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
+  const [deletePassword, setDeletePassword] = useState("")
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!loading) {
@@ -63,6 +75,41 @@ export default function BackOfficePage() {
       setFetching(false)
     }
   }
+
+  const openDialog = useCallback(async (type: 'orgs' | 'users' | 'active' | 'pending') => {
+    setActiveDialog(type)
+    const res = await getOrganizationsWithDetails()
+    if (res.error) {
+      toast.error(res.error)
+      return
+    }
+    setOrgDetails(res.organizations || [])
+    setAllProfiles(res.allProfiles || [])
+    setOrphanProfiles(res.orphanProfiles || [])
+  }, [])
+
+  const handleDeleteOrg = async () => {
+    if (!deleteTarget || !deletePassword) return
+    setDeleting(true)
+    const res = await deleteOrganization(deleteTarget.id, deletePassword)
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      toast.success(res.message)
+      setDeleteTarget(null)
+      setDeletePassword("")
+      fetchStats()
+      // Refresh dialog data
+      const updated = await getOrganizationsWithDetails()
+      if (!updated.error) {
+        setOrgDetails(updated.organizations || [])
+        setAllProfiles(updated.allProfiles || [])
+        setOrphanProfiles(updated.orphanProfiles || [])
+      }
+    }
+    setDeleting(false)
+  }
+
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -102,17 +149,17 @@ export default function BackOfficePage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-3">
-            <Button 
+            <Button
               onClick={handleSignOut}
-              variant="outline" 
+              variant="outline"
               className="w-full h-11 rounded-xl border-border/40 hover:bg-background/80"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Se déconnecter pour changer de compte
             </Button>
-            <Button 
+            <Button
               onClick={() => redirect("/")}
-              variant="ghost" 
+              variant="ghost"
               className="w-full h-11 rounded-xl text-muted-foreground hover:text-foreground"
             >
               Retourner au dashboard client
@@ -158,7 +205,7 @@ export default function BackOfficePage() {
   const getLicenseProgress = (org: any) => {
     if (org.license_type === 'definitive') return 100
     if (!org.expires_at || !org.created_at) return 0
-    
+
     const total = new Date(org.expires_at).getTime() - new Date(org.created_at).getTime()
     const elapsed = new Date().getTime() - new Date(org.created_at).getTime()
     const progress = Math.max(0, Math.min(100, 100 - (elapsed / total * 100)))
@@ -169,7 +216,7 @@ export default function BackOfficePage() {
     if (!expiryDate) return "Illimité"
     const diff = new Date(expiryDate).getTime() - new Date().getTime()
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24))
-    
+
     if (days < 0) return "Expiré"
     if (days === 0) return "Aujourd'hui"
     if (days > 30) {
@@ -208,52 +255,31 @@ export default function BackOfficePage() {
         </div>
       </div>
 
-      {/* Platform Metrics (dynamiques) */}
+      {/* Platform Metrics (cliquables) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-              <Building className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Organisations</p>
-              <h3 className="text-xl font-bold">{organizations.length}</h3>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500">
-              <Users className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Utilisateurs</p>
-              <h3 className="text-xl font-bold">{totalProfiles}</h3>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-              <Key className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Licences actives</p>
-              <h3 className="text-xl font-bold">{organizations.filter(o => o.setup_completed).length}</h3>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-              <AlertCircle className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">En attente</p>
-              <h3 className="text-xl font-bold">{organizations.filter(o => !o.setup_completed).length}</h3>
-            </div>
-          </CardContent>
-        </Card>
+        {[
+          { key: 'orgs' as const, icon: <Building className="h-6 w-6" />, color: 'blue', label: 'Organisations', value: organizations.length },
+          { key: 'users' as const, icon: <Users className="h-6 w-6" />, color: 'purple', label: 'Utilisateurs', value: totalProfiles },
+          { key: 'active' as const, icon: <Key className="h-6 w-6" />, color: 'emerald', label: 'Licences actives', value: organizations.filter(o => o.setup_completed).length },
+          { key: 'pending' as const, icon: <AlertCircle className="h-6 w-6" />, color: 'amber', label: 'En attente', value: organizations.filter(o => !o.setup_completed).length },
+        ].map(card => (
+          <Card
+            key={card.key}
+            className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm cursor-pointer transition-all hover:scale-[1.02] hover:border-primary/30 hover:shadow-md"
+            onClick={() => openDialog(card.key)}
+          >
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className={`h-12 w-12 rounded-xl bg-${card.color}-500/10 flex items-center justify-center text-${card.color}-500`}>
+                {card.icon}
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{card.label}</p>
+                <h3 className="text-xl font-bold">{card.value}</h3>
+              </div>
+              <Eye className="h-4 w-4 text-muted-foreground/40 ml-auto" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -421,7 +447,7 @@ export default function BackOfficePage() {
               ) : organizations.slice(0, 4).map((org) => {
                 const progress = getLicenseProgress(org)
                 const timeLeft = getTimeLeft(org.expires_at)
-                
+
                 return (
                   <div key={org.id} className="space-y-3 p-4 rounded-2xl border border-border/20 bg-muted/20 hover:bg-muted/30 transition-colors">
                     <div className="flex items-center justify-between">
@@ -444,15 +470,15 @@ export default function BackOfficePage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="space-y-1.5">
                       <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
                         <span>Resource Allocation</span>
                         <span>{100 - progress}%</span>
                       </div>
-                      <Progress 
-                        value={progress} 
-                        className="h-1.5 bg-background/50" 
+                      <Progress
+                        value={progress}
+                        className="h-1.5 bg-background/50"
                         indicatorClassName={cn(
                           "transition-all",
                           progress < 20 ? "bg-destructive" : progress < 50 ? "bg-amber-500" : "bg-primary"
@@ -469,6 +495,183 @@ export default function BackOfficePage() {
           </CardContent>
         </Card>
       </div>
+      {/* ── DIALOG: Organisations ── */}
+      <Dialog open={activeDialog === 'orgs'} onOpenChange={() => setActiveDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Organisations ({orgDetails.length})</DialogTitle>
+            <DialogDescription>Liste de toutes les organisations avec leurs utilisateurs</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {orgDetails.map(org => (
+              <div key={org.id} className="rounded-xl border border-border/40 bg-card/50 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold">{org.name}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {org.user_count} utilisateur{org.user_count > 1 ? 's' : ''} · Licence: {org.license_type || 'non définie'} · {org.setup_completed ? '✅ Active' : '⏳ En attente'}
+                    </div>
+                  </div>
+                  <Button variant="destructive" size="sm" onClick={() => { setDeleteTarget(org); setDeletePassword("") }}>
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Supprimer
+                  </Button>
+                </div>
+                {org.users && org.users.length > 0 && (
+                  <div className="mt-3 space-y-1.5 pl-3 border-l-2 border-border/30">
+                    {org.users.map((u: any) => (
+                      <div key={u.id} className="flex items-center justify-between text-sm">
+                        <div>
+                          <span className="font-medium">{u.name}</span>
+                          <span className="text-muted-foreground ml-2">{u.email}</span>
+                        </div>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{u.role || u.rbac_role}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {orgDetails.length === 0 && <p className="text-center text-muted-foreground py-6">Aucune organisation</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── DIALOG: Utilisateurs ── */}
+      <Dialog open={activeDialog === 'users'} onOpenChange={() => setActiveDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Utilisateurs ({allProfiles.length})</DialogTitle>
+            <DialogDescription>Tous les utilisateurs de la plateforme</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            {allProfiles.map((u: any) => {
+              const org = orgDetails.find(o => o.id === u.organization_id)
+              return (
+                <div key={u.id} className="flex items-center justify-between rounded-lg border border-border/30 bg-card/30 px-4 py-3">
+                  <div>
+                    <div className="font-medium text-sm">{u.name}</div>
+                    <div className="text-xs text-muted-foreground">{u.email}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-medium">{org?.name || '—'}</div>
+                    <div className="text-[10px] text-muted-foreground">{u.role || u.rbac_role}</div>
+                  </div>
+                </div>
+              )
+            })}
+            {orphanProfiles.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-border/30">
+                <p className="text-xs font-bold text-amber-500 mb-2">⚠️ Profils sans organisation ({orphanProfiles.length})</p>
+                {orphanProfiles.map((u: any) => (
+                  <div key={u.id} className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2 mb-1">
+                    <div className="text-sm">{u.name} <span className="text-muted-foreground">({u.email})</span></div>
+                    <span className="text-xs text-amber-500">{u.rbac_role}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── DIALOG: Licences actives ── */}
+      <Dialog open={activeDialog === 'active'} onOpenChange={() => setActiveDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Licences actives</DialogTitle>
+            <DialogDescription>Organisations avec licence configurée</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {orgDetails.filter(o => o.setup_completed).map(org => (
+              <div key={org.id} className="flex items-center justify-between rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                <div>
+                  <div className="font-medium text-sm">{org.name}</div>
+                  <div className="text-xs text-muted-foreground">{org.user_count} utilisateur{org.user_count > 1 ? 's' : ''}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs font-medium text-emerald-500">{org.license_type || '—'}</div>
+                  <div className="text-[10px] text-muted-foreground">{org.expires_at ? `Expire: ${new Date(org.expires_at).toLocaleDateString('fr-FR')}` : 'Illimitée'}</div>
+                </div>
+              </div>
+            ))}
+            {orgDetails.filter(o => o.setup_completed).length === 0 && <p className="text-center text-muted-foreground py-6">Aucune licence active</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── DIALOG: En attente ── */}
+      <Dialog open={activeDialog === 'pending'} onOpenChange={() => setActiveDialog(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>En attente</DialogTitle>
+            <DialogDescription>Organisations non configurées ou en attente d&apos;activation</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {orgDetails.filter(o => !o.setup_completed).map(org => (
+              <div key={org.id} className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                <div>
+                  <div className="font-medium text-sm">{org.name}</div>
+                  <div className="text-xs text-muted-foreground">{org.user_count} utilisateur{org.user_count > 1 ? 's' : ''} · Créée le {new Date(org.created_at).toLocaleDateString('fr-FR')}</div>
+                </div>
+                <span className="text-xs px-2 py-1 rounded-full bg-amber-500/10 text-amber-500 font-medium">En attente</span>
+              </div>
+            ))}
+            {orgDetails.filter(o => !o.setup_completed).length === 0 && <p className="text-center text-muted-foreground py-6">Aucune organisation en attente</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── DIALOG: Confirmation suppression ── */}
+      <Dialog open={!!deleteTarget} onOpenChange={() => { setDeleteTarget(null); setDeletePassword("") }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Supprimer l&apos;organisation</DialogTitle>
+            <DialogDescription>
+              Vous allez supprimer <strong>{deleteTarget?.name}</strong> et tous ses utilisateurs ({deleteTarget?.user_count || 0}).
+              Cette action est irréversible.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3">
+              <p className="text-xs text-destructive font-medium">⚠️ Seront supprimés :</p>
+              <ul className="text-xs text-muted-foreground mt-1 ml-4 list-disc space-y-0.5">
+                <li>L&apos;organisation et sa configuration</li>
+                <li>Tous les profils utilisateurs ({deleteTarget?.user_count || 0})</li>
+                <li>Tous les comptes Auth associés</li>
+                <li>Tous les canaux et messages</li>
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Entrez votre mot de passe pour confirmer</label>
+              <Input
+                type="password"
+                placeholder="Votre mot de passe super admin"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                className="bg-background/50 border-border/40"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => { setDeleteTarget(null); setDeletePassword("") }}>
+              Annuler
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteOrg} disabled={!deletePassword || deleting}>
+              {deleting ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Suppression...
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Supprimer définitivement
+                </div>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

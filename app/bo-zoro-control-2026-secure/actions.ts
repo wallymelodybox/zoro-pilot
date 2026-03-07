@@ -163,3 +163,127 @@ export async function createDGAccount(formData: FormData) {
     return { error: error.message || "Une erreur est survenue lors de la création." }
   }
 }
+
+
+/**
+ * Supprime une organisation et tous ses utilisateurs associés.
+ * 🔒 Réservé au super admin. Vérifie le mot de passe du super admin avant suppression.
+ */
+export async function deleteOrganization(orgId: string, superAdminPassword: string) {
+  const caller = await assertSuperAdmin()
+
+  if (!orgId || !superAdminPassword) {
+    return { error: "L'ID de l'organisation et le mot de passe sont requis." }
+  }
+
+  // Vérifier le mot de passe du super admin
+  const supabaseAuth = await createClient()
+  const { error: signInError } = await supabaseAuth.auth.signInWithPassword({
+    email: caller.email!,
+    password: superAdminPassword,
+  })
+
+  if (signInError) {
+    return { error: "Mot de passe incorrect." }
+  }
+
+  try {
+    const supabaseAdmin = await createAdminClient()
+
+    // 1. Récupérer tous les profils liés à cette organisation
+    const { data: members } = await supabaseAdmin
+      .from('organization_members')
+      .select('profile_id')
+      .eq('organization_id', orgId)
+
+    const profileIds = (members || []).map(m => m.profile_id)
+
+    // 2. Supprimer les channel_members, channels de l'org
+    const { data: channels } = await supabaseAdmin
+      .from('channels')
+      .select('id')
+      .eq('organization_id', orgId)
+
+    if (channels && channels.length > 0) {
+      const channelIds = channels.map(c => c.id)
+      await supabaseAdmin.from('channel_members').delete().in('channel_id', channelIds)
+      await supabaseAdmin.from('messages').delete().in('channel_id', channelIds)
+      await supabaseAdmin.from('channels').delete().in('id', channelIds)
+    }
+
+    // 3. Supprimer organization_members
+    await supabaseAdmin.from('organization_members').delete().eq('organization_id', orgId)
+
+    // 4. Supprimer les profils
+    if (profileIds.length > 0) {
+      await supabaseAdmin.from('profiles').delete().in('id', profileIds)
+    }
+
+    // 5. Supprimer les users Auth
+    for (const profileId of profileIds) {
+      await supabaseAdmin.auth.admin.deleteUser(profileId)
+    }
+
+    // 6. Supprimer l'organisation
+    const { error: orgDeleteError } = await supabaseAdmin
+      .from('organizations')
+      .delete()
+      .eq('id', orgId)
+
+    if (orgDeleteError) throw orgDeleteError
+
+    revalidatePath('/bo-zoro-control-2026-secure')
+    revalidatePath('/bo-zoro-control-2026-secure/licenses')
+
+    return { success: true, message: "Organisation supprimée avec succès." }
+  } catch (error: any) {
+    console.error('Delete Organization Error:', error)
+    return { error: error.message || "Erreur lors de la suppression." }
+  }
+}
+
+/**
+ * Récupère les détails complets des organisations avec le nombre d'utilisateurs.
+ * 🔒 Réservé au super admin.
+ */
+export async function getOrganizationsWithDetails() {
+  await assertSuperAdmin()
+
+  const supabaseAdmin = await createAdminClient()
+
+  // Récupérer toutes les organisations
+  const { data: orgs, error: orgsError } = await supabaseAdmin
+    .from('organizations')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (orgsError) return { error: orgsError.message }
+
+  // Récupérer tous les profils avec leur org
+  const { data: profiles, error: profilesError } = await supabaseAdmin
+    .from('profiles')
+    .select('id, name, email, role, rbac_role, organization_id, created_at')
+    .order('created_at', { ascending: false })
+
+  if (profilesError) return { error: profilesError.message }
+
+  // Compter les utilisateurs par organisation
+  const orgDetails = (orgs || []).map(org => {
+    const orgProfiles = (profiles || []).filter(p => p.organization_id === org.id)
+    return {
+      ...org,
+      user_count: orgProfiles.length,
+      users: orgProfiles,
+    }
+  })
+
+  // Profils sans organisation (orphelins)
+  const orphanProfiles = (profiles || []).filter(p => !p.organization_id)
+
+  return {
+    organizations: orgDetails,
+    allProfiles: profiles || [],
+    orphanProfiles,
+    totalUsers: (profiles || []).length,
+  }
+}
