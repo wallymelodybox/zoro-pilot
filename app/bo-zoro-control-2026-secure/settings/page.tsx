@@ -27,12 +27,28 @@ export default function BOSettingsPage() {
     }
   }, [user, loading])
 
+  const [dbStatus, setDbStatus] = useState<{ ok: boolean; latency: number | null }>({ ok: false, latency: null })
+
+  useEffect(() => {
+    if (isAuthorized) checkDbHealth()
+  }, [isAuthorized])
+
+  async function checkDbHealth() {
+    const { createClient } = await import("@/lib/supabase/client")
+    const supabase = createClient()
+    const start = performance.now()
+    const { error } = await supabase.from('organizations').select('id', { count: 'exact', head: true })
+    const latency = Math.round(performance.now() - start)
+    setDbStatus({ ok: !error, latency })
+  }
+
   const handleSave = () => {
     setSaving(true)
+    // TODO: Persister les paramètres quand les champs seront branchés sur un état
     setTimeout(() => {
       setSaving(false)
       toast.success("Paramètres système mis à jour avec succès.")
-    }, 1000)
+    }, 800)
   }
 
   if (loading) return <div className="p-10 text-center">Chargement...</div>
@@ -130,11 +146,13 @@ export default function BOSettingsPage() {
             <CardContent className="space-y-4">
               <div className="flex justify-between items-center text-sm">
                 <span className="text-muted-foreground">Connectivité Supabase</span>
-                <span className="text-green-500 font-bold">OPTIMAL</span>
+                <span className={`font-bold ${dbStatus.ok ? 'text-green-500' : 'text-red-500'}`}>
+                  {dbStatus.latency === null ? '...' : dbStatus.ok ? 'CONNECTÉ' : 'ERREUR'}
+                </span>
               </div>
               <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Temps de réponse moyen</span>
-                <span className="text-foreground font-mono">24ms</span>
+                <span className="text-muted-foreground">Temps de réponse</span>
+                <span className="text-foreground font-mono">{dbStatus.latency !== null ? `${dbStatus.latency}ms` : '...'}</span>
               </div>
               <Separator className="bg-border/20" />
               <Button variant="outline" className="w-full rounded-xl border-primary/20 text-primary hover:bg-primary/10">

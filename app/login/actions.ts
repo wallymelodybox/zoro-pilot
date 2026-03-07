@@ -38,7 +38,6 @@ async function ensureProfile() {
   }
 
   // ── 2. UTILISATEUR EXISTANT — DG ou membre déjà provisionné
-  //    Un profil existe s'il a été créé par le BO (DG) ou via une invitation (membre).
   const { data: existingProfile } = await supabase
     .from('profiles')
     .select('id, organization_id, rbac_role')
@@ -46,7 +45,6 @@ async function ensureProfile() {
     .single()
 
   if (existingProfile && existingProfile.organization_id) {
-    // Profil valide, rattaché à une organisation → OK
     return { success: true }
   }
 
@@ -60,8 +58,6 @@ async function ensureProfile() {
     .single()
 
   if (inviteError || !invite) {
-    // Pas de profil existant, pas d'invitation valide → accès refusé
-    // On déconnecte aussi le user Supabase Auth pour éviter les cookies orphelins
     await supabase.auth.signOut()
     return { error: "Accès refusé. Votre compte doit être créé par un administrateur ou via une invitation valide." }
   }
@@ -72,7 +68,7 @@ async function ensureProfile() {
     .update({ is_used: true, used_at: new Date().toISOString(), used_by: user.id })
     .eq('id', invite.id)
 
-  // Créer/mettre à jour le profil avec les données de l'invitation
+  // Créer/mettre à jour le profil
   const { error: upsertError } = await supabase
     .from('profiles')
     .upsert({
@@ -119,11 +115,6 @@ export async function login(formData: FormData) {
     redirect(next)
   }
 
-  // Redirection post-login :
-  // - Le super admin doit se connecter sur le domaine admin (zoro-secure-control-net.company)
-  //   où le proxy réécrit `/` vers le BO automatiquement.
-  // - S'il se connecte sur le domaine app, il arrive sur le dashboard client (normal).
-  // - Pas de redirect cross-domain car les cookies de session ne traversent pas les domaines.
   redirect('/')
 }
 

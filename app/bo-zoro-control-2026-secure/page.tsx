@@ -6,7 +6,7 @@ import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { Shield, UserPlus, Key, Building, Activity, LayoutDashboard, Clock, AlertCircle, LogOut, Server, Users, Database, Globe, Zap } from "lucide-react"
+import { Shield, UserPlus, Key, Building, Activity, Clock, AlertCircle, LogOut, Users, Globe } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { createDGAccount } from "./actions"
@@ -21,6 +21,7 @@ export default function BackOfficePage() {
   const [licenseCode, setLicenseCode] = useState("")
   const [creating, setCreating] = useState(false)
   const [organizations, setOrganizations] = useState<any[]>([])
+  const [totalProfiles, setTotalProfiles] = useState(0)
   const [fetching, setFetching] = useState(true)
   const supabase = createClient()
 
@@ -44,9 +45,16 @@ export default function BackOfficePage() {
         .from('organizations')
         .select('*')
         .order('created_at', { ascending: false })
-      
+
       if (error) throw error
       setOrganizations(data || [])
+
+      // Compter le nombre total de profils (utilisateurs actifs)
+      const { count } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+
+      setTotalProfiles(count || 0)
     } catch (error) {
       console.error("Error fetching stats:", error)
     } finally {
@@ -196,16 +204,16 @@ export default function BackOfficePage() {
         </div>
       </div>
 
-      {/* System Infrastructure Metrics */}
+      {/* Platform Metrics (dynamiques) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="h-12 w-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-              <Server className="h-6 w-6" />
+              <Building className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">API Latency</p>
-              <h3 className="text-xl font-bold">42ms</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Organisations</p>
+              <h3 className="text-xl font-bold">{organizations.length}</h3>
             </div>
           </CardContent>
         </Card>
@@ -215,30 +223,30 @@ export default function BackOfficePage() {
               <Users className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Active Sessions</p>
-              <h3 className="text-xl font-bold">1,284</h3>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm">
-          <CardContent className="p-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-              <Database className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">DB Load</p>
-              <h3 className="text-xl font-bold">14%</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Utilisateurs</p>
+              <h3 className="text-xl font-bold">{totalProfiles}</h3>
             </div>
           </CardContent>
         </Card>
         <Card className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm">
           <CardContent className="p-5 flex items-center gap-4">
             <div className="h-12 w-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-              <Zap className="h-6 w-6" />
+              <Key className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Uptime</p>
-              <h3 className="text-xl font-bold">99.98%</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Licences actives</p>
+              <h3 className="text-xl font-bold">{organizations.filter(o => o.setup_completed).length}</h3>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm">
+          <CardContent className="p-5 flex items-center gap-4">
+            <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">En attente</p>
+              <h3 className="text-xl font-bold">{organizations.filter(o => !o.setup_completed).length}</h3>
             </div>
           </CardContent>
         </Card>
@@ -254,11 +262,16 @@ export default function BackOfficePage() {
           </CardHeader>
           <CardContent>
             <div className="text-4xl font-black">{organizations.filter(o => o.setup_completed).length}</div>
-            <div className="mt-4 h-1.5 w-full bg-muted rounded-full overflow-hidden">
-              {/* eslint-disable-next-line react/forbid-dom-props */}
-              <div className="h-full bg-green-500" style={{ width: `${(organizations.filter(o => o.setup_completed).length / (organizations.length || 1)) * 100}%` }} />
+            <div className="mt-4">
+              <Progress
+                value={Math.round((organizations.filter(o => o.setup_completed).length / (organizations.length || 1)) * 100)}
+                className="h-1.5 bg-muted"
+                indicatorClassName="bg-green-500"
+              />
             </div>
-            <p className="text-[10px] text-green-500 mt-2 font-black uppercase tracking-widest">Health: optimal</p>
+            <p className="text-[10px] text-green-500 mt-2 font-black uppercase tracking-widest">
+              {organizations.length > 0 ? `${Math.round((organizations.filter(o => o.setup_completed).length / organizations.length) * 100)}% opérationnelles` : "Aucune organisation"}
+            </p>
           </CardContent>
         </Card>
         <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">
