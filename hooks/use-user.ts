@@ -44,6 +44,19 @@ export function useUser() {
           organization_name: profile.organizations?.name,
           organization_logo: profile.organizations?.logo_url
         })
+      } else if (authUser.email === 'menannzoro@gmail.com') {
+        // Fallback super admin : si la RLS bloque le SELECT profiles,
+        // on construit un profil minimal depuis auth.getUser()
+        setUser({
+          id: authUser.id,
+          email: authUser.email!,
+          name: authUser.user_metadata?.full_name || 'Super Admin',
+          role: 'Propriétaire',
+          avatar_url: null,
+          team_id: null,
+          rbac_role: 'super_admin',
+          organization_id: null,
+        })
       } else {
         setUser(null)
       }
@@ -68,6 +81,17 @@ export function useUser() {
           ...profile,
           organization_name: profile.organizations?.name,
           organization_logo: profile.organizations?.logo_url
+        })
+      } else if (authUser.email === 'menannzoro@gmail.com') {
+        setUser({
+          id: authUser.id,
+          email: authUser.email!,
+          name: authUser.user_metadata?.full_name || 'Super Admin',
+          role: 'Propriétaire',
+          avatar_url: null,
+          team_id: null,
+          rbac_role: 'super_admin',
+          organization_id: null,
         })
       }
       setLoading(false)
