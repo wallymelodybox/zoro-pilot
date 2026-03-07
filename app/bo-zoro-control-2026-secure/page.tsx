@@ -18,8 +18,10 @@ export default function BackOfficePage() {
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [dgEmail, setDgEmail] = useState("")
   const [dgName, setDgName] = useState("")
-  const [licenseCode, setLicenseCode] = useState("")
+  const [orgName, setOrgName] = useState("")
+  const [licenseType, setLicenseType] = useState("mensuelle")
   const [creating, setCreating] = useState(false)
+  const [createdPassword, setCreatedPassword] = useState<string | null>(null)
   const [organizations, setOrganizations] = useState<any[]>([])
   const [totalProfiles, setTotalProfiles] = useState(0)
   const [fetching, setFetching] = useState(true)
@@ -124,24 +126,26 @@ export default function BackOfficePage() {
   const handleCreateDG = async (e: React.FormEvent) => {
     e.preventDefault()
     setCreating(true)
-    
+    setCreatedPassword(null)
+
     const formData = new FormData()
     formData.append('name', dgName)
     formData.append('email', dgEmail)
-    formData.append('licenseCode', licenseCode)
+    formData.append('orgName', orgName)
+    formData.append('licenseType', licenseType)
 
     try {
       const res = await createDGAccount(formData)
-      
+
       if (res.error) {
         toast.error(res.error)
       } else if (res.success) {
         toast.success(res.message)
-        alert(`COMPTE CRÉÉ !\nDG: ${dgName}\nMot de passe temporaire: ${res.tempPassword}\n\nVeuillez le transmettre au DG en toute sécurité.`)
-        
+        setCreatedPassword(res.tempPassword ?? null)
         setDgEmail("")
         setDgName("")
-        setLicenseCode("")
+        setOrgName("")
+        setLicenseType("mensuelle")
         fetchStats()
       }
     } catch (error) {
@@ -314,43 +318,87 @@ export default function BackOfficePage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Nom du DG</label>
-                  <Input 
-                    placeholder="Jean Dupont" 
-                    className="h-12 rounded-xl bg-background/50 border-border/40 focus:ring-primary/20"
-                    value={dgName} 
-                    onChange={(e) => setDgName(e.target.value)} 
-                    required 
+                  <Input
+                    placeholder="Jean Dupont"
+                    className="h-12 rounded-xl bg-background/50 border-border/40"
+                    value={dgName}
+                    onChange={(e) => setDgName(e.target.value)}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Email Pro</label>
-                  <Input 
-                    type="email" 
-                    placeholder="dg@entreprise.com" 
-                    className="h-12 rounded-xl bg-background/50 border-border/40 focus:ring-primary/20"
-                    value={dgEmail} 
-                    onChange={(e) => setDgEmail(e.target.value)} 
-                    required 
+                  <Input
+                    type="email"
+                    placeholder="dg@entreprise.com"
+                    className="h-12 rounded-xl bg-background/50 border-border/40"
+                    value={dgEmail}
+                    onChange={(e) => setDgEmail(e.target.value)}
+                    required
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Code Licence / Organization</label>
-                <Input 
-                  placeholder="ex: CODE-ENT-2026" 
-                  className="h-12 rounded-xl bg-background/50 border-border/40 focus:ring-primary/20"
-                  value={licenseCode} 
-                  onChange={(e) => setLicenseCode(e.target.value)} 
-                  required 
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Nom de l&apos;organisation</label>
+                  <Input
+                    placeholder="ex: Acme Corp"
+                    className="h-12 rounded-xl bg-background/50 border-border/40"
+                    value={orgName}
+                    onChange={(e) => setOrgName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Type de licence</label>
+                  <select
+                    title="Type de licence"
+                    className="h-12 w-full rounded-xl bg-background/50 border border-border/40 px-3 text-sm"
+                    value={licenseType}
+                    onChange={(e) => setLicenseType(e.target.value)}
+                  >
+                    <option value="mensuelle">Mensuelle (30j)</option>
+                    <option value="trimestrielle">Trimestrielle (90j)</option>
+                    <option value="semestrielle">Semestrielle (180j)</option>
+                    <option value="annuelle">Annuelle (365j)</option>
+                    <option value="definitive">Définitive (illimitée)</option>
+                  </select>
+                </div>
               </div>
+
+              {/* Affichage du mot de passe temporaire après création */}
+              {createdPassword && (
+                <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4 space-y-2">
+                  <p className="text-sm font-bold text-green-500">✅ Compte créé avec succès</p>
+                  <p className="text-xs text-muted-foreground">Mot de passe temporaire (à transmettre au DG) :</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 rounded-lg bg-background/80 px-3 py-2 text-sm font-mono select-all border border-border/40">
+                      {createdPassword}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        navigator.clipboard.writeText(createdPassword)
+                        toast.success("Mot de passe copié !")
+                      }}
+                    >
+                      Copier
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">⚠️ Ce mot de passe ne sera plus affiché après fermeture.</p>
+                </div>
+              )}
+
               <Button type="submit" className="w-full h-12 rounded-xl font-black text-lg shadow-lg shadow-primary/20 transition-all hover:scale-[1.01]" disabled={creating}>
                 {creating ? (
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Initialisation...
                   </div>
-                ) : "GÉNÉRER ACCÈS"}
+                ) : "GÉNÉRER ACCÈS DG"}
               </Button>
             </form>
           </CardContent>

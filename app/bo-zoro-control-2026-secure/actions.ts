@@ -57,54 +57,82 @@ export async function createDGAccount(formData: FormData) {
   // ── Auth guard: seul le super admin peut créer des DG
   await assertSuperAdmin()
 
-  const name = formData.get('name') as string
+  const dgName = formData.get('name') as string
   const email = formData.get('email') as string
-  const licenseCode = formData.get('licenseCode') as string
+  const orgName = formData.get('orgName') as string
+  const licenseType = (formData.get('licenseType') as string) || 'mensuelle'
 
-  if (!name || !email || !licenseCode) {
-    return { error: "Tous les champs sont requis." }
+  if (!dgName || !email || !orgName) {
+    return { error: "Le nom du DG, l'email et le nom de l'organisation sont requis." }
+  }
+
+  const supabaseAdmin = await createAdminClient()
+
+  // ── Calculer la date d'expiration selon le type de licence
+  let expiresAt: string | null = null
+  if (licenseType !== 'definitive') {
+    const now = new Date()
+    const durations: Record<string, number> = {
+      mensuelle: 30,
+      trimestrielle: 90,
+      semestrielle: 180,
+      annuelle: 365,
+    }
+    const days = durations[licenseType] || 30
+    now.setDate(now.getDate() + days)
+    expiresAt = now.toISOString()
   }
 
   try {
-    const supabaseAdmin = await createAdminClient()
-
-    // 1. Create the Organization
+    // 1. Créer l'Organisation avec la licence
     const { data: org, error: orgError } = await supabaseAdmin
       .from('organizations')
-      .insert([{ name: licenseCode }])
+      .insert([{
+        name: orgName,
+        license_type: licenseType,
+        expires_at: expiresAt,
+      }])
       .select()
       .single()
 
     if (orgError) throw orgError
 
-    // 2. Create the User in Supabase Auth (Admin API)
-    // Mot de passe temporaire cryptographiquement sûr (20 chars, ~120 bits d'entropie)
+    // 2. Créer le User Auth (mot de passe temporaire sûr)
     const tempPassword = randomBytes(15).toString('base64url') + '!A1'
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: tempPassword,
       email_confirm: true,
-      user_metadata: { full_name: name }
+      user_metadata: { full_name: dgName }
     })
 
-    if (authError) throw authError
+    if (authError) {
+      // Rollback: supprimer l'org créée
+      await supabaseAdmin.from('organizations').delete().eq('id', org.id)
+      throw authError
+    }
 
-    // 3. Create the Profile linked to the organization
+    // 3. Créer le Profil lié à l'organisation
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert([{
         id: authUser.user.id,
         email,
-        name,
+        name: dgName,
         role: 'Directeur Général',
         rbac_role: 'admin',
         organization_id: org.id,
       }])
 
-    if (profileError) throw profileError
+    if (profileError) {
+      // Rollback: supprimer user Auth + org
+      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+      await supabaseAdmin.from('organizations').delete().eq('id', org.id)
+      throw profileError
+    }
 
-    // 4. Link User to Organization
+    // 4. Lier le User à l'Organisation
     const { error: memberError } = await supabaseAdmin
       .from('organization_members')
       .insert([{
@@ -113,14 +141,22 @@ export async function createDGAccount(formData: FormData) {
         title: 'Directeur Général'
       }])
 
-    if (memberError) throw memberError
+    if (memberError) {
+      // Rollback complet
+      await supabaseAdmin.from('profiles').delete().eq('id', authUser.user.id)
+      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
+      await supabaseAdmin.from('organizations').delete().eq('id', org.id)
+      throw memberError
+    }
 
     revalidatePath('/bo-zoro-control-2026-secure')
+    revalidatePath('/bo-zoro-control-2026-secure/licenses')
 
     return {
       success: true,
       tempPassword,
-      message: `Compte créé avec succès pour ${name}.`
+      orgId: org.id,
+      message: `Compte DG créé pour ${dgName} (${orgName}).`
     }
   } catch (error: any) {
     console.error('DG Creation Error:', error)
