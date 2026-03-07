@@ -54,36 +54,40 @@ async function createAdminClient() {
  * 🔒 Réservé au super admin.
  */
 export async function createDGAccount(formData: FormData) {
-  // ── Auth guard: seul le super admin peut créer des DG
-  await assertSuperAdmin()
-
-  const dgName = formData.get('name') as string
-  const email = formData.get('email') as string
-  const orgName = formData.get('orgName') as string
-  const licenseType = (formData.get('licenseType') as string) || 'mensuelle'
-
-  if (!dgName || !email || !orgName) {
-    return { error: "Le nom du DG, l'email et le nom de l'organisation sont requis." }
-  }
-
-  const supabaseAdmin = await createAdminClient()
-
-  // ── Calculer la date d'expiration selon le type de licence
-  let expiresAt: string | null = null
-  if (licenseType !== 'definitive') {
-    const now = new Date()
-    const durations: Record<string, number> = {
-      mensuelle: 30,
-      trimestrielle: 90,
-      semestrielle: 180,
-      annuelle: 365,
-    }
-    const days = durations[licenseType] || 30
-    now.setDate(now.getDate() + days)
-    expiresAt = now.toISOString()
-  }
-
   try {
+    // ── Auth guard: seul le super admin peut créer des DG
+    await assertSuperAdmin()
+
+    const dgName = formData.get('name') as string
+    const email = formData.get('email') as string
+    const orgName = formData.get('orgName') as string
+    const licenseType = (formData.get('licenseType') as string) || 'mensuelle'
+
+    if (!dgName || !email || !orgName) {
+      return { error: "Le nom du DG, l'email et le nom de l'organisation sont requis." }
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("La clé SUPABASE_SERVICE_ROLE_KEY est manquante.")
+    }
+
+    const supabaseAdmin = await createAdminClient()
+
+    // ── Calculer la date d'expiration selon le type de licence
+    let expiresAt: string | null = null
+    if (licenseType !== 'definitive') {
+      const now = new Date()
+      const durations: Record<string, number> = {
+        mensuelle: 30,
+        trimestrielle: 90,
+        semestrielle: 180,
+        annuelle: 365,
+      }
+      const days = durations[licenseType] || 30
+      now.setDate(now.getDate() + days)
+      expiresAt = now.toISOString()
+    }
+
     // 1. Créer l'Organisation avec la licence
     const { data: org, error: orgError } = await supabaseAdmin
       .from('organizations')
@@ -170,24 +174,28 @@ export async function createDGAccount(formData: FormData) {
  * 🔒 Réservé au super admin. Vérifie le mot de passe du super admin avant suppression.
  */
 export async function deleteOrganization(orgId: string, superAdminPassword: string) {
-  const caller = await assertSuperAdmin()
-
-  if (!orgId || !superAdminPassword) {
-    return { error: "L'ID de l'organisation et le mot de passe sont requis." }
-  }
-
-  // Vérifier le mot de passe du super admin
-  const supabaseAuth = await createClient()
-  const { error: signInError } = await supabaseAuth.auth.signInWithPassword({
-    email: caller.email!,
-    password: superAdminPassword,
-  })
-
-  if (signInError) {
-    return { error: "Mot de passe incorrect." }
-  }
-
   try {
+    const caller = await assertSuperAdmin()
+
+    if (!orgId || !superAdminPassword) {
+      return { error: "L'ID de l'organisation et le mot de passe sont requis." }
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("La clé SUPABASE_SERVICE_ROLE_KEY est manquante.")
+    }
+
+    // Vérifier le mot de passe du super admin
+    const supabaseAuth = await createClient()
+    const { error: signInError } = await supabaseAuth.auth.signInWithPassword({
+      email: caller.email!,
+      password: superAdminPassword,
+    })
+
+    if (signInError) {
+      return { error: "Mot de passe incorrect." }
+    }
+
     const supabaseAdmin = await createAdminClient()
 
     // 1. Récupérer tous les profils liés à cette organisation
@@ -247,11 +255,16 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
  * 🔒 Réservé au super admin.
  */
 export async function getOrganizationsWithDetails() {
-  await assertSuperAdmin()
+  try {
+    await assertSuperAdmin()
 
-  const supabaseAdmin = await createAdminClient()
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("La clé SUPABASE_SERVICE_ROLE_KEY est manquante.")
+    }
 
-  // Récupérer toutes les organisations
+    const supabaseAdmin = await createAdminClient()
+
+    // Récupérer toutes les organisations
   const { data: orgs, error: orgsError } = await supabaseAdmin
     .from('organizations')
     .select('*')
@@ -280,10 +293,14 @@ export async function getOrganizationsWithDetails() {
   // Profils sans organisation (orphelins)
   const orphanProfiles = (profiles || []).filter(p => !p.organization_id)
 
-  return {
-    organizations: orgDetails,
-    allProfiles: profiles || [],
-    orphanProfiles,
-    totalUsers: (profiles || []).length,
+    return {
+      organizations: orgDetails,
+      allProfiles: profiles || [],
+      orphanProfiles,
+      totalUsers: (profiles || []).length,
+    }
+  } catch (error: any) {
+    console.error('Fetch Stats Error:', error)
+    return { error: error.message || "Erreur lors de la récupération des statistiques." }
   }
 }
