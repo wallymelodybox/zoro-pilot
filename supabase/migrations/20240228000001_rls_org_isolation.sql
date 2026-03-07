@@ -1,8 +1,24 @@
 -- ============================================================
 -- RLS: Isolation par organisation
--- Remplace les policies "Authenticated Read" using(true)
--- par un filtrage basé sur l'organisation de l'utilisateur.
+-- 1. Ajoute organization_id sur profiles (lien direct)
+-- 2. Ajoute organization_id sur teams
+-- 3. Remplace les policies "Authenticated Read" using(true)
+--    par un filtrage basé sur l'organisation de l'utilisateur.
 -- ============================================================
+
+-- ── Étape 0 : Ajouter organization_id aux tables qui en manquent ──
+alter table public.profiles
+  add column if not exists organization_id uuid references public.organizations(id);
+
+alter table public.teams
+  add column if not exists organization_id uuid references public.organizations(id);
+
+-- Profils : lier aux orgs via organization_members (backfill existants)
+update public.profiles p
+set organization_id = om.organization_id
+from public.organization_members om
+where om.profile_id = p.id
+  and p.organization_id is null;
 
 -- Helper: récupérer l'organization_id de l'utilisateur connecté
 create or replace function public.user_org_id()
@@ -15,8 +31,6 @@ as $$
 $$;
 
 -- ── PROFILES ──
--- Les utilisateurs ne voient que les profils de leur organisation
--- (+ le super admin voit tout via service_role)
 drop policy if exists "Authenticated Read" on profiles;
 create policy "Org Scoped Read" on profiles
   for select to authenticated
@@ -88,7 +102,6 @@ create policy "Org Scoped Read" on teams
   );
 
 -- ── ORGANIZATIONS ──
--- Un utilisateur ne voit que sa propre organisation
 do $$ begin
   create policy "Own Org Read" on organizations
     for select to authenticated
@@ -99,7 +112,6 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 -- ── DELETE policies ──
--- Seuls les propriétaires/assignés peuvent supprimer
 do $$ begin
   create policy "Owner Delete" on tasks
     for delete to authenticated
