@@ -21,9 +21,10 @@ export async function proxy(request: NextRequest) {
     sessionResponse.cookies.set('zoro-platform-context', 'admin', { httpOnly: false, sameSite: 'lax' })
 
     // If the path doesn't already start with the secret BO folder, rewrite it
-    if (!url.pathname.startsWith('/bo-zoro-control-2026-secure') && 
-        !url.pathname.startsWith('/login') && 
+    if (!url.pathname.startsWith('/bo-zoro-control-2026-secure') &&
+        !url.pathname.startsWith('/login') &&
         !url.pathname.startsWith('/auth') &&
+        !url.pathname.startsWith('/api') &&
         !url.pathname.startsWith('/_next') &&
         !url.pathname.match(/\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/)) {
       
