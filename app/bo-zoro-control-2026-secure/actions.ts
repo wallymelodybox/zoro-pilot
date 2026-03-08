@@ -1,7 +1,6 @@
 'use server'
 
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { randomBytes } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
@@ -24,28 +23,11 @@ async function assertSuperAdmin() {
  * Creates a special Supabase client using the SERVICE ROLE KEY
  * to bypass RLS and use Admin Auth API.
  */
-async function createAdminClient() {
-  const cookieStore = await cookies()
-
-  return createServerClient(
+function createAdminClient() {
+  return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
-          } catch {
-            // Ignored in Server Components
-          }
-        },
-      },
-    }
+    { auth: { persistSession: false, autoRefreshToken: false } }
   )
 }
 
@@ -71,7 +53,7 @@ export async function createDGAccount(formData: FormData) {
       throw new Error("La clé SUPABASE_SERVICE_ROLE_KEY est manquante.")
     }
 
-    const supabaseAdmin = await createAdminClient()
+    const supabaseAdmin = createAdminClient()
 
     // ── Calculer la date d'expiration selon le type de licence
     let expiresAt: string | null = null
@@ -197,7 +179,7 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
       return { error: "Mot de passe incorrect." }
     }
 
-    const supabaseAdmin = await createAdminClient()
+    const supabaseAdmin = createAdminClient()
 
     // 1. Récupérer tous les profils liés à cette organisation
     const { data: members } = await supabaseAdmin
@@ -220,15 +202,18 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
       await supabaseAdmin.from('channels').delete().in('id', channelIds)
     }
 
-    // 3. Supprimer organization_members
+    // 3. Supprimer les teams de l'org
+    await supabaseAdmin.from('teams').delete().eq('organization_id', orgId)
+
+    // 4. Supprimer organization_members
     await supabaseAdmin.from('organization_members').delete().eq('organization_id', orgId)
 
-    // 4. Supprimer les profils
+    // 5. Supprimer les profils
     if (profileIds.length > 0) {
       await supabaseAdmin.from('profiles').delete().in('id', profileIds)
     }
 
-    // 5. Supprimer les users Auth
+    // 6. Supprimer les users Auth
     for (const profileId of profileIds) {
       try {
         await supabaseAdmin.auth.admin.deleteUser(profileId)
@@ -237,7 +222,7 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
       }
     }
 
-    // 6. Supprimer l'organisation
+    // 7. Supprimer l'organisation
     const { error: orgDeleteError } = await supabaseAdmin
       .from('organizations')
       .delete()
@@ -271,7 +256,7 @@ export async function getOrganizationsWithDetails() {
       throw new Error("La clé SUPABASE_SERVICE_ROLE_KEY est manquante.")
     }
 
-    const supabaseAdmin = await createAdminClient()
+    const supabaseAdmin = createAdminClient()
 
     // Récupérer toutes les organisations
   const { data: orgs, error: orgsError } = await supabaseAdmin
