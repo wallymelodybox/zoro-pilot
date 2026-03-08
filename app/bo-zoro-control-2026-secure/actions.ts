@@ -104,11 +104,12 @@ export async function createDGAccount(formData: FormData) {
     // 2. Créer le User Auth (mot de passe temporaire sûr)
     const tempPassword = randomBytes(15).toString('base64url') + '!A1'
 
+    // On crée l'utilisateur sans métadonnées complexes pour éviter les triggers automatiques conflictuels
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password: tempPassword,
       email_confirm: true,
-      user_metadata: { full_name: dgName }
+      user_metadata: { full_name: dgName } 
     })
 
     if (authError) {
@@ -229,7 +230,11 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
 
     // 5. Supprimer les users Auth
     for (const profileId of profileIds) {
-      await supabaseAdmin.auth.admin.deleteUser(profileId)
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(profileId)
+      } catch (e) {
+        console.warn(`Impossible de supprimer l'utilisateur Auth ${profileId} (peut-être déjà supprimé)`)
+      }
     }
 
     // 6. Supprimer l'organisation
@@ -238,7 +243,11 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
       .delete()
       .eq('id', orgId)
 
-    if (orgDeleteError) throw orgDeleteError
+    if (orgDeleteError) {
+       // Si échec, on force la suppression des liens restants pour ne pas laisser de déchets
+       await supabaseAdmin.from('organization_members').delete().eq('organization_id', orgId)
+       throw orgDeleteError
+    }
 
     revalidatePath('/bo-zoro-control-2026-secure')
     revalidatePath('/bo-zoro-control-2026-secure/licenses')
