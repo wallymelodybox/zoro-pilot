@@ -96,9 +96,10 @@ export default function BackOfficePage() {
       toast.error(res.error)
     } else {
       toast.success(res.message)
+      setOrganizations(prev => prev.filter(org => org.id !== deleteTarget.id))
       setDeleteTarget(null)
       setDeletePassword("")
-      fetchStats()
+      await fetchStats()
       // Refresh dialog data
       const updated = await getOrganizationsWithDetails()
       if (!updated.error) {
