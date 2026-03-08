@@ -187,7 +187,10 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
       .select('profile_id')
       .eq('organization_id', orgId)
 
-    const profileIds = (members || []).map(m => m.profile_id)
+    // Ne jamais supprimer le super admin lui-même
+    const profileIds = (members || [])
+      .map(m => m.profile_id)
+      .filter(id => id !== caller.id)
 
     // 2. Supprimer les channel_members, channels de l'org
     const { data: channels } = await supabaseAdmin
