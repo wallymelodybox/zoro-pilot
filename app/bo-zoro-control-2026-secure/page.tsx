@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Shield, UserPlus, Key, Building, Activity, Clock, AlertCircle, LogOut, Users, Globe, Trash2, X, Eye } from "lucide-react"
+import { Shield, UserPlus, Key, Building, Activity, Clock, AlertCircle, LogOut, Users, Globe, Trash2, X, Eye, RotateCcw, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
-import { createDGAccount, deleteOrganization, getOrganizationsWithDetails } from "./actions"
+import { createDGAccount, deleteOrganization, getOrganizationsWithDetails, resetDGPassword } from "./actions"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
 
@@ -38,6 +38,11 @@ export default function BackOfficePage() {
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
   const [deletePassword, setDeletePassword] = useState("")
   const [deleting, setDeleting] = useState(false)
+
+  // Reset password
+  const [resettingId, setResettingId] = useState<string | null>(null)
+  const [resetNewPassword, setResetNewPassword] = useState<string | null>(null)
+  const [resetTargetName, setResetTargetName] = useState<string | null>(null)
 
   useEffect(() => {
     if (!loading) {
@@ -87,6 +92,19 @@ export default function BackOfficePage() {
     setAllProfiles(res.allProfiles || [])
     setOrphanProfiles(res.orphanProfiles || [])
   }, [])
+
+  const handleResetPassword = async (profileId: string, profileName: string) => {
+    setResettingId(profileId)
+    const res = await resetDGPassword(profileId)
+    if (res.error) {
+      toast.error(res.error)
+    } else {
+      setResetNewPassword(res.newPassword ?? null)
+      setResetTargetName(profileName)
+      toast.success(res.message)
+    }
+    setResettingId(null)
+  }
 
   const handleDeleteOrg = async () => {
     if (!deleteTarget || !deletePassword) return
@@ -525,7 +543,21 @@ export default function BackOfficePage() {
                           <span className="font-medium">{u.name}</span>
                           <span className="text-muted-foreground ml-2">{u.email}</span>
                         </div>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{u.role || u.rbac_role}</span>
+                        <div className="flex items-center gap-2">
+                          {(u.rbac_role === 'admin' || u.rbac_role === 'executive') && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs gap-1"
+                              disabled={resettingId === u.id}
+                              onClick={() => handleResetPassword(u.id, u.name)}
+                            >
+                              <RotateCcw className={cn("h-3 w-3", resettingId === u.id && "animate-spin")} />
+                              {resettingId === u.id ? "..." : "Reset MDP"}
+                            </Button>
+                          )}
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{u.role || u.rbac_role}</span>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -618,6 +650,38 @@ export default function BackOfficePage() {
               </div>
             ))}
             {orgDetails.filter(o => !o.setup_completed).length === 0 && <p className="text-center text-muted-foreground py-6">Aucune organisation en attente</p>}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── DIALOG: Nouveau mot de passe ── */}
+      <Dialog open={!!resetNewPassword} onOpenChange={() => { setResetNewPassword(null); setResetTargetName(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nouveau mot de passe</DialogTitle>
+            <DialogDescription>
+              Mot de passe réinitialisé pour <strong>{resetTargetName}</strong>. Transmettez-le au DG.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-center gap-2">
+              <code className="flex-1 rounded-lg bg-background/80 px-3 py-2.5 text-sm font-mono select-all border border-border/40 break-all">
+                {resetNewPassword}
+              </code>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => {
+                  navigator.clipboard.writeText(resetNewPassword || "")
+                  toast.success("Mot de passe copié !")
+                }}
+              >
+                <Copy className="h-3.5 w-3.5 mr-1" />
+                Copier
+              </Button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">Ce mot de passe ne sera plus affiché après fermeture de cette fenêtre.</p>
           </div>
         </DialogContent>
       </Dialog>

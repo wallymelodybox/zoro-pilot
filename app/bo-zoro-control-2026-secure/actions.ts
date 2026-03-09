@@ -154,6 +154,60 @@ export async function createDGAccount(formData: FormData) {
 
 
 /**
+ * Réinitialise le mot de passe d'un DG et retourne le nouveau code d'accès.
+ * 🔒 Réservé au super admin.
+ */
+export async function resetDGPassword(profileId: string) {
+  try {
+    await assertSuperAdmin()
+
+    if (!profileId) {
+      return { error: "L'ID du profil est requis." }
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("La clé SUPABASE_SERVICE_ROLE_KEY est manquante.")
+    }
+
+    const supabaseAdmin = createAdminClient()
+
+    // Vérifier que le profil existe et est bien un DG
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, name, rbac_role')
+      .eq('id', profileId)
+      .single()
+
+    if (profileError || !profile) {
+      return { error: "Profil introuvable." }
+    }
+
+    if (profile.rbac_role !== 'admin' && profile.rbac_role !== 'executive') {
+      return { error: "Ce profil n'est pas un Directeur Général." }
+    }
+
+    // Générer un nouveau mot de passe
+    const newPassword = randomBytes(15).toString('base64url') + '!A1'
+
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      profileId,
+      { password: newPassword }
+    )
+
+    if (updateError) throw updateError
+
+    return {
+      success: true,
+      newPassword,
+      message: `Mot de passe réinitialisé pour ${profile.name} (${profile.email}).`
+    }
+  } catch (error: any) {
+    console.error('Reset DG Password Error:', error)
+    return { error: error.message || "Erreur lors de la réinitialisation." }
+  }
+}
+
+/**
  * Supprime une organisation et tous ses utilisateurs associés.
  * 🔒 Réservé au super admin. Vérifie le mot de passe du super admin avant suppression.
  */

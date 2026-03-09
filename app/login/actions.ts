@@ -44,11 +44,6 @@ async function ensureProfile() {
     .eq('id', user.id)
     .single()
 
-  // DEBUG — supprimer après diagnostic
-  console.log('[ensureProfile] user.id:', user.id, '| email:', email)
-  console.log('[ensureProfile] existingProfile:', JSON.stringify(existingProfile))
-  console.log('[ensureProfile] profileError:', JSON.stringify(profileError))
-
   if (existingProfile && existingProfile.organization_id) {
     return { success: true }
   }
