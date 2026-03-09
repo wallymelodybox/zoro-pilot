@@ -331,6 +331,7 @@ export function AppSidebar() {
                       }
                     }}
                     className={cn(getItemClass(isActive), "animate-in fade-in slide-in-from-left-4 duration-300 fill-mode-both", styles.animatedNavLink)}
+                    // eslint-disable-next-line react/forbid-dom-props
                     style={{ "--animation-delay": `${i * 40}ms` } as React.CSSProperties}
                   >
                     <div className={cn("transition-transform group-hover:scale-110 shrink-0")} suppressHydrationWarning>
@@ -355,6 +356,7 @@ export function AppSidebar() {
               <div className="mt-2 h-1.5 w-full bg-accent/40 rounded-full overflow-hidden">
                 <div 
                   className={cn("h-full bg-primary rounded-full", styles.progressBar)}
+                  // eslint-disable-next-line react/forbid-dom-props
                   style={{ "--progress-width": `${(tasks.filter(t => t.status === 'done').length / tasks.length) * 100}%` } as React.CSSProperties}
                 />
               </div>
