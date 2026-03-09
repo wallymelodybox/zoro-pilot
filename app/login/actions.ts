@@ -3,10 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
-async function ensureProfile() {
-  const supabase = await createClient()
-
+async function ensureProfile(supabase: SupabaseClient) {
   const {
     data: { user },
     error: userError,
@@ -127,7 +126,8 @@ export async function login(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  const ensured = await ensureProfile()
+  // On passe le MÊME client pour que la session soit partagée
+  const ensured = await ensureProfile(supabase)
   if ('error' in ensured && ensured.error) {
     redirect(`/login?error=${encodeURIComponent(ensured.error)}`)
   }

@@ -516,7 +516,7 @@ export default function BackOfficePage() {
       </div>
       {/* ── DIALOG: Organisations ── */}
       <Dialog open={activeDialog === 'orgs'} onOpenChange={() => setActiveDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
           <DialogHeader>
             <DialogTitle>Organisations ({orgDetails.length})</DialogTitle>
             <DialogDescription>Liste de toutes les organisations avec leurs utilisateurs</DialogDescription>
@@ -571,7 +571,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: Utilisateurs ── */}
       <Dialog open={activeDialog === 'users'} onOpenChange={() => setActiveDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
           <DialogHeader>
             <DialogTitle>Utilisateurs ({allProfiles.length})</DialogTitle>
             <DialogDescription>Tous les utilisateurs de la plateforme</DialogDescription>
@@ -609,7 +609,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: Licences actives ── */}
       <Dialog open={activeDialog === 'active'} onOpenChange={() => setActiveDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
           <DialogHeader>
             <DialogTitle>Licences actives</DialogTitle>
             <DialogDescription>Organisations avec licence configurée</DialogDescription>
@@ -634,7 +634,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: En attente ── */}
       <Dialog open={activeDialog === 'pending'} onOpenChange={() => setActiveDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
           <DialogHeader>
             <DialogTitle>En attente</DialogTitle>
             <DialogDescription>Organisations non configurées ou en attente d&apos;activation</DialogDescription>
@@ -656,7 +656,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: Nouveau mot de passe ── */}
       <Dialog open={!!resetNewPassword} onOpenChange={() => { setResetNewPassword(null); setResetTargetName(null) }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
           <DialogHeader>
             <DialogTitle>Nouveau mot de passe</DialogTitle>
             <DialogDescription>
@@ -688,7 +688,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: Confirmation suppression ── */}
       <Dialog open={!!deleteTarget} onOpenChange={() => { setDeleteTarget(null); setDeletePassword("") }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-destructive">Supprimer l&apos;organisation</DialogTitle>
             <DialogDescription>

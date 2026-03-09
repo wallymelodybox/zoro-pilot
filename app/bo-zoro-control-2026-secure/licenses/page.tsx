@@ -264,7 +264,7 @@ export default function LicensesPage() {
       </Card>
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="sm:max-w-125 bg-card/95 backdrop-blur-2xl border-border/40 shadow-2xl">
+        <DialogContent className="sm:max-w-125 bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
               <Building className="h-6 w-6 text-primary" />
