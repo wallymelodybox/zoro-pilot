@@ -5,6 +5,19 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { assignRoleToUser, hasPermission } from '@/lib/rbac'
 
+async function getUserOrg(supabase: any) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('organization_id')
+    .eq('id', user.id)
+    .single()
+
+  return profile?.organization_id || null
+}
+
 export async function createProject(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,7 +28,8 @@ export async function createProject(formData: FormData) {
   if (!canCreate) return { error: 'Vous n\'avez pas la permission de créer des projets.' }
   
   const name = formData.get('name') as string
-  
+  const orgId = await getUserOrg(supabase)
+
   if (!name) {
     return { error: 'Le nom du projet est requis.' }
   }
@@ -26,6 +40,7 @@ export async function createProject(formData: FormData) {
     status: 'on-track',
     progress: 0,
     owner_id: user.id,
+    organization_id: orgId,
     team_id: formData.get('teamId') as string || null,
     start_date: new Date().toISOString().split('T')[0],
     end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -99,6 +114,7 @@ export async function createTask(formData: FormData) {
   const status = formData.get('status') as string || 'todo'
   const assigneeId = formData.get('assigneeId') as string || user.id
   const dueDate = formData.get('dueDate') as string
+  const orgId = await getUserOrg(supabase)
 
   if (!title) {
     return { error: 'Le titre de la tâche est requis.' }
@@ -108,6 +124,7 @@ export async function createTask(formData: FormData) {
     title,
     description: description || null,
     project_id: projectId && projectId !== "none" ? projectId : null,
+    organization_id: orgId,
     priority,
     status,
     assignee_id: assigneeId,
@@ -472,12 +489,21 @@ export async function createObjective(formData: FormData) {
   const pillarId = formData.get('pillarId') as string
   const period = formData.get('period') as string || 'T1 2026'
   const ownerId = formData.get('ownerId') as string || user.id
+  const orgId = await getUserOrg(supabase)
 
   if (!title) return { error: 'Le titre de l\'objectif est requis.' }
 
   const { error } = await supabase
     .from('objectives')
-    .insert([{ title, pillar_id: pillarId, period, owner_id: ownerId, confidence: 'on-track', progress: 0 }])
+    .insert([{ 
+      title, 
+      pillar_id: pillarId, 
+      period, 
+      owner_id: ownerId, 
+      organization_id: orgId,
+      confidence: 'on-track', 
+      progress: 0 
+    }])
 
   if (error) {
     console.error('Error creating objective:', error)
@@ -500,6 +526,7 @@ export async function createKeyResult(formData: FormData) {
   const unit = formData.get('unit') as string || '%'
   const weight = parseInt(formData.get('weight') as string || '1')
   const ownerId = formData.get('ownerId') as string || user.id
+  const orgId = await getUserOrg(supabase)
 
   if (!title || !objectiveId) return { error: 'Le titre et l\'objectif sont requis.' }
 
@@ -513,6 +540,7 @@ export async function createKeyResult(formData: FormData) {
       current_value: 0,
       unit,
       weight,
+      organization_id: orgId,
       confidence: 'on-track',
       owner_id: ownerId
     }])

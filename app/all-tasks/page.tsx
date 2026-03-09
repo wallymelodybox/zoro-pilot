@@ -528,10 +528,10 @@ function SortableTaskCard({ task }: { task: Task }) {
 
   const [isOpen, setIsOpen] = React.useState(false)
 
-  const style = {
+  const style = React.useMemo(() => ({
     transform: CSS.Transform.toString(transform),
     transition,
-  }
+  }), [transform, transition])
 
   return (
     // eslint-disable-next-line react/forbid-dom-props

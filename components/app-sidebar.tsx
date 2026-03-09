@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import React, { useMemo, useState } from "react"
+import React, { useMemo, useState, useEffect } from "react"
 import {
   Target,
   FolderKanban,
@@ -332,7 +332,7 @@ export function AppSidebar() {
                     }}
                     className={cn(getItemClass(isActive), "animate-in fade-in slide-in-from-left-4 duration-300 fill-mode-both", styles.animatedNavLink)}
                     // eslint-disable-next-line react/forbid-dom-props
-                    style={{ "--animation-delay": `${i * 40}ms` } as React.CSSProperties}
+                    style={useMemo(() => ({ "--animation-delay": `${i * 40}ms` } as React.CSSProperties), [i])}
                   >
                     <div className={cn("transition-transform group-hover:scale-110 shrink-0")} suppressHydrationWarning>
                       <Icon className="h-5 w-5" />
@@ -357,7 +357,7 @@ export function AppSidebar() {
                 <div 
                   className={cn("h-full bg-primary rounded-full", styles.progressBar)}
                   // eslint-disable-next-line react/forbid-dom-props
-                  style={{ "--progress-width": `${(tasks.filter(t => t.status === 'done').length / tasks.length) * 100}%` } as React.CSSProperties}
+                  style={useMemo(() => ({ "--progress-width": `${(tasks.filter(t => t.status === 'done').length / (tasks.length || 1)) * 100}%` } as React.CSSProperties), [tasks])}
                 />
               </div>
             </div>

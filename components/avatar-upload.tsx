@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { UserAvatar } from './user-avatar'
 import { Button } from './ui/button'
@@ -71,7 +71,10 @@ export function AvatarUpload({
     }
   }
 
-  const containerStyle = { height: size, width: size }
+  const containerStyle = useMemo(() => ({ 
+    height: `${size}px`, 
+    width: `${size}px` 
+  }), [size])
 
   return (
     <div 
