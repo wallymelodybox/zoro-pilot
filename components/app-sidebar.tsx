@@ -330,9 +330,12 @@ export function AppSidebar() {
                         item.onClick()
                       }
                     }}
-                    className={cn(getItemClass(isActive), "animate-in fade-in slide-in-from-left-4 duration-300 fill-mode-both", styles.animatedNavLink)}
-                    // eslint-disable-next-line react/forbid-dom-props
-                    style={useMemo(() => ({ "--animation-delay": `${i * 40}ms` } as React.CSSProperties), [i])}
+                    className={cn(
+                      getItemClass(isActive), 
+                      "animate-in fade-in slide-in-from-left-4 duration-300 fill-mode-both", 
+                      styles.animatedNavLink,
+                      `[animation-delay:${i * 40}ms]`
+                    )}
                   >
                     <div className={cn("transition-transform group-hover:scale-110 shrink-0")} suppressHydrationWarning>
                       <Icon className="h-5 w-5" />
@@ -355,9 +358,10 @@ export function AppSidebar() {
               <div className="font-bold text-foreground">{tasks.filter(t => t.status === 'done').length} / {tasks.length}</div>
               <div className="mt-2 h-1.5 w-full bg-accent/40 rounded-full overflow-hidden">
                 <div 
-                  className={cn("h-full bg-primary rounded-full", styles.progressBar)}
-                  // eslint-disable-next-line react/forbid-dom-props
-                  style={useMemo(() => ({ "--progress-width": `${(tasks.filter(t => t.status === 'done').length / (tasks.length || 1)) * 100}%` } as React.CSSProperties), [tasks])}
+                  className={cn(
+                    "h-full bg-primary rounded-full transition-all duration-500",
+                    `w-[${(tasks.filter(t => t.status === 'done').length / (tasks.length || 1)) * 100}%]`
+                  )}
                 />
               </div>
             </div>

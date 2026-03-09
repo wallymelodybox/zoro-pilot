@@ -71,16 +71,9 @@ export function AvatarUpload({
     }
   }
 
-  const containerStyle = useMemo(() => ({ 
-    height: `${size}px`, 
-    width: `${size}px` 
-  }), [size])
-
   return (
     <div 
-      className="relative" 
-      // eslint-disable-next-line react/forbid-dom-props
-      style={containerStyle}
+      className={cn("relative", `h-[${size}px] w-[${size}px]`)}
     >
       <UserAvatar 
         name={uid || 'Avatar'}

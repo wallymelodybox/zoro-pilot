@@ -534,15 +534,15 @@ function SortableTaskCard({ task }: { task: Task }) {
   }), [transform, transition])
 
   return (
-    // eslint-disable-next-line react/forbid-dom-props
     <div
       ref={setNodeRef}
       className={cn(
         "p-3 bg-card border rounded-lg shadow-sm hover:shadow-md transition-all",
-        isDragging ? "z-50 opacity-50" : "z-auto opacity-100"
+        isDragging ? "z-50 opacity-50" : "z-auto opacity-100",
+        transform ? `[transform:${CSS.Transform.toString(transform)}]` : "",
+        transition ? `[transition:${transition}]` : ""
       )}
       {...attributes}
-      style={style}
     >
       <div className="flex items-start gap-2">
         <button
