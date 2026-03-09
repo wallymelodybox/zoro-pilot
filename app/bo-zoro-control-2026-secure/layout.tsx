@@ -58,7 +58,7 @@ export default function BOLayout({ children }: { children: React.ReactNode }) {
       <ThemeBackground />
       
       {/* BO Specific Sidebar */}
-      <aside className="w-64 border-r border-border/40 bg-card/30 backdrop-blur-2xl z-20 flex flex-col p-6 gap-8">
+      <aside className="w-64 border-r border-border bg-card z-20 flex flex-col p-6 gap-8">
         <div className="flex items-center gap-3 px-2">
           <div className="h-9 w-9 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
             <Command className="h-5 w-5 text-primary" />
@@ -89,7 +89,7 @@ export default function BOLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="pt-6 border-t border-border/40 space-y-4">
+        <div className="pt-6 border-t border-border space-y-4">
           <div className="flex items-center gap-3 px-2">
             <UserAvatar 
               name={user?.name || "Admin"} 

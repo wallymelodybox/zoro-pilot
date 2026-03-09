@@ -140,19 +140,19 @@ export default function LicensesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           <Input 
             placeholder="Rechercher une organisation..." 
-            className="h-12 pl-11 rounded-xl bg-card/40 border-border/40 focus:ring-primary/20"
+            className="h-12 pl-11 rounded-xl bg-card border-border focus:ring-primary/20"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="h-12 px-6 rounded-xl border-border/40 gap-2">
+        <Button variant="outline" className="h-12 px-6 rounded-xl border-border gap-2">
           <Filter className="h-5 w-5" />
           Filtres
         </Button>
       </div>
 
-      <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-2xl overflow-hidden">
-        <CardHeader className="border-b border-border/20 bg-muted/10">
+      <Card className="bg-card border-border shadow-2xl overflow-hidden">
+        <CardHeader className="border-b border-border bg-muted/10">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Liste des Organisations</CardTitle>
@@ -264,7 +264,7 @@ export default function LicensesPage() {
       </Card>
 
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="sm:max-w-125 bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
+        <DialogContent className="sm:max-w-125 bg-background border-border shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
               <Building className="h-6 w-6 text-primary" />

@@ -284,7 +284,7 @@ export default function BackOfficePage() {
         ].map(card => (
           <Card
             key={card.key}
-            className="bg-card/20 backdrop-blur-xl border-border/40 shadow-sm cursor-pointer transition-all hover:scale-[1.02] hover:border-primary/30 hover:shadow-md"
+            className="bg-card border-border shadow-sm cursor-pointer transition-all hover:scale-[1.02] hover:border-primary/30 hover:shadow-md"
             onClick={() => openDialog(card.key)}
           >
             <CardContent className="p-5 flex items-center gap-4">
@@ -302,7 +302,7 @@ export default function BackOfficePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">
+        <Card className="bg-card border-border shadow-xl hover:shadow-primary/5 transition-all">
           <CardHeader>
             <CardTitle className="text-xs font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-[0.2em]">
               <Key className="h-4 w-4" />
@@ -323,7 +323,7 @@ export default function BackOfficePage() {
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-xl hover:shadow-primary/5 transition-all">
+        <Card className="bg-card border-border shadow-xl hover:shadow-primary/5 transition-all">
           <CardHeader>
             <CardTitle className="text-xs font-bold flex items-center gap-2 text-muted-foreground uppercase tracking-[0.2em]">
               <AlertCircle className="h-4 w-4" />
@@ -344,7 +344,7 @@ export default function BackOfficePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-2xl overflow-hidden relative">
+        <Card className="bg-card border-border shadow-2xl overflow-hidden relative">
           <div className="absolute top-0 right-0 p-4 opacity-5">
             <UserPlus className="h-32 w-32" />
           </div>
@@ -365,7 +365,7 @@ export default function BackOfficePage() {
                   <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Nom du DG</label>
                   <Input
                     placeholder="Jean Dupont"
-                    className="h-12 rounded-xl bg-background/50 border-border/40"
+                    className="h-12 rounded-xl bg-background border-border"
                     value={dgName}
                     onChange={(e) => setDgName(e.target.value)}
                     required
@@ -376,7 +376,7 @@ export default function BackOfficePage() {
                   <Input
                     type="email"
                     placeholder="dg@entreprise.com"
-                    className="h-12 rounded-xl bg-background/50 border-border/40"
+                    className="h-12 rounded-xl bg-background border-border"
                     value={dgEmail}
                     onChange={(e) => setDgEmail(e.target.value)}
                     required
@@ -388,7 +388,7 @@ export default function BackOfficePage() {
                   <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Nom de l&apos;organisation</label>
                   <Input
                     placeholder="ex: Acme Corp"
-                    className="h-12 rounded-xl bg-background/50 border-border/40"
+                    className="h-12 rounded-xl bg-background border-border"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
                     required
@@ -398,7 +398,7 @@ export default function BackOfficePage() {
                   <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Type de licence</label>
                   <select
                     title="Type de licence"
-                    className="h-12 w-full rounded-xl bg-background/50 border border-border/40 px-3 text-sm"
+                    className="h-12 w-full rounded-xl bg-background border border-border px-3 text-sm"
                     value={licenseType}
                     onChange={(e) => setLicenseType(e.target.value)}
                   >
@@ -417,7 +417,7 @@ export default function BackOfficePage() {
                   <p className="text-sm font-bold text-green-500">✅ Compte créé avec succès</p>
                   <p className="text-xs text-muted-foreground">Mot de passe temporaire (à transmettre au DG) :</p>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 rounded-lg bg-background/80 px-3 py-2 text-sm font-mono select-all border border-border/40">
+                    <code className="flex-1 rounded-lg bg-background px-3 py-2 text-sm font-mono select-all border border-border">
                       {createdPassword}
                     </code>
                     <Button
@@ -449,7 +449,7 @@ export default function BackOfficePage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-2xl">
+        <Card className="bg-card border-border shadow-2xl">
           <CardHeader className="pb-4">
             <CardTitle className="text-2xl font-black tracking-tight flex items-center justify-between">
               RECENT ACTIVITY
@@ -468,7 +468,7 @@ export default function BackOfficePage() {
                 const timeLeft = getTimeLeft(org.expires_at)
 
                 return (
-                  <div key={org.id} className="space-y-3 p-4 rounded-2xl border border-border/20 bg-muted/20 hover:bg-muted/30 transition-colors">
+                  <div key={org.id} className="space-y-3 p-4 rounded-2xl border border-border bg-muted/20 hover:bg-muted/30 transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black border border-primary/10">
@@ -497,7 +497,7 @@ export default function BackOfficePage() {
                       </div>
                       <Progress
                         value={progress}
-                        className="h-1.5 bg-background/50"
+                        className="h-1.5 bg-background"
                         indicatorClassName={cn(
                           "transition-all",
                           progress < 20 ? "bg-destructive" : progress < 50 ? "bg-amber-500" : "bg-primary"
@@ -516,14 +516,14 @@ export default function BackOfficePage() {
       </div>
       {/* ── DIALOG: Organisations ── */}
       <Dialog open={activeDialog === 'orgs'} onOpenChange={() => setActiveDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background border-border shadow-2xl">
           <DialogHeader>
             <DialogTitle>Organisations ({orgDetails.length})</DialogTitle>
             <DialogDescription>Liste de toutes les organisations avec leurs utilisateurs</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             {orgDetails.map(org => (
-              <div key={org.id} className="rounded-xl border border-border/40 bg-card/50 p-4">
+              <div key={org.id} className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-semibold">{org.name}</div>
@@ -571,7 +571,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: Utilisateurs ── */}
       <Dialog open={activeDialog === 'users'} onOpenChange={() => setActiveDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background border-border shadow-2xl">
           <DialogHeader>
             <DialogTitle>Utilisateurs ({allProfiles.length})</DialogTitle>
             <DialogDescription>Tous les utilisateurs de la plateforme</DialogDescription>
@@ -580,7 +580,7 @@ export default function BackOfficePage() {
             {allProfiles.map((u: any) => {
               const org = orgDetails.find(o => o.id === u.organization_id)
               return (
-                <div key={u.id} className="flex items-center justify-between rounded-lg border border-border/30 bg-card/30 px-4 py-3">
+                <div key={u.id} className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
                   <div>
                     <div className="font-medium text-sm">{u.name}</div>
                     <div className="text-xs text-muted-foreground">{u.email}</div>
@@ -593,7 +593,7 @@ export default function BackOfficePage() {
               )
             })}
             {orphanProfiles.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-border/30">
+              <div className="mt-4 pt-3 border-t border-border">
                 <p className="text-xs font-bold text-amber-500 mb-2">⚠️ Profils sans organisation ({orphanProfiles.length})</p>
                 {orphanProfiles.map((u: any) => (
                   <div key={u.id} className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2 mb-1">
@@ -609,7 +609,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: Licences actives ── */}
       <Dialog open={activeDialog === 'active'} onOpenChange={() => setActiveDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background border-border shadow-2xl">
           <DialogHeader>
             <DialogTitle>Licences actives</DialogTitle>
             <DialogDescription>Organisations avec licence configurée</DialogDescription>
@@ -634,7 +634,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: En attente ── */}
       <Dialog open={activeDialog === 'pending'} onOpenChange={() => setActiveDialog(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background border-border shadow-2xl">
           <DialogHeader>
             <DialogTitle>En attente</DialogTitle>
             <DialogDescription>Organisations non configurées ou en attente d&apos;activation</DialogDescription>
@@ -656,7 +656,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: Nouveau mot de passe ── */}
       <Dialog open={!!resetNewPassword} onOpenChange={() => { setResetNewPassword(null); setResetTargetName(null) }}>
-        <DialogContent className="max-w-md bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
+        <DialogContent className="max-w-md bg-background border-border shadow-2xl">
           <DialogHeader>
             <DialogTitle>Nouveau mot de passe</DialogTitle>
             <DialogDescription>
@@ -665,7 +665,7 @@ export default function BackOfficePage() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="flex items-center gap-2">
-              <code className="flex-1 rounded-lg bg-background/80 px-3 py-2.5 text-sm font-mono select-all border border-border/40 break-all">
+              <code className="flex-1 rounded-lg bg-background px-3 py-2.5 text-sm font-mono select-all border border-border break-all">
                 {resetNewPassword}
               </code>
               <Button
@@ -688,7 +688,7 @@ export default function BackOfficePage() {
 
       {/* ── DIALOG: Confirmation suppression ── */}
       <Dialog open={!!deleteTarget} onOpenChange={() => { setDeleteTarget(null); setDeletePassword("") }}>
-        <DialogContent className="max-w-md bg-background/40 backdrop-blur-xl border-border/40 shadow-2xl">
+        <DialogContent className="max-w-md bg-background border-border shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-destructive">Supprimer l&apos;organisation</DialogTitle>
             <DialogDescription>
@@ -713,7 +713,7 @@ export default function BackOfficePage() {
                 placeholder="Votre mot de passe super admin"
                 value={deletePassword}
                 onChange={(e) => setDeletePassword(e.target.value)}
-                className="bg-background/50 border-border/40"
+                className="bg-background border-border"
               />
             </div>
           </div>

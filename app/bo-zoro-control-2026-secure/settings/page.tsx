@@ -72,7 +72,7 @@ export default function BOSettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-2xl">
+          <Card className="bg-card border-border shadow-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="h-5 w-5 text-primary" />
@@ -84,14 +84,14 @@ export default function BOSettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Domaine Applicatif Principal</Label>
-                  <Input defaultValue="zoro-pilot.company" className="bg-background/50 border-border/40" />
+                  <Input defaultValue="zoro-pilot.company" className="bg-background border-border" />
                 </div>
                 <div className="space-y-2">
                   <Label>Domaine Back Office (Secure)</Label>
-                  <Input defaultValue="zoro-secure-control-net.company" className="bg-background/50 border-border/40" />
+                  <Input defaultValue="zoro-secure-control-net.company" className="bg-background border-border" />
                 </div>
               </div>
-              <Separator className="bg-border/20" />
+              <Separator className="bg-border" />
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
@@ -111,7 +111,7 @@ export default function BOSettingsPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-2xl">
+          <Card className="bg-card border-border shadow-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
@@ -129,14 +129,14 @@ export default function BOSettingsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Message de Bannière Globale</Label>
-                <Input placeholder="ex: Mise à jour prévue à 22h00 GMT..." className="bg-background/50 border-border/40" />
+                <Input placeholder="ex: Mise à jour prévue à 22h00 GMT..." className="bg-background border-border" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         <div className="space-y-6">
-          <Card className="bg-card/40 backdrop-blur-xl border-border/40 shadow-2xl">
+          <Card className="bg-card border-border shadow-2xl">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Database className="h-5 w-5 text-primary" />
@@ -154,7 +154,7 @@ export default function BOSettingsPage() {
                 <span className="text-muted-foreground">Temps de réponse</span>
                 <span className="text-foreground font-mono">{dbStatus.latency !== null ? `${dbStatus.latency}ms` : '...'}</span>
               </div>
-              <Separator className="bg-border/20" />
+              <Separator className="bg-border" />
               <Button variant="outline" className="w-full rounded-xl border-primary/20 text-primary hover:bg-primary/10">
                 Lancer un diagnostic
               </Button>
