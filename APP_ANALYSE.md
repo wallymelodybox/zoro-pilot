@@ -46,7 +46,7 @@ C'est utile pour un MVP démonstratif, mais la séparation "types / données / s
 
 ### 4) Authentification et RBAC
 
-- Middleware Next + Supabase SSR (`middleware.ts`, `lib/supabase/middleware.ts`) pour maintenir la session.
+- Proxy Next + Supabase SSR (`proxy.ts`, `lib/supabase/middleware.ts`) pour maintenir la session.
 - Couche RBAC dédiée (`lib/rbac.ts`) avec support des scopes `organization` et `project`.
 
 La logique RBAC est bien amorcée, avec des vérifications de permissions par action/scope.

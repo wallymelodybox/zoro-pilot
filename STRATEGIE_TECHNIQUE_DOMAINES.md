@@ -2,9 +2,9 @@
 
 Ce document détaille l'architecture et les procédures pour gérer indépendamment le domaine de l'application cliente et le domaine du Back Office (BO) sur une infrastructure Vercel + Supabase.
 
-## 1. Architecture de Routage (Middleware)
+## 1. Routage via Proxy (`proxy.ts`)
 
-L'isolation est gérée au niveau de la couche "Edge" de Vercel via le fichier `middleware.ts`. 
+L'isolation est gérée au niveau de la couche "Edge" de Vercel via le fichier `proxy.ts`. 
 
 ### Principes de fonctionnement :
 - **Domaine Client (`APP_DOMAIN`)** : Accès réservé aux fonctionnalités utilisateurs. Toute tentative d'accès au chemin `/bo-zoro-control-2026-secure` depuis ce domaine retourne une erreur **403 Forbidden**.
