@@ -5,9 +5,11 @@ alter table public.profiles
 
 -- Add RLS policy for profiles based on organization_id
 -- Users can only read profiles within their own organization
+drop policy if exists "Users can read profiles in their organization" on public.profiles;
 create policy "Users can read profiles in their organization" on public.profiles
   for select to authenticated
   using (
-    organization_id = (select organization_id from public.profiles where id = auth.uid())
+    organization_id = public.user_org_id()
     or rbac_role = 'super_admin'
+    or id = auth.uid()
   );

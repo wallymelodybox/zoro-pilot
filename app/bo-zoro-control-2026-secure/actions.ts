@@ -247,7 +247,10 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
       .map(m => m.profile_id)
       .filter(id => id !== caller.id)
 
-    // 2. Supprimer tasks, key_results, objectives, pillars, projects (FK sur profiles)
+    // 2. Supprimer les invitations liées à l'org
+    await supabaseAdmin.from('invites').delete().eq('organization_id', orgId)
+
+    // 3. Supprimer tasks, key_results, objectives, pillars, projects (FK sur profiles)
     await supabaseAdmin.from('tasks').delete().eq('organization_id', orgId)
 
     const { data: orgObjectives } = await supabaseAdmin
@@ -338,6 +341,41 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
   } catch (error: any) {
     console.error('Delete Organization Error:', error)
     return { error: error.message || "Erreur lors de la suppression." }
+  }
+}
+
+/**
+ * Récupère les stats du dashboard (organisations + total profils).
+ * 🔒 Réservé au super admin.
+ */
+export async function getDashboardStats() {
+  try {
+    await assertSuperAdmin()
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("La clé SUPABASE_SERVICE_ROLE_KEY est manquante.")
+    }
+
+    const supabaseAdmin = createAdminClient()
+
+    const { data: orgs, error: orgsError } = await supabaseAdmin
+      .from('organizations')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (orgsError) return { error: orgsError.message }
+
+    const { count } = await supabaseAdmin
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+
+    return {
+      organizations: orgs || [],
+      totalProfiles: count || 0,
+    }
+  } catch (error: any) {
+    console.error('Fetch Dashboard Stats Error:', error)
+    return { error: error.message || "Erreur lors de la récupération des statistiques." }
   }
 }
 

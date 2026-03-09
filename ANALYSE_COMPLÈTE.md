@@ -382,12 +382,12 @@ Error: Config must be an object or an array of config objects
 
 ---
 
-### 1. Routage et Sécurité (`proxy.ts`)
+### 1. Routage et Sécurité (`middleware.ts`)
 
-- **Routage multi-domaine** : Le fichier `proxy.ts` est configuré pour détecter le nom d'hôte (`hostname`).
+- **Routage multi-domaine** : Le fichier `middleware.ts` est configuré pour détecter le nom d'hôte (`hostname`).
 - **Isolation du Back Office** : Toute requête sur le domaine `ADMIN_DOMAIN` est réécrite vers le dossier secret `/bo-zoro-control-2026-secure`.
 - **Blocage de sécurité** : Toute tentative d'accès au dossier secret depuis `APP_DOMAIN` renvoie une erreur 403 (Accès refusé).
-- **Persistence des sessions** : Le proxy utilise Supabase pour rafraîchir les sessions utilisateur à chaque requête.
+- **Persistence des sessions** : Le middleware utilise Supabase pour rafraîchir les sessions utilisateur à chaque requête.
 
 ---
 

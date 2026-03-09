@@ -27,8 +27,6 @@ async function ensureProfile(supabase: SupabaseClient) {
         email,
         name,
         role: 'Propriétaire',
-        avatar_url: null,
-        team_id: null,
         rbac_role: 'super_admin',
         manager_id: null,
       })
@@ -49,10 +47,11 @@ async function ensureProfile(supabase: SupabaseClient) {
     const { data: orgId } = await supabase.rpc('get_my_org_from_members')
 
     if (orgId) {
-      await supabase
+      const { error: repairError } = await supabase
         .from('profiles')
         .update({ organization_id: orgId })
         .eq('id', user.id)
+      if (repairError) return { error: repairError.message }
       return { success: true }
     }
 
@@ -74,11 +73,18 @@ async function ensureProfile(supabase: SupabaseClient) {
     return { error: "Accès refusé. Votre compte doit être créé par un administrateur ou via une invitation valide." }
   }
 
-  // Consommer l'invitation
-  await supabase
+  // Consommer l'invitation (atomic: is_used=false guard prevents race condition)
+  const { count: updatedCount } = await supabase
     .from('invites')
     .update({ is_used: true, used_at: new Date().toISOString(), used_by: user.id })
     .eq('id', invite.id)
+    .eq('is_used', false)
+    .select('*', { count: 'exact', head: true })
+
+  if (!updatedCount || updatedCount === 0) {
+    await supabase.auth.signOut()
+    return { error: "Cette invitation a déjà été utilisée." }
+  }
 
   // Créer/mettre à jour le profil
   const { error: upsertError } = await supabase
@@ -123,8 +129,9 @@ export async function login(formData: FormData) {
 
   revalidatePath('/', 'layout')
 
+  // Validate next parameter to prevent open redirect attacks
   const next = formData.get('next') as string
-  if (next) {
+  if (next && next.startsWith('/') && !next.startsWith('//')) {
     redirect(next)
   }
 

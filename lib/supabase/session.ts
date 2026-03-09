@@ -42,7 +42,10 @@ export async function updateSession(request: NextRequest) {
     // ── Super Admin : aucune vérification d'onboarding, accès direct
     const isSuperAdmin = user.email === 'menannzoro@gmail.com'
 
-    if (!isSuperAdmin) {
+    // Skip onboarding checks for API routes and static assets
+    const isApiRoute = request.nextUrl.pathname.startsWith('/api/')
+
+    if (!isSuperAdmin && !isApiRoute) {
       // Check if onboarding is needed
       const { data: profile } = await supabase
         .from('profiles')
@@ -53,8 +56,11 @@ export async function updateSession(request: NextRequest) {
       const isDG = profile?.rbac_role === 'admin' || profile?.rbac_role === 'executive'
       const isEmployee = profile?.rbac_role === 'member' || profile?.rbac_role === 'manager'
 
-      const needsDGOnboarding = isDG && !profile?.onboarding_completed
-      const needsEmployeeOnboarding = isEmployee && !profile?.onboarding_completed
+      // Si le profil n'existe pas encore (cas rare post-auth), on considère qu'on doit onboarder
+      const onboardingCompleted = profile?.onboarding_completed ?? false
+
+      const needsDGOnboarding = isDG && !onboardingCompleted
+      const needsEmployeeOnboarding = isEmployee && !onboardingCompleted
 
       const isDGOnboardingPage = request.nextUrl.pathname.startsWith('/onboarding')
       const isEmployeeOnboardingPage = request.nextUrl.pathname.startsWith('/employee-onboarding')

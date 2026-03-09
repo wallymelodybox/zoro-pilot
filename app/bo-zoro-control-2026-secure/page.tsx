@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Shield, UserPlus, Key, Building, Activity, Clock, AlertCircle, LogOut, Users, Globe, Trash2, X, Eye, RotateCcw, Copy } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
-import { createDGAccount, deleteOrganization, getOrganizationsWithDetails, resetDGPassword } from "./actions"
+import { createDGAccount, deleteOrganization, getDashboardStats, getOrganizationsWithDetails, resetDGPassword } from "./actions"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
 
@@ -60,20 +60,13 @@ export default function BackOfficePage() {
   async function fetchStats() {
     setFetching(true)
     try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setOrganizations(data || [])
-
-      // Compter le nombre total de profils (utilisateurs actifs)
-      const { count } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-
-      setTotalProfiles(count || 0)
+      const res = await getDashboardStats()
+      if (res.error) {
+        console.error("Error fetching stats:", res.error)
+        return
+      }
+      setOrganizations(res.organizations || [])
+      setTotalProfiles(res.totalProfiles || 0)
     } catch (error) {
       console.error("Error fetching stats:", error)
     } finally {
