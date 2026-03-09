@@ -101,16 +101,17 @@ export async function createDGAccount(formData: FormData) {
     }
 
     // 3. Créer le Profil lié à l'organisation
+    // On utilise upsert pour écraser un éventuel profil vide créé par un trigger DB
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
-      .insert([{
+      .upsert({
         id: authUser.user.id,
         email,
         name: dgName,
         role: 'Directeur Général',
         rbac_role: 'admin',
         organization_id: org.id,
-      }])
+      }, { onConflict: 'id' })
 
     if (profileError) {
       // Rollback: supprimer user Auth + org
@@ -192,7 +193,40 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
       .map(m => m.profile_id)
       .filter(id => id !== caller.id)
 
-    // 2. Supprimer les channel_members, channels de l'org
+    // 2. Supprimer tasks, key_results, objectives, pillars, projects (FK sur profiles)
+    await supabaseAdmin.from('tasks').delete().eq('organization_id', orgId)
+
+    const { data: orgObjectives } = await supabaseAdmin
+      .from('objectives')
+      .select('id')
+      .eq('organization_id', orgId)
+
+    if (orgObjectives && orgObjectives.length > 0) {
+      const objectiveIds = orgObjectives.map(o => o.id)
+      await supabaseAdmin.from('okr_checkins').delete().in('key_result_id',
+        (await supabaseAdmin.from('key_results').select('id').in('objective_id', objectiveIds)).data?.map(k => k.id) || []
+      )
+      await supabaseAdmin.from('key_results').delete().in('objective_id', objectiveIds)
+      await supabaseAdmin.from('project_objectives').delete().in('objective_id', objectiveIds)
+    }
+
+    await supabaseAdmin.from('objectives').delete().eq('organization_id', orgId)
+    await supabaseAdmin.from('pillars').delete().eq('organization_id', orgId)
+
+    const { data: orgProjects } = await supabaseAdmin
+      .from('projects')
+      .select('id')
+      .eq('organization_id', orgId)
+
+    if (orgProjects && orgProjects.length > 0) {
+      const projectIds = orgProjects.map(p => p.id)
+      await supabaseAdmin.from('project_objectives').delete().in('project_id', projectIds)
+      await supabaseAdmin.from('project_key_results').delete().in('project_id', projectIds)
+    }
+
+    await supabaseAdmin.from('projects').delete().eq('organization_id', orgId)
+
+    // 3. Supprimer les channel_members, channels de l'org
     const { data: channels } = await supabaseAdmin
       .from('channels')
       .select('id')
@@ -205,18 +239,24 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
       await supabaseAdmin.from('channels').delete().in('id', channelIds)
     }
 
-    // 3. Supprimer les teams de l'org
+    // 4. Nullifier les FK vers profiles avant suppression des teams et profils
+    if (profileIds.length > 0) {
+      await supabaseAdmin.from('teams').update({ manager_id: null }).in('manager_id', profileIds)
+      await supabaseAdmin.from('profiles').update({ manager_id: null }).in('manager_id', profileIds)
+    }
+
+    // 5. Supprimer les teams de l'org
     await supabaseAdmin.from('teams').delete().eq('organization_id', orgId)
 
-    // 4. Supprimer organization_members
+    // 6. Supprimer organization_members
     await supabaseAdmin.from('organization_members').delete().eq('organization_id', orgId)
 
-    // 5. Supprimer les profils
+    // 7. Supprimer les profils
     if (profileIds.length > 0) {
       await supabaseAdmin.from('profiles').delete().in('id', profileIds)
     }
 
-    // 6. Supprimer les users Auth
+    // 7. Supprimer les users Auth
     for (const profileId of profileIds) {
       try {
         await supabaseAdmin.auth.admin.deleteUser(profileId)
@@ -225,7 +265,7 @@ export async function deleteOrganization(orgId: string, superAdminPassword: stri
       }
     }
 
-    // 7. Supprimer l'organisation
+    // 8. Supprimer l'organisation
     const { error: orgDeleteError } = await supabaseAdmin
       .from('organizations')
       .delete()

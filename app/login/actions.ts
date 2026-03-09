@@ -38,14 +38,43 @@ async function ensureProfile() {
   }
 
   // ── 2. UTILISATEUR EXISTANT — DG ou membre déjà provisionné
-  const { data: existingProfile } = await supabase
+  const { data: existingProfile, error: profileError } = await supabase
     .from('profiles')
     .select('id, organization_id, rbac_role')
     .eq('id', user.id)
     .single()
 
+  // DEBUG — supprimer après diagnostic
+  console.log('[ensureProfile] user.id:', user.id, '| email:', email)
+  console.log('[ensureProfile] existingProfile:', JSON.stringify(existingProfile))
+  console.log('[ensureProfile] profileError:', JSON.stringify(profileError))
+
   if (existingProfile && existingProfile.organization_id) {
     return { success: true }
+  }
+
+  // Profil admin/executive sans organization_id : tentative d'auto-réparation
+  // depuis organization_members (créé à l'étape 4 de createDGAccount).
+  // IMPORTANT : on ne laisse jamais passer un admin sans org_id pour éviter
+  // que user_org_id() retourne null et expose toutes les données via RLS.
+  if (existingProfile && (existingProfile.rbac_role === 'admin' || existingProfile.rbac_role === 'executive')) {
+    const { data: member } = await supabase
+      .from('organization_members')
+      .select('organization_id')
+      .eq('profile_id', user.id)
+      .single()
+
+    if (member?.organization_id) {
+      await supabase
+        .from('profiles')
+        .update({ organization_id: member.organization_id })
+        .eq('id', user.id)
+      return { success: true }
+    }
+
+    // Aucune org trouvée : compte DG corrompu, on bloque
+    await supabase.auth.signOut()
+    return { error: "Votre compte est incomplet. Contactez l'administrateur pour le réactiver." }
   }
 
   // ── 3. NOUVELLE INVITATION — premier login d'un membre invité
