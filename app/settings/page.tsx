@@ -560,27 +560,54 @@ function IntegrationsSettings() {
 }
 
 function OrganizationSettings() {
-  const { user } = useUser()
+  const { user, refresh } = useUser()
+  const [name, setName] = useState(user?.organization_name || "")
+  const [saving, setSaving] = useState(false)
+  const supabase = createClient()
+
+  const handleSave = async () => {
+    if (!user?.organization_id) return
+    setSaving(true)
+    try {
+      const { error } = await supabase
+        .from('organizations')
+        .update({ name })
+        .eq('id', user.organization_id)
+
+      if (error) throw error
+      toast.success("Organisation mise à jour !")
+      refresh()
+    } catch (error) {
+      toast.error("Erreur lors de la mise à jour.")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Paramètres de l'Organisation</h2>
-        <p className="text-muted-foreground">Gérez les informations générales de votre espace de travail.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Paramètres de l'Organisation</h2>
+          <p className="text-muted-foreground">Gérez les informations générales de votre espace de travail.</p>
+        </div>
+        <Button onClick={handleSave} disabled={saving || !name}>
+          {saving ? "Enregistrement..." : "Enregistrer"}
+        </Button>
       </div>
       <Separator />
       
       <div className="grid gap-6 max-w-2xl">
         <div className="grid gap-2">
           <label className="text-sm font-medium">Nom de l'organisation</label>
-          <Input defaultValue={user?.organization_name || ""} />
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         
         <div className="grid gap-2">
            <label className="text-sm font-medium">URL de l'espace de travail</label>
            <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">zoropilot.com/</span>
-              <Input defaultValue={user?.organization_name?.toLowerCase().replace(/\s+/g, '-') || ""} className="flex-1" />
+              <Input defaultValue={user?.organization_name?.toLowerCase().replace(/\s+/g, '-') || ""} className="flex-1" disabled />
            </div>
         </div>
 
@@ -607,6 +634,32 @@ function MembersSettings() {
   const [inviteEmail, setInviteEmail] = useState("")
   const [inviteRole, setInviteRole] = useState("Membre")
   const [groupName, setGroupName] = useState("")
+  const [members, setMembers] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (user?.organization_id) {
+      fetchMembers()
+    }
+  }, [user?.organization_id])
+
+  async function fetchMembers() {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('organization_id', user?.organization_id)
+        .order('name', { ascending: true })
+      
+      if (error) throw error
+      setMembers(data || [])
+    } catch (error) {
+      console.error("Error fetching members:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const availableRoles = (userRole: string) => {
     if (userRole === "super_admin" || userRole === "admin") {
@@ -795,59 +848,71 @@ function MembersSettings() {
                    <div className="w-8"></div>
                 </div>
                 <div className="overflow-auto flex-1">
-                   {[1, 2, 3].map((i) => (
-                      <div 
-                        key={i} 
-                        className={cn(
-                          "px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both",
-                          i === 1 ? "[animation-delay:var(--delay-1)]" : i === 2 ? "[animation-delay:var(--delay-2)]" : "[animation-delay:var(--delay-3)]"
-                        )}
-                      >
-                         <div className="flex items-center gap-3">
-                            <UserAvatar
-                              name={i === 1 ? (user?.name ?? "Moi") : `User ${i}`}
-                              fallback={i === 1 ? (user?.name?.[0] ?? "M") : `U${i}`}
-                              className="h-8 w-8"
-                            />
-                            <div>
-                               <div className="text-sm font-medium">{i === 1 ? (user?.name ?? "Moi") : `Membre ${i}`}</div>
-                               <div className="text-xs text-muted-foreground">{i === 1 ? (user?.email ?? "") : `user${i}@example.com`}</div>
-                            </div>
-                         </div>
-                         <div>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                               i === 1 ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
-                            }`}>
-                               {i === 1 ? "Propriétaire" : "Membre"}
-                            </span>
-                         </div>
-                         <div className="text-sm text-muted-foreground">Il y a 2h</div>
-                         <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                               <Button variant="ghost" size="icon" className="h-8 w-8">
-                                  <MoreHorizontal className="h-4 w-4" />
-                               </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                               <DropdownMenuLabel>Options membre</DropdownMenuLabel>
-                               <DropdownMenuSeparator />
-                               <DropdownMenuItem className="cursor-pointer">
-                                  <Edit2 className="h-4 w-4 mr-2" />
-                                  Modifier le rôle
-                               </DropdownMenuItem>
-                               <DropdownMenuItem className="cursor-pointer">
-                                  <ShieldAlert className="h-4 w-4 mr-2" />
-                                  Gérer les permissions
-                               </DropdownMenuItem>
-                               <DropdownMenuSeparator />
-                               <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
-                                  <UserX className="h-4 w-4 mr-2" />
-                                  Retirer de l&apos;organisation
-                               </DropdownMenuItem>
-                            </DropdownMenuContent>
-                         </DropdownMenu>
-                      </div>
-                   ))}
+                   {loading ? (
+                     <div className="p-10 text-center text-muted-foreground">Chargement des membres...</div>
+                   ) : members.length === 0 ? (
+                     <div className="p-10 text-center text-muted-foreground">Aucun membre trouvé.</div>
+                   ) : (
+                     members.map((m, i) => (
+                       <div 
+                         key={m.id} 
+                         className={cn(
+                           "px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                         )}
+                         style={{ animationDelay: `${i * 50}ms` }}
+                       >
+                          <div className="flex items-center gap-3">
+                             <UserAvatar
+                               name={m.name}
+                               avatarUrl={m.avatar_url}
+                               fallback={m.name?.[0] || "U"}
+                               className="h-8 w-8"
+                             />
+                             <div>
+                                <div className="text-sm font-medium">{m.name}</div>
+                                <div className="text-xs text-muted-foreground">{m.email}</div>
+                             </div>
+                          </div>
+                          <div>
+                             <span className={cn(
+                               "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                               m.rbac_role === 'admin' || m.rbac_role === 'executive' || m.rbac_role === 'super_admin'
+                                 ? "bg-purple-100 text-purple-700"
+                                 : "bg-blue-100 text-blue-700"
+                             )}>
+                                {m.role || m.rbac_role}
+                             </span>
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(m.created_at).toLocaleDateString('fr-FR')}
+                          </div>
+                          <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                   <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                             </DropdownMenuTrigger>
+                             <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Options membre</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="cursor-pointer">
+                                   <Edit2 className="h-4 w-4 mr-2" />
+                                   Modifier le rôle
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="cursor-pointer">
+                                   <ShieldAlert className="h-4 w-4 mr-2" />
+                                   Gérer les permissions
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                                   <UserX className="h-4 w-4 mr-2" />
+                                   Retirer de l&apos;organisation
+                                </DropdownMenuItem>
+                             </DropdownMenuContent>
+                          </DropdownMenu>
+                       </div>
+                     ))
+                   )}
                 </div>
              </div>
           </TabsContent>
