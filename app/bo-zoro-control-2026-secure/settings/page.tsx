@@ -11,16 +11,27 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
+import { getSystemSettings, updateSystemSettings } from "../actions"
 
 export default function BOSettingsPage() {
   const { user, loading } = useUser()
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [settings, setSettings] = useState({
+    app_domain: 'zoro-pilot.company',
+    admin_domain: 'zoro-secure-control-net.company',
+    total_isolation_enabled: true,
+    strict_invite_validation: true,
+    maintenance_mode_enabled: false,
+    global_banner_message: ''
+  })
 
   useEffect(() => {
     if (!loading) {
       if (user?.rbac_role === 'super_admin' || user?.email === 'menannzoro@gmail.com') {
         setIsAuthorized(true)
+        fetchSettings()
       } else {
         redirect("/")
       }
@@ -33,8 +44,16 @@ export default function BOSettingsPage() {
     if (isAuthorized) checkDbHealth()
   }, [isAuthorized])
 
+  async function fetchSettings() {
+    const res = await getSystemSettings()
+    if (res.settings) {
+      setSettings(res.settings)
+    } else if (res.error) {
+      toast.error(res.error)
+    }
+  }
+
   async function checkDbHealth() {
-    const { createClient } = await import("@/lib/supabase/client")
     const supabase = createClient()
     const start = performance.now()
     const { error } = await supabase.from('organizations').select('id', { count: 'exact', head: true })
@@ -42,13 +61,15 @@ export default function BOSettingsPage() {
     setDbStatus({ ok: !error, latency })
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaving(true)
-    // TODO: Persister les paramètres quand les champs seront branchés sur un état
-    setTimeout(() => {
-      setSaving(false)
+    const res = await updateSystemSettings(settings)
+    setSaving(false)
+    if (res.success) {
       toast.success("Paramètres système mis à jour avec succès.")
-    }, 800)
+    } else {
+      toast.error(res.error || "Une erreur est survenue lors de l'enregistrement.")
+    }
   }
 
   if (loading) return <div className="p-10 text-center">Chargement...</div>
@@ -84,11 +105,19 @@ export default function BOSettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Domaine Applicatif Principal</Label>
-                  <Input defaultValue="zoro-pilot.company" className="bg-background border-border" />
+                  <Input 
+                    value={settings.app_domain} 
+                    onChange={(e) => setSettings({ ...settings, app_domain: e.target.value })}
+                    className="bg-background border-border" 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Domaine Back Office (Secure)</Label>
-                  <Input defaultValue="zoro-secure-control-net.company" className="bg-background border-border" />
+                  <Input 
+                    value={settings.admin_domain} 
+                    onChange={(e) => setSettings({ ...settings, admin_domain: e.target.value })}
+                    className="bg-background border-border" 
+                  />
                 </div>
               </div>
               <Separator className="bg-border" />
@@ -98,14 +127,20 @@ export default function BOSettingsPage() {
                     <Label className="text-base">Isolation Totale des Données</Label>
                     <p className="text-sm text-muted-foreground">Force l'utilisation du schéma tenant-ID pour chaque requête.</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={settings.total_isolation_enabled} 
+                    onCheckedChange={(checked) => setSettings({ ...settings, total_isolation_enabled: checked })}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label className="text-base">Validation stricte des invitations</Label>
                     <p className="text-sm text-muted-foreground">Les tokens d'invitation expirent après 48h.</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={settings.strict_invite_validation} 
+                    onCheckedChange={(checked) => setSettings({ ...settings, strict_invite_validation: checked })}
+                  />
                 </div>
               </div>
             </CardContent>
@@ -125,11 +160,19 @@ export default function BOSettingsPage() {
                   <Label className="text-base">Mode Maintenance</Label>
                   <p className="text-sm text-muted-foreground">Affiche une page de maintenance pour tous les utilisateurs.</p>
                 </div>
-                <Switch />
+                <Switch 
+                  checked={settings.maintenance_mode_enabled} 
+                  onCheckedChange={(checked) => setSettings({ ...settings, maintenance_mode_enabled: checked })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Message de Bannière Globale</Label>
-                <Input placeholder="ex: Mise à jour prévue à 22h00 GMT..." className="bg-background border-border" />
+                <Input 
+                  placeholder="ex: Mise à jour prévue à 22h00 GMT..." 
+                  className="bg-background border-border" 
+                  value={settings.global_banner_message || ''}
+                  onChange={(e) => setSettings({ ...settings, global_banner_message: e.target.value })}
+                />
               </div>
             </CardContent>
           </Card>

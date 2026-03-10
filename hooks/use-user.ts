@@ -39,8 +39,15 @@ export function useUser() {
         .single()
 
       if (profile) {
+        let finalAvatarUrl = profile.avatar_url
+        if (finalAvatarUrl && !finalAvatarUrl.startsWith('http')) {
+          const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(finalAvatarUrl)
+          finalAvatarUrl = publicUrl
+        }
+
         setUser({
           ...profile,
+          avatar_url: finalAvatarUrl,
           organization_name: profile.organizations?.name,
           organization_logo: profile.organizations?.logo_url
         })
@@ -77,8 +84,15 @@ export function useUser() {
         .eq('id', authUser.id)
         .single()
       if (profile) {
+        let finalAvatarUrl = profile.avatar_url
+        if (finalAvatarUrl && !finalAvatarUrl.startsWith('http')) {
+          const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(finalAvatarUrl)
+          finalAvatarUrl = publicUrl
+        }
+
         setUser({
           ...profile,
+          avatar_url: finalAvatarUrl,
           organization_name: profile.organizations?.name,
           organization_logo: profile.organizations?.logo_url
         })

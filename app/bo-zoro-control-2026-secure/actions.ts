@@ -380,6 +380,56 @@ export async function getDashboardStats() {
 }
 
 /**
+ * Récupère les paramètres globaux du système.
+ * 🔒 Réservé au super admin.
+ */
+export async function getSystemSettings() {
+  try {
+    await assertSuperAdmin()
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('*')
+      .eq('id', 'global')
+      .single()
+
+    if (error) throw error
+    return { settings: data }
+  } catch (error: any) {
+    console.error('Erreur getSystemSettings:', error)
+    return { error: error.message || "Erreur lors de la récupération des paramètres." }
+  }
+}
+
+/**
+ * Met à jour les paramètres globaux du système.
+ * 🔒 Réservé au super admin.
+ */
+export async function updateSystemSettings(settings: any) {
+  try {
+    const user = await assertSuperAdmin()
+    const supabase = await createClient()
+    
+    const { error } = await supabase
+      .from('system_settings')
+      .upsert({
+        id: 'global',
+        ...settings,
+        updated_at: new Date().toISOString(),
+        updated_by: user.id
+      })
+
+    if (error) throw error
+    
+    revalidatePath('/bo-zoro-control-2026-secure/settings')
+    return { success: true }
+  } catch (error: any) {
+    console.error('Erreur updateSystemSettings:', error)
+    return { error: error.message || "Erreur lors de la mise à jour des paramètres." }
+  }
+}
+
+/**
  * Récupère les détails complets des organisations avec le nombre d'utilisateurs.
  * 🔒 Réservé au super admin.
  */

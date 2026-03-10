@@ -121,7 +121,12 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
 
       const profileMap: Record<string, { name: string; role: string; avatar?: string }> = {}
       for (const p of profs ?? []) {
-        profileMap[p.id] = { name: p.name, role: p.role, avatar: p.avatar_url ?? undefined }
+        let finalAvatar = p.avatar_url
+        if (finalAvatar && !finalAvatar.startsWith('http')) {
+          const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(finalAvatar)
+          finalAvatar = publicUrl
+        }
+        profileMap[p.id] = { name: p.name, role: p.role, avatar: finalAvatar ?? undefined }
       }
       setProfiles(profileMap)
 

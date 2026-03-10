@@ -27,19 +27,15 @@ export function AvatarUpload({
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
-    if (url) downloadImage(url)
-  }, [url])
-
-  async function downloadImage(path: string) {
-    try {
-      const { data, error } = await supabase.storage.from('avatars').download(path)
-      if (error) throw error
-      const url = URL.createObjectURL(data)
-      setAvatarUrl(url)
-    } catch (error) {
-      console.log('Error downloading image: ', error)
+    if (url) {
+      if (url.startsWith('http')) {
+        setAvatarUrl(url)
+      } else {
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(url)
+        setAvatarUrl(publicUrl)
+      }
     }
-  }
+  }, [url])
 
   async function uploadAvatar(event: React.ChangeEvent<HTMLInputElement>) {
     if (!uid) {
