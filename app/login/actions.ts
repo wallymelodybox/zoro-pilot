@@ -74,14 +74,14 @@ async function ensureProfile(supabase: SupabaseClient) {
   }
 
   // Consommer l'invitation (atomic: is_used=false guard prevents race condition)
-  const { count: updatedCount } = await supabase
+  const { data: updatedInvites } = await supabase
     .from('invites')
     .update({ is_used: true, used_at: new Date().toISOString(), used_by: user.id })
     .eq('id', invite.id)
     .eq('is_used', false)
-    .select('*', { count: 'exact', head: true })
+    .select()
 
-  if (!updatedCount || updatedCount === 0) {
+  if (!updatedInvites || updatedInvites.length === 0) {
     await supabase.auth.signOut()
     return { error: "Cette invitation a déjà été utilisée." }
   }

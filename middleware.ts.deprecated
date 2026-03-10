@@ -1,0 +1,3 @@
+// Ce fichier est déprécié au profit de proxy.ts pour respecter les nouvelles conventions Next.js.
+// La logique a été déplacée dans proxy.ts.
+export { proxy as middleware, config } from './proxy'
