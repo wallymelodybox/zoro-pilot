@@ -854,13 +854,13 @@ function MembersSettings() {
                      <div className="p-10 text-center text-muted-foreground">Aucun membre trouvé.</div>
                    ) : (
                      members.map((m, i) => (
-                       <div 
-                         key={m.id} 
-                         className={cn(
-                           "px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
-                         )}
-                         style={{ animationDelay: `${i * 50}ms` }}
-                       >
+                        <div 
+                          key={m.id} 
+                          className={cn(
+                            "px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both",
+                            `[animation-delay:${i * 50}ms]`
+                          )}
+                        >
                           <div className="flex items-center gap-3">
                              <UserAvatar
                                name={m.name}
