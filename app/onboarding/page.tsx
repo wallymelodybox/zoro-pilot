@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -55,15 +55,25 @@ const STEPS = [
 ]
 
 export default function OnboardingPage() {
-  const { user } = useUser()
+  const { user, loading: userLoading } = useUser()
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
 
   // Step 0 – identity
-  const [userName, setUserName] = useState(user?.name || "")
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || "")
-  const [orgName, setOrgName] = useState(user?.organization_name || "")
-  const [logoUrl, setLogoUrl] = useState(user?.organization_logo || "")
+  const [userName, setUserName] = useState("")
+  const [avatarUrl, setAvatarUrl] = useState("")
+  const [orgName, setOrgName] = useState("")
+  const [logoUrl, setLogoUrl] = useState("")
+
+  // Sync with user data once loaded
+  useEffect(() => {
+    if (user) {
+      if (!userName) setUserName(user.name || "")
+      if (!avatarUrl) setAvatarUrl(user.avatar_url || "")
+      if (!orgName) setOrgName(user.organization_name || "")
+      if (!logoUrl) setLogoUrl(user.organization_logo || "")
+    }
+  }, [user])
 
   // Step 1 – company profile
   const [selectedProfile, setSelectedProfile] = useState<CompanyProfile | null>(null)
@@ -120,6 +130,7 @@ export default function OnboardingPage() {
   const goBack = () => { if (step > 0) setStep(step - 1) }
 
   const handleFinish = async () => {
+    if (loading) return
     setLoading(true)
     const formData = new FormData()
     formData.append("userName", userName)
@@ -130,10 +141,16 @@ export default function OnboardingPage() {
     formData.append("subProfile", selectedSubProfile || "")
     formData.append("quarterlyObjective", selectedObjective || "")
     formData.append("selectedKpis", JSON.stringify(Array.from(selectedKpiIds)))
+    
     try {
-      await completeOnboarding(formData)
+      console.log("Submitting onboarding...")
+      const result = await completeOnboarding(formData)
+      if (result?.error) {
+        toast.error(result.error)
+        setLoading(false)
+      }
     } catch (error) {
-      console.error(error)
+      console.error("Onboarding error:", error)
       setLoading(false)
     }
   }
