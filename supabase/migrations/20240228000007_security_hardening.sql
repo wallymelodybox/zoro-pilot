@@ -107,6 +107,7 @@ create policy "Org Scoped Read" on teams
 -- ══════════════════════════════════════════════════════════════
 drop policy if exists "Own Org Read" on organizations;
 drop policy if exists "Public Read" on organizations;
+drop policy if exists "Org Scoped Read" on organizations;
 create policy "Org Scoped Read" on organizations
   for select to authenticated
   using (
@@ -122,6 +123,7 @@ drop policy if exists "Public Insert" on organizations;
 -- ══════════════════════════════════════════════════════════════
 drop policy if exists "Public Read" on organization_members;
 drop policy if exists "Public Insert" on organization_members;
+drop policy if exists "Org Scoped Read" on organization_members;
 
 create policy "Org Scoped Read" on organization_members
   for select to authenticated

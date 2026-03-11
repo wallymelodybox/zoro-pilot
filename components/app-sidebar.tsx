@@ -20,6 +20,7 @@ import {
   Sparkles,
   Activity,
   Shield,
+  Handshake,
 } from "lucide-react"
 import {
   ResponsiveContainer,
@@ -49,6 +50,7 @@ const navItems = [
   { href: "/calendar", label: "Calendrier global", icon: CalendarDays },
   { href: "/my-day", label: "Ma journée", icon: Sun },
   { href: "/all-tasks", label: "Toutes les tâches", icon: Layers },
+  { href: "/crm", label: "CRM", icon: Handshake },
   { href: "/performance", label: "Performance & KPI", icon: BarChart3 },
   { href: "/automations", label: "Automatisation", icon: Sparkles },
   { href: "/search", label: "Recherche", icon: Search },
