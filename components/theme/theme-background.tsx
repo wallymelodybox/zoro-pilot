@@ -33,7 +33,16 @@ export function ThemeBackground() {
         </div>
       )}
 
-      {/* 3) EXECUTIVE FUTURIST (Dark / Executive Violet) */}
+      {/* 3) PMO CLARITY (Light / Operational) */}
+      {variant === "pmo-clarity" && (
+        <>
+          <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.92),rgba(244,248,244,0.72)_44%,rgba(233,240,235,0.88))]" suppressHydrationWarning />
+          <div className="absolute inset-0 opacity-[0.42] bg-[linear-gradient(to_right,rgba(15,23,42,0.06)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.045)_1px,transparent_1px)] bg-[size:32px_32px]" suppressHydrationWarning />
+          <div className="absolute inset-x-0 top-0 h-28 bg-[linear-gradient(to_bottom,rgba(21,83,45,0.08),transparent)]" suppressHydrationWarning />
+        </>
+      )}
+
+      {/* 4) EXECUTIVE FUTURIST (Dark / Executive Violet) */}
       {variant === "executive-futurist" && (
         <>
           <div className="absolute top-[-10%] left-[-6%] w-[44%] h-[44%] rounded-full bg-[rgba(236,72,153,0.16)] blur-[120px]" suppressHydrationWarning />

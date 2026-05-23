@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { useTheme } from "next-themes"
 
-export type ThemeVariant = "command-center" | "ai-productivity" | "executive-futurist"
+export type ThemeVariant = "command-center" | "ai-productivity" | "executive-futurist" | "pmo-clarity"
 
 interface ThemeVariantContextType {
   variant: ThemeVariant
@@ -13,6 +13,7 @@ interface ThemeVariantContextType {
 const ThemeVariantContext = createContext<ThemeVariantContextType | undefined>(undefined)
 
 const STORAGE_KEY = "dashboard-theme-variant"
+const VARIANTS: ThemeVariant[] = ["command-center", "ai-productivity", "executive-futurist", "pmo-clarity"]
 
 export function ThemeVariantProvider({ children }: { children: React.ReactNode }) {
   const [variant, setVariantState] = useState<ThemeVariant>("command-center")
@@ -20,7 +21,8 @@ export function ThemeVariantProvider({ children }: { children: React.ReactNode }
   const { setTheme } = useTheme()
 
   useEffect(() => {
-    const saved = (localStorage.getItem(STORAGE_KEY) as ThemeVariant | null) ?? "command-center"
+    const stored = localStorage.getItem(STORAGE_KEY) as ThemeVariant | null
+    const saved = stored && VARIANTS.includes(stored) ? stored : "command-center"
     setVariantState(saved)
     applyVariant(saved)
     setMounted(true)
@@ -32,7 +34,7 @@ export function ThemeVariantProvider({ children }: { children: React.ReactNode }
     document.documentElement.setAttribute("data-dashboard-theme", v)
 
     // 2) sync dark/light via next-themes
-    if (v === "ai-productivity") setTheme("light")
+    if (v === "ai-productivity" || v === "pmo-clarity") setTheme("light")
     else setTheme("dark")
   }
 

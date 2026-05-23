@@ -33,6 +33,9 @@ export function ThemeToggle() {
         <DropdownMenuItem onClick={() => setVariant("executive-futurist")}>
           Option 3 (Executive Futurist)
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setVariant("pmo-clarity")}>
+          Option 4 (PMO Clarity)
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

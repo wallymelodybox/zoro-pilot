@@ -256,29 +256,32 @@ export function AppSidebar() {
   const { variant } = useThemeVariant()
   const { user } = useUser()
   const { tasks } = useSupabaseData()
+  const isPmoClarity = variant === "pmo-clarity"
 
   const items = useMemo<NavItem[]>(() => {
     return [...navItems]
   }, [])
 
   const widthClass =
-    variant === "executive-futurist"
+    isPmoClarity
+      ? (collapsed ? "w-20" : "w-[17rem]")
+      : variant === "executive-futurist"
       ? (collapsed ? "w-20" : "w-80")
       : (collapsed ? "w-20" : "w-72")
 
   const asideClass = cn(
     "flex h-full flex-col overflow-hidden transition-all duration-300",
-    "border border-border rounded-3xl",
-    // Surface: glass overlay + fallback
-    "bg-card/40 backdrop-blur-xl",
-    // Shadow glass (via CSS var; fonctionne dark/light)
-    "shadow-2xl",
+    "border border-border",
+    isPmoClarity
+      ? "rounded-xl bg-card/85 backdrop-blur-md shadow-[0_14px_34px_rgba(19,45,35,0.10)]"
+      : "rounded-3xl bg-card/40 backdrop-blur-xl shadow-2xl",
     widthClass
   )
 
   const getItemClass = (isActive: boolean) => {
     return cn(
-      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition group",
+      "flex items-center gap-3 px-3 py-2.5 text-sm transition group",
+      isPmoClarity ? "rounded-lg" : "rounded-xl",
       // Base text color from tokens
       "text-muted-foreground hover:text-foreground",
       // Hover surface
@@ -290,7 +293,8 @@ export function AppSidebar() {
   }
 
   const logoBadgeClass = cn(
-    "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-all",
+    "flex h-10 w-10 shrink-0 items-center justify-center transition-all",
+    isPmoClarity ? "rounded-lg" : "rounded-xl",
     "border border-border",
     // glass badge
     "bg-[var(--glass-bg)] backdrop-blur-xl",
@@ -298,7 +302,11 @@ export function AppSidebar() {
   )
 
   const subtitle =
-    variant === "executive-futurist" ? "Strategic Intelligence" : "Strategic Hub"
+    isPmoClarity
+      ? "PMO Clarity"
+      : variant === "executive-futurist"
+        ? "Strategic Intelligence"
+        : "Strategic Hub"
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -383,6 +391,30 @@ export function AppSidebar() {
                     `w-[${(tasks.filter(t => t.status === 'done').length / (tasks.length || 1)) * 100}%]`
                   )}
                 />
+              </div>
+            </div>
+          )}
+
+          {/* PMO CLARITY: operational snapshot */}
+          {!collapsed && isPmoClarity && (
+            <div className="mb-4 rounded-lg border border-border bg-background/70 p-3 shadow-sm">
+              <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span>Exécution</span>
+                <span className="text-primary">{tasks.filter(t => t.status === "in-progress").length} actives</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-md bg-muted/60 px-2 py-1.5">
+                  <div className="text-sm font-semibold text-foreground">{tasks.length}</div>
+                  <div className="text-[10px] text-muted-foreground">Total</div>
+                </div>
+                <div className="rounded-md bg-muted/60 px-2 py-1.5">
+                  <div className="text-sm font-semibold text-foreground">{tasks.filter(t => t.status === "done").length}</div>
+                  <div className="text-[10px] text-muted-foreground">Finies</div>
+                </div>
+                <div className="rounded-md bg-muted/60 px-2 py-1.5">
+                  <div className="text-sm font-semibold text-destructive">{tasks.filter(t => t.status === "blocked").length}</div>
+                  <div className="text-[10px] text-muted-foreground">Bloquées</div>
+                </div>
               </div>
             </div>
           )}
