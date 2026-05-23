@@ -15,6 +15,7 @@ import { ThemeBackground } from "@/components/theme/theme-background"
 import { useUser } from "@/hooks/use-user"
 import { AvatarUpload } from "@/components/avatar-upload"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 import {
   COMPANY_PROFILES,
   QUARTERLY_OBJECTIVES,
