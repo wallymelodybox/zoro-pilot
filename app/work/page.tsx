@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { UserAvatar } from "@/components/user-avatar"
 import {
@@ -17,7 +18,7 @@ import { ChatPanel } from "@/components/chat-panel"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { useUser } from "@/hooks/use-user"
 import { createClient } from "@/lib/supabase/client"
-import { createTask, updateTaskStatus, addProjectMember } from "@/app/actions"
+import { createTask, updateTaskStatus, addProjectMember, createProjectEvent, createProjectDocument } from "@/app/actions"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -67,7 +68,25 @@ import {
   UserPlus,
   Settings2,
   CheckCircle2,
-  FolderKanban
+  FolderKanban,
+  Paperclip,
+  FileText,
+  Upload,
+  CalendarPlus,
+  Flag,
+  Timer,
+  Users,
+  ClipboardList,
+  Activity,
+  MessageCircle,
+  Link as LinkIcon,
+  Download,
+  CircleDot,
+  XCircle,
+  CheckCircle,
+  CircleAlert,
+  CalendarClock,
+  NotebookPen
 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
@@ -81,9 +100,201 @@ const STATUSES: { key: TaskStatus; label: string }[] = [
   { key: "done", label: "Fait" },
 ]
 
+const KANBAN_COLUMNS: { id: string; status?: TaskStatus; label: string; tone: string }[] = [
+  { id: "backlog", status: "todo", label: "Backlog", tone: "bg-slate-500" },
+  { id: "todo", status: "todo", label: "À faire", tone: "bg-blue-500" },
+  { id: "in-progress", status: "in-progress", label: "En cours", tone: "bg-amber-500" },
+  { id: "validation", label: "Validation", tone: "bg-violet-500" },
+  { id: "blocked", status: "blocked", label: "Bloqué", tone: "bg-red-500" },
+  { id: "done", status: "done", label: "Terminé", tone: "bg-emerald-500" },
+]
+
+const statusLabels: Record<string, string> = {
+  "on-track": "En cours",
+  "at-risk": "À risque",
+  "off-track": "En retard",
+}
+
+const eventLabels: Record<string, string> = {
+  meeting: "Réunion",
+  deadline: "Deadline",
+  milestone: "Milestone",
+  reminder: "Rappel",
+  event: "Événement",
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "Non défini"
+  return new Date(value).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })
+}
+
+function isOverdue(task: Task) {
+  if (!task.dueDate || task.status === "done") return false
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return new Date(task.dueDate) < today
+}
+
+function isThisWeek(value?: string | null) {
+  if (!value) return false
+  const date = new Date(value)
+  const now = new Date()
+  const start = new Date(now)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 7)
+  return date >= start && date <= end
+}
+
+function makeCalendarUrl(title: string, start?: string | null, details?: string) {
+  if (!start) return "#"
+  const date = new Date(start)
+  const end = new Date(date.getTime() + 60 * 60 * 1000)
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z"
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: title,
+    dates: `${fmt(date)}/${fmt(end)}`,
+    details: details || "",
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
+
 // --- COMPONENTS ---
 
-function TaskCard({ task, canEdit, profiles }: { task: Task; canEdit: boolean; profiles: any[] }) {
+function ProjectHeader({
+  project,
+  tasks,
+  members,
+}: {
+  project: Project
+  tasks: Task[]
+  members: any[]
+}) {
+  const done = tasks.filter(t => t.status === "done").length
+  const calculatedProgress = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : project.progress || 0
+
+  return (
+    <div className="grid gap-4 border-b bg-card/40 px-6 py-4 xl:grid-cols-[1.25fr_1fr]">
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-xs text-muted-foreground">Cockpit projet</div>
+            <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
+          </div>
+          <Badge
+            tone={project.status === "on-track" ? "good" : project.status === "at-risk" ? "warn" : "bad"}
+            className="rounded-full"
+          >
+            <span className="h-2 w-2 rounded-full bg-current" />
+            {statusLabels[project.status] || project.status}
+          </Badge>
+        </div>
+
+        <div className="grid gap-3 text-sm sm:grid-cols-4">
+          <div>
+            <div className="text-xs text-muted-foreground">Début</div>
+            <div className="font-medium">{formatDate(project.startDate)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Deadline</div>
+            <div className="font-medium">{formatDate(project.endDate)}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Membres actifs</div>
+            <div className="font-medium">{members.length}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Tâches</div>
+            <div className="font-medium">{done}/{tasks.length} terminées</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col justify-center gap-3 rounded-lg border bg-background/50 p-4">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium">Progression globale</span>
+          <span className="font-mono text-lg font-semibold">{calculatedProgress}%</span>
+        </div>
+        <Progress value={calculatedProgress} className="h-3" />
+        <div className="flex -space-x-2">
+          {members.slice(0, 6).map(member => (
+            <UserAvatar
+              key={member.id}
+              name={member.name}
+              avatarUrl={member.avatar_url}
+              fallback={member.name?.[0] || "U"}
+              className="h-7 w-7 border-2 border-background"
+            />
+          ))}
+          {members.length > 6 && (
+            <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-[10px] font-medium">
+              +{members.length - 6}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProjectKpiStrip({
+  tasks,
+  events,
+  documents,
+  profiles,
+}: {
+  tasks: Task[]
+  events: any[]
+  documents: any[]
+  profiles: any[]
+}) {
+  const overdue = tasks.filter(isOverdue).length
+  const inProgress = tasks.filter(t => t.status === "in-progress").length
+  const completed = tasks.filter(t => t.status === "done").length
+  const upcoming = [...tasks.filter(t => t.dueDate), ...events].sort((a: any, b: any) => {
+    const aDate = new Date(a.dueDate || a.starts_at).getTime()
+    const bDate = new Date(b.dueDate || b.starts_at).getTime()
+    return aDate - bDate
+  })
+  const load = profiles.map(profile => ({
+    profile,
+    count: tasks.filter(t => t.assigneeId === profile.id && t.status !== "done").length,
+  })).sort((a, b) => b.count - a.count)[0]
+  const thisWeek = upcoming.filter((item: any) => isThisWeek(item.dueDate || item.starts_at)).length
+
+  const cards = [
+    { label: "Tâches", value: tasks.length, hint: `${completed} terminées · ${inProgress} en cours · ${overdue} en retard`, icon: ClipboardList },
+    { label: "Activité", value: documents.length + events.length, hint: `${documents.length} document(s) · ${events.length} événement(s)`, icon: Activity },
+    { label: "Charge", value: load?.profile?.name?.split(" ")[0] || "Aucune", hint: load ? `${load.count} tâche(s) actives` : "Aucun assigné", icon: Users },
+    { label: "Échéances", value: upcoming[0] ? formatDate((upcoming[0] as any).dueDate || (upcoming[0] as any).starts_at) : "Aucune", hint: `${thisWeek} cette semaine`, icon: Timer },
+  ]
+
+  return (
+    <div className="grid gap-3 md:grid-cols-4">
+      {cards.map(card => (
+        <div key={card.label} className="rounded-lg border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <div className="text-xs font-medium text-muted-foreground">{card.label}</div>
+            <card.icon className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="mt-3 text-xl font-semibold">{card.value}</div>
+          <div className="mt-1 text-xs text-muted-foreground">{card.hint}</div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TaskCard({
+  task,
+  canEdit,
+  profiles,
+}: {
+  task: Task
+  canEdit: boolean
+  profiles: any[]
+}) {
   const assignee = profiles.find(p => p.id === task.assigneeId)
   const linkedKR = task.linkedKRId
     ? objectives
@@ -92,9 +303,13 @@ function TaskCard({ task, canEdit, profiles }: { task: Task; canEdit: boolean; p
     : null
 
   return (
-    <div className={`rounded-lg border bg-card p-3 transition-all group relative shadow-sm hover:shadow-md ${
+    <div
+      draggable={canEdit}
+      onDragStart={(event) => event.dataTransfer.setData("text/plain", task.id)}
+      className={`rounded-lg border bg-card p-3 transition-all group relative shadow-sm hover:shadow-md ${
       canEdit ? "hover:border-primary/30 cursor-pointer" : "opacity-80 border-border/50"
-    }`}>
+    }`}
+    >
       {!canEdit && (
         <div className="absolute top-2 right-2 text-muted-foreground/20">
           <Lock className="h-3 w-3" />
@@ -122,10 +337,16 @@ function TaskCard({ task, canEdit, profiles }: { task: Task; canEdit: boolean; p
           </div>
         )}
         {task.dueDate && (
-          <span className="text-xs text-muted-foreground/60 font-mono ml-auto flex items-center gap-1">
-            <Clock className="h-3 w-3" />
+          <a
+            href={makeCalendarUrl(task.title, task.dueDate, task.description)}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-muted-foreground/60 font-mono ml-auto flex items-center gap-1 hover:text-foreground"
+            title="Ajouter au calendrier"
+          >
+            <CalendarPlus className="h-3 w-3" />
             {task.dueDate.split("-").slice(1).join("/")}
-          </span>
+          </a>
         )}
       </div>
     </div>
@@ -185,23 +406,58 @@ function KanbanBoard({
     }
   }
 
+  const handleDropTask = async (event: React.DragEvent<HTMLDivElement>, status?: TaskStatus) => {
+    event.preventDefault()
+    if (!canEdit || !status) return
+
+    const taskId = event.dataTransfer.getData("text/plain")
+    const task = projectTasks.find((item) => item.id === taskId)
+    if (!task || task.status === status) return
+
+    const res = await updateTaskStatus(task.id, status)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+
+    toast.success("Statut mis à jour")
+    onRefresh()
+  }
+
   return (
     <>
     <ScrollArea className="w-full h-full">
       <div className="flex gap-6 pb-4 min-w-full h-full px-1">
-        {STATUSES.map((status) => {
-          const columnTasks = projectTasks.filter((t) => t.status === status.key)
+        {KANBAN_COLUMNS.map((column) => {
+          const columnTasks = column.id === "backlog"
+            ? projectTasks.filter((t) => t.status === "todo" && !t.dueDate)
+            : column.id === "todo"
+              ? projectTasks.filter((t) => t.status === "todo" && !!t.dueDate)
+              : column.status
+                ? projectTasks.filter((t) => t.status === column.status)
+                : []
           return (
-            <div key={status.key} className="flex-1 min-w-72 flex flex-col h-full">
+            <div
+              key={column.id}
+              className="flex-1 min-w-72 flex flex-col h-full"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => handleDropTask(event, column.status)}
+            >
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-foreground font-sans">{status.label}</span>
+                  <span className={cn("h-2 w-2 rounded-full", column.tone)} />
+                  <span className="text-sm font-medium text-foreground font-sans">{column.label}</span>
                   <span className="text-xs text-muted-foreground font-mono rounded-full bg-muted px-2 py-0.5">
                     {columnTasks.length}
                   </span>
                 </div>
                 {canEdit && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleOpenAdd(status.key)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={() => handleOpenAdd(column.status && column.status !== "done" ? column.status : "todo")}
+                  >
                     <Plus className="h-4 w-4" />
                   </Button>
                 )}
@@ -230,18 +486,6 @@ function KanbanBoard({
           )
         })}
         
-        {/* Add Stage Column */}
-        {canEdit && (
-          <div className="min-w-72 flex flex-col h-full opacity-60 hover:opacity-100 transition-opacity">
-             <div className="flex items-center justify-between mb-4">
-                <Button variant="ghost" className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground">
-                  <Plus className="h-4 w-4" />
-                  Ajouter Etape
-                </Button>
-             </div>
-             <div className="flex-1 rounded-lg border border-dashed border-border/50 bg-muted/5" />
-          </div>
-        )}
       </div>
       <ScrollBar orientation="horizontal" />
     </ScrollArea>
@@ -387,7 +631,7 @@ function MembersColumn({ project, profiles, onRefresh }: { project: Project; pro
 
 export default function WorkPage() {
   const { user } = useUser()
-  const { projects, tasks, objectives, profiles, loading, refresh } = useSupabaseData()
+  const { projects, tasks, objectives, profiles, projectEvents, projectDocuments, loading, refresh } = useSupabaseData()
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [currentView, setCurrentView] = useState("kanban")
   
@@ -401,6 +645,15 @@ export default function WorkPage() {
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   // Filter tasks for the selected project locally
   const projectTasks = selectedProject ? tasks.filter(t => t.projectId === selectedProject.id) : []
+  const selectedProjectEvents = selectedProject ? projectEvents.filter((event: any) => event.project_id === selectedProject.id) : []
+  const selectedProjectDocuments = selectedProject ? projectDocuments.filter((doc: any) => doc.project_id === selectedProject.id) : []
+  const projectMemberIds = new Set([
+    selectedProject?.ownerId,
+    ...projectTasks.map(task => task.assigneeId),
+    ...selectedProjectDocuments.map((doc: any) => doc.created_by),
+    ...selectedProjectEvents.map((event: any) => event.created_by),
+  ].filter(Boolean))
+  const projectMembers = profiles.filter(profile => projectMemberIds.has(profile.id))
 
   // Check permissions
   const isDG = user?.rbac_role === 'admin' || user?.rbac_role === 'executive' || user?.rbac_role === 'super_admin'
@@ -509,15 +762,21 @@ export default function WorkPage() {
               )}
            </div>
         </div>
+        <ProjectHeader project={selectedProject} tasks={projectTasks} members={projectMembers} />
       </header>
 
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Members Column */}
-        <MembersColumn project={selectedProject} profiles={profiles} onRefresh={refresh} />
-
         {/* Right Board Area */}
-        <main className="flex-1 flex flex-col min-w-0 bg-muted/10 p-6 overflow-hidden">
+        <main className="flex-1 min-w-0 overflow-y-auto bg-muted/10 p-6">
+          <ProjectKpiStrip
+            tasks={projectTasks}
+            events={selectedProjectEvents}
+            documents={selectedProjectDocuments}
+            profiles={projectMembers}
+          />
+          <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="min-h-[520px] rounded-lg border bg-background p-4">
           {currentView === "kanban" && (
             <KanbanBoard 
               projectTasks={projectTasks} 
@@ -531,11 +790,360 @@ export default function WorkPage() {
             <ProjectTaskList projectTasks={projectTasks} onCanEdit={canEditProject ?? false} profiles={profiles} />
           )}
           {currentView === "calendar" && (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              Vue calendrier en cours de chargement...
-            </div>
+            <ProjectAgenda project={selectedProject} tasks={projectTasks} events={selectedProjectEvents} onRefresh={refresh} />
           )}
+          </div>
+          <ProjectSideRail
+            project={selectedProject}
+            tasks={projectTasks}
+            events={selectedProjectEvents}
+            documents={selectedProjectDocuments}
+            members={projectMembers}
+            allProfiles={profiles}
+            onRefresh={refresh}
+          />
+          </div>
         </main>
+      </div>
+      <QuickCreateBar projectId={selectedProject.id} onRefresh={refresh} />
+    </div>
+  )
+}
+
+function ProjectAgenda({
+  project,
+  tasks,
+  events,
+  onRefresh,
+}: {
+  project: Project
+  tasks: Task[]
+  events: any[]
+  onRefresh: () => void
+}) {
+  const agendaItems = [
+    ...events.map(event => ({
+      id: event.id,
+      title: event.title,
+      type: event.type,
+      date: event.starts_at,
+      source: "event",
+      notes: event.notes,
+    })),
+    ...tasks.filter(task => task.dueDate).map(task => ({
+      id: task.id,
+      title: task.title,
+      type: "deadline",
+      date: task.dueDate,
+      source: "task",
+      notes: task.description,
+    })),
+    ...(project.endDate ? [{
+      id: `${project.id}-deadline`,
+      title: `Deadline projet : ${project.name}`,
+      type: "milestone",
+      date: project.endDate,
+      source: "project",
+      notes: "Date de fin du projet",
+    }] : []),
+  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">Agenda projet</h2>
+          <p className="text-sm text-muted-foreground">Réunions, deadlines, milestones et rappels internes.</p>
+        </div>
+        <EventDialog projectId={project.id} onCreated={onRefresh} />
+      </div>
+      <div className="grid gap-3">
+        {agendaItems.map(item => (
+          <div key={`${item.source}-${item.id}`} className="flex items-center justify-between rounded-lg border bg-card p-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                {item.type === "meeting" ? <CalendarClock className="h-5 w-5 text-primary" /> : <Flag className="h-5 w-5 text-primary" />}
+              </div>
+              <div>
+                <div className="font-medium">{item.title}</div>
+                <div className="text-xs text-muted-foreground">{eventLabels[item.type] || item.type} · {formatDate(item.date)}</div>
+              </div>
+            </div>
+            <Button asChild variant="outline" size="sm" className="gap-2">
+              <a href={makeCalendarUrl(item.title, item.date, item.notes)} target="_blank" rel="noreferrer">
+                <CalendarPlus className="h-4 w-4" />
+                Ajouter
+              </a>
+            </Button>
+          </div>
+        ))}
+        {agendaItems.length === 0 && (
+          <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+            Aucun événement ni deadline planifiée.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function EventDialog({ projectId, onCreated }: { projectId: string; onCreated: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [title, setTitle] = useState("")
+  const [type, setType] = useState("meeting")
+  const [startsAt, setStartsAt] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  const submit = async () => {
+    const fd = new FormData()
+    fd.set("projectId", projectId)
+    fd.set("title", title)
+    fd.set("type", type)
+    fd.set("startsAt", startsAt)
+    setSaving(true)
+    const res = await createProjectEvent(fd)
+    setSaving(false)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+    toast.success("Événement ajouté")
+    setOpen(false)
+    setTitle("")
+    setStartsAt("")
+    onCreated()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button onClick={() => setOpen(true)} size="sm" className="gap-2">
+        <Plus className="h-4 w-4" />
+        Événement
+      </Button>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Ajouter à l'agenda</DialogTitle>
+          <DialogDescription>Créez un événement interne au projet.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titre" />
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="meeting">Réunion</SelectItem>
+              <SelectItem value="deadline">Deadline</SelectItem>
+              <SelectItem value="milestone">Milestone</SelectItem>
+              <SelectItem value="reminder">Rappel</SelectItem>
+              <SelectItem value="event">Événement</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+          <Button onClick={submit} disabled={saving || !title || !startsAt}>Ajouter</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function DocumentDialog({ projectId, onCreated }: { projectId: string; onCreated: () => void }) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState("")
+  const [url, setUrl] = useState("")
+  const [version, setVersion] = useState("v1")
+  const [saving, setSaving] = useState(false)
+
+  const submit = async () => {
+    const fd = new FormData()
+    fd.set("projectId", projectId)
+    fd.set("name", name)
+    fd.set("url", url)
+    fd.set("version", version)
+    setSaving(true)
+    const res = await createProjectDocument(fd)
+    setSaving(false)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+    toast.success("Document ajouté")
+    setOpen(false)
+    setName("")
+    setUrl("")
+    setVersion("v1")
+    onCreated()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button onClick={() => setOpen(true)} variant="outline" size="sm" className="gap-2">
+        <Upload className="h-4 w-4" />
+        Document
+      </Button>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Ajouter un document</DialogTitle>
+          <DialogDescription>Ajoutez un lien Drive, SharePoint ou un document partagé.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du document" />
+          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+          <Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="Version" />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+          <Button onClick={submit} disabled={saving || !name || !url}>Ajouter</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ProjectSideRail({
+  project,
+  tasks,
+  events,
+  documents,
+  members,
+  allProfiles,
+  onRefresh,
+}: {
+  project: Project
+  tasks: Task[]
+  events: any[]
+  documents: any[]
+  members: any[]
+  allProfiles: any[]
+  onRefresh: () => void
+}) {
+  const recentActivity = [
+    ...tasks.slice(0, 4).map(task => ({
+      id: task.id,
+      icon: ClipboardList,
+      text: `${allProfiles.find(p => p.id === task.createdBy)?.name || "Un membre"} a créé une tâche`,
+      detail: task.title,
+    })),
+    ...documents.slice(0, 3).map(doc => ({
+      id: doc.id,
+      icon: Paperclip,
+      text: `${allProfiles.find(p => p.id === doc.created_by)?.name || "Un membre"} a ajouté un document`,
+      detail: doc.name,
+    })),
+    ...events.slice(0, 3).map(event => ({
+      id: event.id,
+      icon: CalendarClock,
+      text: `${allProfiles.find(p => p.id === event.created_by)?.name || "Un membre"} a planifié un événement`,
+      detail: event.title,
+    })),
+  ].slice(0, 6)
+
+  const notifications = [
+    ...tasks.filter(isOverdue).map(task => ({ id: task.id, text: `Tâche en retard : ${task.title}`, tone: "bad" as const })),
+    ...tasks.filter(task => isThisWeek(task.dueDate)).map(task => ({ id: task.id, text: `Deadline proche : ${task.title}`, tone: "warn" as const })),
+  ].slice(0, 5)
+
+  return (
+    <aside className="space-y-4">
+      <section className="rounded-lg border bg-card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-semibold">Documents projet</h3>
+          <DocumentDialog projectId={project.id} onCreated={onRefresh} />
+        </div>
+        <div className="space-y-2">
+          {documents.slice(0, 5).map(doc => (
+            <a key={doc.id} href={doc.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-md border p-2 hover:bg-muted/50">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-medium">{doc.name}</div>
+                <div className="text-xs text-muted-foreground">{doc.version || "v1"}</div>
+              </div>
+              <Download className="h-4 w-4 text-muted-foreground" />
+            </a>
+          ))}
+          {documents.length === 0 && <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">Aucun document lié.</div>}
+        </div>
+      </section>
+
+      <section className="rounded-lg border bg-card p-4">
+        <h3 className="mb-3 font-semibold">Membres</h3>
+        <div className="space-y-2">
+          {members.slice(0, 6).map(member => {
+            const active = tasks.filter(t => t.assigneeId === member.id && t.status !== "done").length
+            const late = tasks.filter(t => t.assigneeId === member.id && isOverdue(t)).length
+            const done = tasks.filter(t => t.assigneeId === member.id && t.status === "done").length
+            const total = tasks.filter(t => t.assigneeId === member.id).length
+            const performance = total > 0 ? Math.round((done / total) * 100) : 0
+            return (
+              <div key={member.id} className="grid grid-cols-[1fr_auto] gap-2 rounded-md border p-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <UserAvatar name={member.name} avatarUrl={member.avatar_url} fallback={member.name?.[0] || "U"} className="h-7 w-7" />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium">{member.name}</div>
+                    <div className="text-xs text-muted-foreground">{member.role || member.rbac_role}</div>
+                  </div>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <div>{active} actives</div>
+                  <div>{late} retard · {performance}%</div>
+                </div>
+              </div>
+            )
+          })}
+          {members.length === 0 && <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">Aucun membre actif.</div>}
+        </div>
+      </section>
+
+      <section className="rounded-lg border bg-card p-4">
+        <h3 className="mb-3 font-semibold">Activité récente</h3>
+        <div className="space-y-3">
+          {recentActivity.map(item => (
+            <div key={`${item.text}-${item.id}`} className="flex gap-3 text-sm">
+              <div className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-muted">
+                <item.icon className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-medium">{item.text}</div>
+                <div className="truncate text-xs text-muted-foreground">{item.detail}</div>
+              </div>
+            </div>
+          ))}
+          {recentActivity.length === 0 && <div className="text-sm text-muted-foreground">Aucune activité récente.</div>}
+        </div>
+      </section>
+
+      <section className="rounded-lg border bg-card p-4">
+        <h3 className="mb-3 font-semibold">Notifications</h3>
+        <div className="space-y-2">
+          {notifications.map(notification => (
+            <Badge key={`${notification.id}-${notification.text}`} tone={notification.tone} className="w-full justify-start rounded-md px-3 py-2">
+              {notification.text}
+            </Badge>
+          ))}
+          {notifications.length === 0 && <div className="text-sm text-muted-foreground">Aucune alerte projet.</div>}
+        </div>
+      </section>
+    </aside>
+  )
+}
+
+function QuickCreateBar({ projectId, onRefresh }: { projectId: string; onRefresh: () => void }) {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 flex justify-center">
+      <div className="pointer-events-auto flex items-center gap-2 rounded-full border bg-background/95 p-2 shadow-xl backdrop-blur">
+        <Button asChild className="rounded-full gap-2">
+          <Link href="/create/task">
+            <Plus className="h-4 w-4" />
+            Tâche
+          </Link>
+        </Button>
+        <EventDialog projectId={projectId} onCreated={onRefresh} />
+        <DocumentDialog projectId={projectId} onCreated={onRefresh} />
+        <Button variant="outline" className="rounded-full gap-2" disabled>
+          <NotebookPen className="h-4 w-4" />
+          Note
+        </Button>
       </div>
     </div>
   )

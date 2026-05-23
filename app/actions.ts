@@ -207,6 +207,105 @@ export async function createTask(formData: FormData) {
   return { success: true }
 }
 
+export async function createProjectEvent(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+
+  const projectId = formData.get('projectId') as string
+  const title = formData.get('title') as string
+  const type = formData.get('type') as string || 'event'
+  const startsAt = formData.get('startsAt') as string
+  const location = formData.get('location') as string
+  const notes = formData.get('notes') as string
+
+  if (!projectId || !title || !startsAt) {
+    return { error: 'Projet, titre et date sont requis.' }
+  }
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!project) return { error: 'Projet introuvable dans votre organisation.' }
+
+  const { error } = await supabase
+    .from('project_events')
+    .insert({
+      organization_id: orgId,
+      project_id: projectId,
+      title,
+      type,
+      starts_at: startsAt,
+      location: location || null,
+      notes: notes || null,
+      created_by: user.id,
+    })
+
+  if (error) {
+    console.error('Error creating project event:', error)
+    return { error: "Erreur lors de la création de l'événement." }
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/calendar')
+  return { success: true }
+}
+
+export async function createProjectDocument(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+
+  const projectId = formData.get('projectId') as string
+  const name = formData.get('name') as string
+  const url = formData.get('url') as string
+  const version = formData.get('version') as string || 'v1'
+  const fileType = formData.get('fileType') as string
+
+  if (!projectId || !name || !url) {
+    return { error: 'Projet, nom et lien du document sont requis.' }
+  }
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!project) return { error: 'Projet introuvable dans votre organisation.' }
+
+  const { error } = await supabase
+    .from('project_documents')
+    .insert({
+      organization_id: orgId,
+      project_id: projectId,
+      name,
+      url,
+      version,
+      file_type: fileType || null,
+      created_by: user.id,
+    })
+
+  if (error) {
+    console.error('Error creating project document:', error)
+    return { error: 'Erreur lors de l’ajout du document.' }
+  }
+
+  revalidatePath('/work')
+  return { success: true }
+}
+
 export async function bootstrapChat() {
   try {
     const supabase = await createClient()
