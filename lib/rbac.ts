@@ -35,6 +35,33 @@ export async function hasPermission(
 ): Promise<boolean> {
   const supabase = await createClient()
 
+  // Direct profile roles are the source of truth for organization-level access
+  // created by the Back Office. The legacy RBAC tables are still used for
+  // project-scoped roles, but existing DG accounts may not have a user_roles row.
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('rbac_role')
+    .eq('id', userId)
+    .single()
+
+  const profileRole = profile?.rbac_role
+  const organizationAdminActions = new Set([
+    'manage_organization',
+    'create_project',
+    'delete_project',
+    'create_task',
+    'edit_task',
+    'delete_task',
+    'view_data',
+  ])
+
+  if (
+    organizationAdminActions.has(action) &&
+    ['super_admin', 'admin', 'executive'].includes(profileRole)
+  ) {
+    return true
+  }
+
   // 1. Check for global permissions (Organization level)
   // We look for roles assigned to the user with scope 'organization' that have the permission
   // Note: This query assumes Supabase relationships are set up correctly. 

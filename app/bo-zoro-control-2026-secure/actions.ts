@@ -137,6 +137,26 @@ export async function createDGAccount(formData: FormData) {
       throw memberError
     }
 
+    // 5. Donner aussi le rôle RBAC organisationnel historique.
+    // Les permissions directes via profiles.rbac_role restent supportées,
+    // mais cette ligne garde les anciennes vérifications compatibles.
+    const { data: orgAdminRole } = await supabaseAdmin
+      .from('roles')
+      .select('id')
+      .eq('name', 'Admin')
+      .eq('scope', 'organization')
+      .single()
+
+    if (orgAdminRole) {
+      await supabaseAdmin
+        .from('user_roles')
+        .upsert({
+          user_id: authUser.user.id,
+          role_id: orgAdminRole.id,
+          scope_id: org.id,
+        }, { onConflict: 'user_id,role_id,scope_id' })
+    }
+
     revalidatePath('/bo-zoro-control-2026-secure')
     revalidatePath('/bo-zoro-control-2026-secure/licenses')
 

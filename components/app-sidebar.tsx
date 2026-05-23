@@ -59,6 +59,24 @@ const navItems = [
   { href: "/settings", label: "Paramètres", icon: Settings },
 ]
 
+function getRoleLabel(user: ReturnType<typeof useUser>["user"]) {
+  switch (user?.rbac_role) {
+    case "super_admin":
+      return "Propriétaire"
+    case "admin":
+    case "executive":
+      return "Directeur Général"
+    case "manager":
+      return "Chef de département"
+    case "member":
+      return "Membre"
+    case "viewer":
+      return "Invité"
+    default:
+      return user?.role || "Membre"
+  }
+}
+
 interface NavItem {
   href: string
   label: string
@@ -400,7 +418,7 @@ export function AppSidebar() {
               {!collapsed && (
                 <div className="flex flex-col overflow-hidden">
                   <span className="text-sm font-bold text-foreground truncate">{user?.name}</span>
-                  <span className="text-[10px] text-muted-foreground truncate uppercase tracking-wider font-medium">{user?.role || "Membre"}</span>
+                  <span className="text-[10px] text-muted-foreground truncate uppercase tracking-wider font-medium">{getRoleLabel(user)}</span>
                 </div>
               )}
             </Link>

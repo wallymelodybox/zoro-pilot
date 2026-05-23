@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -420,9 +421,11 @@ export default function WorkPage() {
           <p className="text-sm text-muted-foreground font-sans">Créez votre premier projet pour commencer.</p>
         </div>
         {isDG && (
-          <Button className="h-11 rounded-xl font-bold font-sans gap-2 px-5 shadow-lg shadow-primary/20 mt-4">
+          <Button asChild className="h-11 rounded-xl font-bold font-sans gap-2 px-5 shadow-lg shadow-primary/20 mt-4">
+            <Link href="/create/project">
             <Plus className="h-4 w-4" />
             Nouveau Projet
+            </Link>
           </Button>
         )}
       </div>
