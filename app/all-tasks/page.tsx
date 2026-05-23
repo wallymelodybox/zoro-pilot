@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useState } from "react"
 import { useSupabaseData } from "@/hooks/use-supabase"
+import { useUser } from "@/hooks/use-user"
 import { getUserById, getPriorityLabel, getTaskStatusLabel, getPriorityColor, type Task, type TaskStatus } from "@/lib/store"
 import {
   List,
@@ -31,6 +32,13 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { UserAvatar } from "@/components/user-avatar"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import {
   Dialog,
@@ -72,7 +80,8 @@ import { CSS } from "@dnd-kit/utilities"
 import { restrictToWindowEdges } from "@dnd-kit/modifiers"
 
 export default function AllTasksPage() {
-  const { tasks, projects, loading, refresh } = useSupabaseData()
+  const { user } = useUser()
+  const { tasks, projects, profiles, loading, refresh } = useSupabaseData()
   const [currentView, setCurrentView] = useState("list")
 
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
@@ -81,6 +90,10 @@ export default function AllTasksPage() {
   const [createDescription, setCreateDescription] = React.useState("")
   const [createPriority, setCreatePriority] = React.useState("medium")
   const [createDueDate, setCreateDueDate] = React.useState("")
+  const [createAssigneeId, setCreateAssigneeId] = React.useState("")
+  const [createVisibility, setCreateVisibility] = React.useState("private")
+  const canAssignTasks = user?.rbac_role === "super_admin" || user?.rbac_role === "admin" || user?.rbac_role === "executive"
+  const selectedAssigneeId = canAssignTasks ? (createAssigneeId || user?.id || "") : (user?.id || "")
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen text-muted-foreground">Chargement des tâches...</div>
@@ -92,6 +105,8 @@ export default function AllTasksPage() {
     setCreateDescription("")
     setCreatePriority("medium")
     setCreateDueDate("")
+    setCreateAssigneeId(user?.id || "")
+    setCreateVisibility("private")
     setIsCreateOpen(true)
   }
 
@@ -104,7 +119,8 @@ export default function AllTasksPage() {
     fd.set("status", createStatus)
     fd.set("priority", createPriority)
     fd.set("projectId", "none")
-    fd.set("assigneeId", "a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d")
+    fd.set("assigneeId", selectedAssigneeId)
+    fd.set("visibility", canAssignTasks ? createVisibility : "private")
     if (createDueDate) fd.set("dueDate", createDueDate)
 
     const res = await createTask(fd)
@@ -243,6 +259,29 @@ export default function AllTasksPage() {
             <div className="text-xs text-muted-foreground">
               Statut: {getTaskStatusLabel(createStatus)}
             </div>
+            {canAssignTasks && (
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={selectedAssigneeId} onValueChange={setCreateAssigneeId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Assignée à" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {profiles.map((profile: any) => (
+                      <SelectItem key={profile.id} value={profile.id}>{profile.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={createVisibility} onValueChange={setCreateVisibility}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Visibilité" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="private">Privée</SelectItem>
+                    <SelectItem value="organization">Organisation</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -306,7 +345,7 @@ function KanbanView({
     fd.set("status", createStatus)
     fd.set("priority", createPriority)
     fd.set("projectId", "none")
-    fd.set("assigneeId", "a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d")
+    fd.set("visibility", "private")
     if (createDueDate) fd.set("dueDate", createDueDate)
 
     const res = await createTask(fd)

@@ -5,6 +5,7 @@ export type RAGStatus = "on-track" | "at-risk" | "off-track"
 export type Confidence = "on-track" | "at-risk" | "off-track"
 export type TaskStatus = "todo" | "in-progress" | "blocked" | "done"
 export type Priority = "low" | "medium" | "high" | "urgent"
+export type TaskVisibility = "private" | "organization"
 export type KRType = "metric" | "initiative" | "manual"
 
 // RBAC Role Types
@@ -69,7 +70,9 @@ export interface Task {
   projectId: string
   title: string
   description?: string
+  createdBy?: string
   assigneeId: string
+  visibility?: TaskVisibility
   status: TaskStatus
   priority: Priority
   dueDate: string

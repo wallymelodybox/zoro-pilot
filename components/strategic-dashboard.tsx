@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import Link from "next/link";
 import styles from "./strategic-dashboard.module.css";
 import {
@@ -1244,13 +1244,55 @@ export function StrategicDashboard() {
   const metrics = useDashboardMetrics(projects, tasks, objectives, keyResults);
   const [addedWidgets, setAddedWidgets] = useState<string[]>([]);
 
+  // Load persisted widgets from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("zoro:dashboard:widgets");
+      if (raw) {
+        const parsed = JSON.parse(raw) as string[];
+        if (Array.isArray(parsed)) setAddedWidgets(parsed);
+      }
+    } catch (e) {
+      console.warn("Failed to load persisted widgets", e);
+    }
+  }, []);
+
+  // Persist widgets list when it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem("zoro:dashboard:widgets", JSON.stringify(addedWidgets));
+    } catch (e) {
+      console.warn("Failed to persist widgets", e);
+    }
+  }, [addedWidgets]);
+
   const handleToggleWidget = (id: string, config?: any) => {
     console.log("Toggling widget:", id, config);
     setAddedWidgets(prev => {
       if (prev.includes(id)) {
+        // remove persisted config
+        try {
+          const cfgRaw = localStorage.getItem("zoro:dashboard:widgetConfigs");
+          const cfg = cfgRaw ? JSON.parse(cfgRaw) : {};
+          delete cfg[id];
+          localStorage.setItem("zoro:dashboard:widgetConfigs", JSON.stringify(cfg));
+        } catch (e) {
+          console.warn("Failed to remove widget config", e);
+        }
         toast.info("Widget retiré du dashboard");
         return prev.filter(w => w !== id);
       }
+
+      // persist config if provided
+      try {
+        const cfgRaw = localStorage.getItem("zoro:dashboard:widgetConfigs");
+        const cfg = cfgRaw ? JSON.parse(cfgRaw) : {};
+        if (config) cfg[id] = config;
+        localStorage.setItem("zoro:dashboard:widgetConfigs", JSON.stringify(cfg));
+      } catch (e) {
+        console.warn("Failed to persist widget config", e);
+      }
+
       toast.success("Widget ajouté avec succès !");
       return [...prev, id];
     });

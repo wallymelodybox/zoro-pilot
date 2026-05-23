@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { createTask } from "@/app/actions"
 import { toast } from "sonner"
 import { useSupabaseData } from "@/hooks/use-supabase"
+import { useUser } from "@/hooks/use-user"
 import {
   FolderKanban,
   Calendar,
@@ -27,7 +28,8 @@ import {
 
 export default function CreateTaskPage() {
   const router = useRouter()
-  const { projects } = useSupabaseData()
+  const { user } = useUser()
+  const { projects, profiles } = useSupabaseData()
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [loading, setLoading] = useState(false)
@@ -35,6 +37,10 @@ export default function CreateTaskPage() {
   // Default to first project if available, or empty
   const [projectId, setProjectId] = useState("")
   const [priority, setPriority] = useState("medium")
+  const [assigneeId, setAssigneeId] = useState("")
+  const [visibility, setVisibility] = useState("private")
+  const canAssignTasks = user?.rbac_role === "super_admin" || user?.rbac_role === "admin" || user?.rbac_role === "executive"
+  const selectedAssigneeId = canAssignTasks ? (assigneeId || user?.id || "") : (user?.id || "")
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -161,14 +167,56 @@ export default function CreateTaskPage() {
                       </Select>
                    </div>
                 </div>
+
+                {canAssignTasks && (
+                  <>
+                    <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors group">
+                      <div className="flex items-center gap-3 text-sm text-foreground">
+                        <User className="h-4 w-4 text-blue-500" />
+                        <span>Assignée à</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-40 justify-end">
+                        <Select name="assigneeId" value={selectedAssigneeId} onValueChange={setAssigneeId}>
+                          <SelectTrigger className="w-45 h-8 border-none bg-transparent shadow-none focus:ring-0 text-right justify-end px-0">
+                            <SelectValue placeholder="Choisir un membre" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {profiles.map((profile: any) => (
+                              <SelectItem key={profile.id} value={profile.id}>{profile.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors group">
+                      <div className="flex items-center gap-3 text-sm text-foreground">
+                        <User className="h-4 w-4 text-blue-500" />
+                        <span>Visibilité</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-40 justify-end">
+                        <Select name="visibility" value={visibility} onValueChange={setVisibility}>
+                          <SelectTrigger className="w-45 h-8 border-none bg-transparent shadow-none focus:ring-0 text-right justify-end px-0">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="private">Privée</SelectItem>
+                            <SelectItem value="organization">Toute l'organisation</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </>
+                )}
                 
                 {/* Hidden Inputs for Select values to work with FormData */}
                 <input type="hidden" name="projectId" value={projectId} />
                 <input type="hidden" name="priority" value={priority} />
+                <input type="hidden" name="visibility" value={canAssignTasks ? visibility : "private"} />
 
                 {/* Hidden Inputs for defaults */}
                 <input type="hidden" name="status" value="todo" />
-                <input type="hidden" name="assigneeId" value="a1b2c3d4-e5f6-4a5b-9c0d-1e2f3a4b5c6d" />
+                <input type="hidden" name="assigneeId" value={selectedAssigneeId} />
 
              </div>
           </div>

@@ -87,6 +87,27 @@ type SettingsSection =
   | "integrations"
   | "permissions"
 
+const canManageOrgSettings = (role?: string | null) =>
+  role === "super_admin" || role === "admin" || role === "executive"
+
+const canManageOrgMembers = (role?: string | null) =>
+  role === "super_admin" || role === "admin" || role === "executive" || role === "manager"
+
+function NotConfigured({
+  title,
+  description,
+}: {
+  title: string
+  description: string
+}) {
+  return (
+    <div className="rounded-lg border border-dashed bg-muted/20 p-5 text-sm">
+      <div className="font-medium">{title}</div>
+      <p className="mt-1 text-muted-foreground">{description}</p>
+    </div>
+  )
+}
+
 function SettingsContent() {
   const { user, loading: userLoading } = useUser()
   const searchParams = useSearchParams()
@@ -144,15 +165,7 @@ function SettingsContent() {
       case "permissions":
         return <PermissionsSettings />
       case "billing":
-        return (
-          <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <CreditCard className="h-16 w-16 text-muted-foreground mb-4 opacity-20" />
-            <h2 className="text-xl font-semibold mb-2">Abonnement & Facturation</h2>
-            <p className="text-muted-foreground max-w-md">
-              La gestion de l'abonnement n'est pas disponible dans cette version de démonstration.
-            </p>
-          </div>
-        )
+        return <BillingSettings />
       default:
         return <MembersSettings />
     }
@@ -318,6 +331,60 @@ function AccountSettings() {
 }
 
 function NotificationSettings() {
+  const { user } = useUser()
+  const supabase = createClient()
+  const [dailySummary, setDailySummary] = useState(true)
+  const [assignments, setAssignments] = useState(true)
+  const [push, setPush] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    async function loadSettings() {
+      if (!user?.id) return
+      setLoading(true)
+      const { data, error } = await supabase
+        .from("user_settings")
+        .select("notification_daily_summary, notification_assignments, notification_push")
+        .eq("profile_id", user.id)
+        .maybeSingle()
+
+      if (!error && data) {
+        setDailySummary(data.notification_daily_summary)
+        setAssignments(data.notification_assignments)
+        setPush(data.notification_push)
+      }
+      setLoading(false)
+    }
+
+    loadSettings()
+  }, [user?.id])
+
+  const saveSettings = async (updates: {
+    notification_daily_summary?: boolean
+    notification_assignments?: boolean
+    notification_push?: boolean
+  }) => {
+    if (!user?.id) return
+    setSaving(true)
+    const { error } = await supabase
+      .from("user_settings")
+      .upsert({
+        profile_id: user.id,
+        notification_daily_summary: updates.notification_daily_summary ?? dailySummary,
+        notification_assignments: updates.notification_assignments ?? assignments,
+        notification_push: updates.notification_push ?? push,
+        updated_at: new Date().toISOString(),
+      })
+
+    if (error) {
+      toast.error("Impossible d'enregistrer les préférences.")
+    } else {
+      toast.success("Préférences enregistrées.")
+    }
+    setSaving(false)
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -334,14 +401,28 @@ function NotificationSettings() {
               <label className="text-sm font-medium">Résumé quotidien</label>
               <p className="text-xs text-muted-foreground">Recevez un résumé de vos tâches chaque matin.</p>
             </div>
-            <Switch defaultChecked />
+            <Switch
+              checked={dailySummary}
+              disabled={loading || saving}
+              onCheckedChange={(checked) => {
+                setDailySummary(checked)
+                saveSettings({ notification_daily_summary: checked })
+              }}
+            />
           </div>
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <label className="text-sm font-medium">Mentions & Assignations</label>
               <p className="text-xs text-muted-foreground">Quand quelqu'un vous mentionne ou vous assigne une tâche.</p>
             </div>
-            <Switch defaultChecked />
+            <Switch
+              checked={assignments}
+              disabled={loading || saving}
+              onCheckedChange={(checked) => {
+                setAssignments(checked)
+                saveSettings({ notification_assignments: checked })
+              }}
+            />
           </div>
         </div>
 
@@ -354,8 +435,19 @@ function NotificationSettings() {
               <label className="text-sm font-medium">Activer les notifications push</label>
               <p className="text-xs text-muted-foreground">Recevez des alertes en temps réel sur votre bureau.</p>
             </div>
-            <Switch />
+            <Switch
+              checked={push}
+              disabled={loading || saving}
+              onCheckedChange={(checked) => {
+                setPush(checked)
+                saveSettings({ notification_push: checked })
+              }}
+            />
           </div>
+          <NotConfigured
+            title="Canal push non configuré"
+            description="La préférence est conservée en base, mais l'envoi navigateur nécessite encore le service de notifications."
+          />
         </div>
       </div>
     </div>
@@ -439,6 +531,33 @@ function ThemeSettings() {
 }
 
 function SecuritySettings() {
+  const supabase = createClient()
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [saving, setSaving] = useState(false)
+
+  const handlePasswordUpdate = async () => {
+    if (password.length < 8) {
+      toast.error("Le nouveau mot de passe doit contenir au moins 8 caractères.")
+      return
+    }
+    if (password !== confirmPassword) {
+      toast.error("Les deux mots de passe ne correspondent pas.")
+      return
+    }
+
+    setSaving(true)
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) {
+      toast.error("Impossible de mettre à jour le mot de passe.")
+    } else {
+      toast.success("Mot de passe mis à jour.")
+      setPassword("")
+      setConfirmPassword("")
+    }
+    setSaving(false)
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -452,14 +571,31 @@ function SecuritySettings() {
           <h3 className="text-lg font-medium">Mot de passe</h3>
           <div className="grid gap-4">
              <div className="grid gap-2">
-               <label className="text-sm font-medium">Mot de passe actuel</label>
-               <Input type="password" />
+               <label className="text-sm font-medium">Nouveau mot de passe</label>
+               <Input
+                 type="password"
+                 value={password}
+                 onChange={(e) => setPassword(e.target.value)}
+                 autoComplete="new-password"
+               />
              </div>
              <div className="grid gap-2">
-               <label className="text-sm font-medium">Nouveau mot de passe</label>
-               <Input type="password" />
+               <label className="text-sm font-medium">Confirmer le nouveau mot de passe</label>
+               <Input
+                 type="password"
+                 value={confirmPassword}
+                 onChange={(e) => setConfirmPassword(e.target.value)}
+                 autoComplete="new-password"
+               />
              </div>
-             <Button variant="outline" className="w-fit">Mettre à jour</Button>
+             <Button
+               variant="outline"
+               className="w-fit"
+               onClick={handlePasswordUpdate}
+               disabled={saving || !password || !confirmPassword}
+             >
+               {saving ? "Mise à jour..." : "Mettre à jour"}
+             </Button>
           </div>
         </div>
 
@@ -477,8 +613,12 @@ function SecuritySettings() {
                    <p className="text-xs text-muted-foreground">Sécurisez votre compte avec Google Auth ou Authy.</p>
                 </div>
              </div>
-             <Button variant="outline">Activer</Button>
+             <Button variant="outline" disabled>Non configuré</Button>
           </div>
+          <NotConfigured
+            title="2FA non activée côté projet"
+            description="Le bouton d'activation reste désactivé tant que la configuration 2FA Supabase n'est pas branchée."
+          />
         </div>
       </div>
     </div>
@@ -486,24 +626,12 @@ function SecuritySettings() {
 }
 
 function IntegrationsSettings() {
-  const [integrations, setIntegrations] = useState<any[]>([])
-  const [connecting, setConnecting] = useState<string | null>(null)
-
-  const handleToggle = (id: string, name: string, status: string) => {
-    if (status === 'connected') {
-      // Deconnecter
-      setIntegrations(prev => prev.map(i => i.id === id ? { ...i, status: 'disconnected' } : i))
-      toast.info(`${name} déconnecté.`)
-    } else {
-      // Connecter (simule un délai)
-      setConnecting(id)
-      setTimeout(() => {
-        setIntegrations(prev => prev.map(i => i.id === id ? { ...i, status: 'connected' } : i))
-        setConnecting(null)
-        toast.success(`${name} connecté avec succès !`)
-      }, 1500)
-    }
-  }
+  const integrations = [
+    { id: "slack", name: "Slack", description: "Notifications d'équipe et alertes projet.", icon: Slack },
+    { id: "jira", name: "Jira", description: "Synchronisation tickets et suivi d'exécution.", icon: Github },
+    { id: "teams", name: "Microsoft Teams", description: "Notifications et canaux de collaboration.", icon: Mail },
+    { id: "asana", name: "Asana", description: "Import et synchronisation de tâches.", icon: Chrome },
+  ]
 
   return (
     <div className="space-y-6">
@@ -514,47 +642,32 @@ function IntegrationsSettings() {
       <Separator />
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {integrations.map(integration => (
+        {integrations.map(integration => {
+          const Icon = integration.icon
+          return (
           <Card key={integration.id} className="border-border/40 bg-card/40 backdrop-blur-xl">
             <CardContent className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <div className="h-12 w-12 rounded-2xl bg-muted/20 flex items-center justify-center border border-border/40">
-                  {integration.name === 'Slack' && <Slack className="h-6 w-6 text-[#4A154B]" />}
-                  {integration.name === 'Jira' && <Github className="h-6 w-6 text-primary" />}
-                  {integration.name === 'Microsoft Teams' && <Mail className="h-6 w-6 text-blue-500" />}
-                  {integration.name === 'Asana' && <Chrome className="h-6 w-6 text-rose-500" />}
+                  <Icon className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <Badge 
-                  tone={integration.status === 'connected' ? "good" : "neutral"}
-                  className="border-none"
-                >
-                  {integration.status === 'connected' ? 'Connecté' : 'Déconnecté'}
+                <Badge tone="neutral" className="border-none">
+                  Non configuré
                 </Badge>
               </div>
               <h3 className="font-bold text-lg">{integration.name}</h3>
               <p className="text-sm text-muted-foreground mt-1 mb-6">{integration.description}</p>
-              <Button 
-                variant={integration.status === 'connected' ? "outline" : "default"} 
-                className="w-full gap-2 rounded-xl transition-all"
-                onClick={() => handleToggle(integration.id, integration.name, integration.status)}
-                disabled={connecting === integration.id}
-              >
-                {connecting === integration.id ? (
-                  <>
-                    <Activity className="h-3 w-3 animate-spin" />
-                    Connexion...
-                  </>
-                ) : (
-                  <>
-                    {integration.status === 'connected' ? 'Gérer' : 'Connecter'}
-                    <ExternalLink className="h-3 w-3" />
-                  </>
-                )}
+              <Button variant="outline" className="w-full gap-2 rounded-xl" disabled>
+                Connecteur indisponible
               </Button>
             </CardContent>
           </Card>
-        ))}
+        )})}
       </div>
+      <NotConfigured
+        title="Aucune intégration externe active"
+        description="Les cartes ci-dessus ne lancent plus de fausse connexion. Il faudra brancher OAuth/webhooks avant de les activer."
+      />
     </div>
   )
 }
@@ -564,9 +677,14 @@ function OrganizationSettings() {
   const [name, setName] = useState(user?.organization_name || "")
   const [saving, setSaving] = useState(false)
   const supabase = createClient()
+  const canEdit = canManageOrgSettings(user?.rbac_role)
+
+  useEffect(() => {
+    setName(user?.organization_name || "")
+  }, [user?.organization_name])
 
   const handleSave = async () => {
-    if (!user?.organization_id) return
+    if (!user?.organization_id || !canEdit) return
     setSaving(true)
     try {
       const { error } = await supabase
@@ -591,23 +709,29 @@ function OrganizationSettings() {
           <h2 className="text-2xl font-semibold tracking-tight">Paramètres de l'Organisation</h2>
           <p className="text-muted-foreground">Gérez les informations générales de votre espace de travail.</p>
         </div>
-        <Button onClick={handleSave} disabled={saving || !name}>
+        <Button onClick={handleSave} disabled={saving || !name || !canEdit}>
           {saving ? "Enregistrement..." : "Enregistrer"}
         </Button>
       </div>
       <Separator />
       
       <div className="grid gap-6 max-w-2xl">
+        {!canEdit && (
+          <NotConfigured
+            title="Modification réservée au DG"
+            description="Seuls les profils DG, administrateur ou super administrateur peuvent modifier les paramètres de l'organisation."
+          />
+        )}
         <div className="grid gap-2">
           <label className="text-sm font-medium">Nom de l'organisation</label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
+          <Input value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} />
         </div>
         
         <div className="grid gap-2">
            <label className="text-sm font-medium">URL de l'espace de travail</label>
            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">zoropilot.com/</span>
-              <Input defaultValue={user?.organization_name?.toLowerCase().replace(/\s+/g, '-') || ""} className="flex-1" disabled />
+              <span className="text-sm text-muted-foreground">zoro-pilot.company/</span>
+              <Input value={user?.organization_name?.toLowerCase().replace(/\s+/g, '-') || ""} className="flex-1" disabled />
            </div>
         </div>
 
@@ -618,10 +742,79 @@ function OrganizationSettings() {
                  <p className="text-sm font-medium text-destructive">Supprimer l'organisation</p>
                  <p className="text-xs text-destructive/80">Cette action est irréversible et supprimera toutes les données.</p>
               </div>
-              <Button variant="destructive" size="sm">Supprimer</Button>
+              <Button variant="destructive" size="sm" disabled title="Suppression disponible uniquement via le BO super admin">
+                Désactivé
+              </Button>
            </div>
+           <p className="mt-2 text-xs text-muted-foreground">
+             La suppression d'une organisation passe par le back-office super admin afin d'éviter une perte accidentelle en production.
+           </p>
         </div>
       </div>
+    </div>
+  )
+}
+
+function BillingSettings() {
+  const { user } = useUser()
+  const supabase = createClient()
+  const [billing, setBilling] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadBilling() {
+      if (!user?.organization_id) return
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('license_type, expires_at, created_at')
+        .eq('id', user.organization_id)
+        .single()
+
+      if (!error) setBilling(data)
+      setLoading(false)
+    }
+
+    loadBilling()
+  }, [user?.organization_id])
+
+  const expiresAt = billing?.expires_at
+    ? new Date(billing.expires_at).toLocaleDateString('fr-FR')
+    : "Non défini"
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-semibold tracking-tight">Abonnement & Facturation</h2>
+        <p className="text-muted-foreground">Consultez l'état de licence de votre organisation.</p>
+      </div>
+      <Separator />
+
+      {loading ? (
+        <div className="text-sm text-muted-foreground">Chargement de l'abonnement...</div>
+      ) : (
+        <div className="grid gap-4 max-w-2xl">
+          <div className="rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Licence actuelle</p>
+                <p className="mt-1 text-lg font-semibold capitalize">{billing?.license_type || "mensuelle"}</p>
+              </div>
+              <Badge tone={billing?.license_type === "definitive" ? "good" : "neutral"}>
+                {billing?.license_type === "definitive" ? "Définitive" : "Active"}
+              </Badge>
+            </div>
+          </div>
+          <div className="rounded-lg border p-4">
+            <p className="text-sm text-muted-foreground">Expiration</p>
+            <p className="mt-1 text-lg font-semibold">{billing?.license_type === "definitive" ? "Aucune expiration" : expiresAt}</p>
+          </div>
+          <NotConfigured
+            title="Paiement non connecté"
+            description="La lecture de licence est branchée en base. Le paiement et les factures doivent rester gérés depuis le back-office tant qu'aucun prestataire de paiement n'est connecté."
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -635,11 +828,14 @@ function MembersSettings() {
   const [inviteRole, setInviteRole] = useState("Membre")
   const [groupName, setGroupName] = useState("")
   const [members, setMembers] = useState<any[]>([])
+  const [groups, setGroups] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [groupsLoading, setGroupsLoading] = useState(true)
 
   useEffect(() => {
     if (user?.organization_id) {
       fetchMembers()
+      fetchGroups()
     }
   }, [user?.organization_id])
 
@@ -661,11 +857,30 @@ function MembersSettings() {
     }
   }
 
+  async function fetchGroups() {
+    setGroupsLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('organization_groups')
+        .select('*')
+        .eq('organization_id', user?.organization_id)
+        .order('name', { ascending: true })
+
+      if (error) throw error
+      setGroups(data || [])
+    } catch (error) {
+      console.error("Error fetching groups:", error)
+      setGroups([])
+    } finally {
+      setGroupsLoading(false)
+    }
+  }
+
   const availableRoles = (userRole: string) => {
     if (userRole === "super_admin" || userRole === "admin") {
       return ["Administrateur", "Chef de département", "Membre", "Invité"]
     }
-    if (userRole === "executive" || userRole === "manager") {
+    if (userRole === "executive") {
       return ["Membre", "Invité"]
     }
     return []
@@ -697,11 +912,9 @@ function MembersSettings() {
 
     const inviteUrl = `${window.location.origin}/invite/${invite.token}`
     
-    // Simulate email sending
     console.log("Invitation URL:", inviteUrl)
     toast.success(`Invitation générée pour ${inviteEmail}`)
     
-    // Copy to clipboard for the demo
     navigator.clipboard.writeText(inviteUrl)
     toast.info("Lien d'invitation copié dans le presse-papier !")
     
@@ -712,21 +925,31 @@ function MembersSettings() {
   const handleCreateGroup = (e: React.FormEvent) => {
     e.preventDefault()
     if (!groupName) return
-    toast.success(`Groupe "${groupName}" créé avec succès`)
-    setIsCreateGroupOpen(false)
-    setGroupName("")
+    ;(async () => {
+      const { error } = await supabase
+        .from('organization_groups')
+        .insert({
+          organization_id: user?.organization_id,
+          name: groupName.trim(),
+          created_by: user?.id,
+        })
+
+      if (error) {
+        toast.error("Impossible de créer ce groupe.")
+        return
+      }
+
+      toast.success(`Groupe "${groupName}" créé`)
+      setIsCreateGroupOpen(false)
+      setGroupName("")
+      fetchGroups()
+    })()
   }
 
   const roles = availableRoles(user?.rbac_role || user?.role || "")
 
-  // Check if user is DG (Admin), Executive or a Department Manager (e.g., Infography head)
-  // They must be part of an organization to manage it
-  const canManageMembers = !!user?.organization_id && (
-    user?.rbac_role === 'super_admin' || 
-    user?.rbac_role === 'admin' || 
-    user?.rbac_role === 'executive' || 
-    user?.rbac_role === 'manager'
-  )
+  const canManageGroups = !!user?.organization_id && canManageOrgMembers(user?.rbac_role)
+  const canInviteMembers = !!user?.organization_id && canManageOrgSettings(user?.rbac_role)
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -735,8 +958,9 @@ function MembersSettings() {
             <h2 className="text-2xl font-semibold tracking-tight">Membres & Groupes</h2>
             <p className="text-muted-foreground">Gérez les accès et l&apos;organisation de votre équipe.</p>
           </div>
-          {canManageMembers && (
+          {(canManageGroups || canInviteMembers) && (
             <div className="flex gap-2">
+              {canManageGroups && (
               <Dialog open={isCreateGroupOpen} onOpenChange={setIsCreateGroupOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline">
@@ -768,7 +992,9 @@ function MembersSettings() {
                   </form>
                 </DialogContent>
               </Dialog>
+              )}
 
+              {canInviteMembers && (
               <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
                 <DialogTrigger asChild>
                   <Button disabled={roles.length === 0}>
@@ -780,7 +1006,7 @@ function MembersSettings() {
                   <DialogHeader>
                     <DialogTitle>Inviter un nouveau membre</DialogTitle>
                     <DialogDescription>
-                      Envoyez une invitation par email pour rejoindre votre organisation.
+                      Générez un lien d'invitation à partager avec le membre.
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleInvite} className="space-y-4 py-4">
@@ -814,11 +1040,12 @@ function MembersSettings() {
                     </div>
                     <DialogFooter>
                       <Button type="button" variant="ghost" onClick={() => setIsInviteOpen(false)}>Annuler</Button>
-                      <Button type="submit">Envoyer l'invitation</Button>
+                      <Button type="submit">Générer le lien</Button>
                     </DialogFooter>
                   </form>
                 </DialogContent>
               </Dialog>
+              )}
             </div>
           )}
        </div>
@@ -895,18 +1122,18 @@ function MembersSettings() {
                              <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuLabel>Options membre</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="cursor-pointer">
+                                <DropdownMenuItem disabled>
                                    <Edit2 className="h-4 w-4 mr-2" />
-                                   Modifier le rôle
+                                   Modifier le rôle bientôt
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="cursor-pointer">
+                                <DropdownMenuItem disabled>
                                    <ShieldAlert className="h-4 w-4 mr-2" />
-                                   Gérer les permissions
+                                   Gérer les permissions bientôt
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                                <DropdownMenuItem disabled className="text-destructive focus:text-destructive">
                                    <UserX className="h-4 w-4 mr-2" />
-                                   Retirer de l&apos;organisation
+                                   Retirer bientôt
                                 </DropdownMenuItem>
                              </DropdownMenuContent>
                           </DropdownMenu>
@@ -930,20 +1157,21 @@ function MembersSettings() {
              <div className="border rounded-lg flex-1 overflow-hidden flex flex-col">
                 <div className="bg-muted/50 px-4 py-3 border-b grid grid-cols-[2fr_1fr_auto] gap-4 text-xs font-medium text-muted-foreground">
                    <div>Nom du groupe</div>
-                   <div>Membres</div>
+                   <div>Créé le</div>
                    <div className="w-8"></div>
                 </div>
                 <div className="overflow-auto flex-1">
-                   {[
-                      { name: "Direction", members: 1 },
-                      { name: "Ingénierie", members: 5 },
-                      { name: "Design", members: 3 },
-                   ].map((group, i) => (
+                   {groupsLoading ? (
+                     <div className="p-10 text-center text-muted-foreground">Chargement des groupes...</div>
+                   ) : groups.length === 0 ? (
+                     <div className="p-10 text-center text-muted-foreground">Aucun groupe créé.</div>
+                   ) : (
+                    groups.map((group, i) => (
                       <div 
-                        key={i} 
+                        key={group.id} 
                         className={cn(
                           "px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both",
-                          i === 0 ? "[animation-delay:var(--delay-2)]" : i === 1 ? "[animation-delay:var(--delay-4)]" : "[animation-delay:var(--delay-6)]"
+                          `[animation-delay:${i * 50}ms]`
                         )}
                       >
                          <div className="flex items-center gap-3">
@@ -952,7 +1180,9 @@ function MembersSettings() {
                             </div>
                             <div className="text-sm font-medium">{group.name}</div>
                          </div>
-                         <div className="text-sm text-muted-foreground">{group.members} membres</div>
+                         <div className="text-sm text-muted-foreground">
+                           {new Date(group.created_at).toLocaleDateString('fr-FR')}
+                         </div>
                          <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -962,23 +1192,23 @@ function MembersSettings() {
                             <DropdownMenuContent align="end" className="w-48">
                                <DropdownMenuLabel>Options groupe</DropdownMenuLabel>
                                <DropdownMenuSeparator />
-                               <DropdownMenuItem className="cursor-pointer">
+                               <DropdownMenuItem disabled>
                                   <Edit2 className="h-4 w-4 mr-2" />
-                                  Modifier le groupe
+                                  Modifier bientôt
                                </DropdownMenuItem>
-                               <DropdownMenuItem className="cursor-pointer">
+                               <DropdownMenuItem disabled>
                                   <Users className="h-4 w-4 mr-2" />
-                                  Gérer les membres
+                                  Gérer les membres bientôt
                                </DropdownMenuItem>
                                <DropdownMenuSeparator />
-                               <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                               <DropdownMenuItem disabled className="text-destructive focus:text-destructive">
                                   <Archive className="h-4 w-4 mr-2" />
-                                  Archiver le groupe
+                                  Archiver bientôt
                                </DropdownMenuItem>
                             </DropdownMenuContent>
                          </DropdownMenu>
                       </div>
-                   ))}
+                   )))}
                 </div>
              </div>
           </TabsContent>
@@ -988,18 +1218,39 @@ function MembersSettings() {
 }
 
 function PermissionsSettings() {
+  const rows = [
+    { role: "DG / Admin", projects: "Créer et gérer", tasks: "Créer, assigner, visibilité org", members: "Inviter et gérer", settings: "Modifier" },
+    { role: "Chef de département", projects: "Lecture organisation", tasks: "Créer ses tâches privées", members: "Inviter selon politique", settings: "Lecture" },
+    { role: "Membre", projects: "Lecture organisation", tasks: "Créer ses tâches privées", members: "Lecture", settings: "Lecture" },
+    { role: "Invité", projects: "Lecture limitée", tasks: "Selon assignation", members: "Lecture limitée", settings: "Lecture" },
+  ]
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Permissions</h2>
         <p className="text-muted-foreground">
-          Vue de synthèse des rôles et des droits sur l&apos;organisation (démo).
+          Synthèse des droits appliqués par les rôles et les policies Supabase.
         </p>
       </div>
       <Separator />
-      <div className="text-sm text-muted-foreground">
-        La logique métier RBAC détaillée est gérée côté back-end et reflétée dans l&apos;application via les
-        hooks de permissions.
+      <div className="overflow-hidden rounded-lg border">
+        <div className="grid grid-cols-[1.2fr_1fr_1.3fr_1fr_1fr] gap-3 bg-muted/50 px-4 py-3 text-xs font-medium text-muted-foreground">
+          <div>Rôle</div>
+          <div>Projets</div>
+          <div>Tâches</div>
+          <div>Membres</div>
+          <div>Paramètres</div>
+        </div>
+        {rows.map((row) => (
+          <div key={row.role} className="grid grid-cols-[1.2fr_1fr_1.3fr_1fr_1fr] gap-3 border-t px-4 py-3 text-sm">
+            <div className="font-medium">{row.role}</div>
+            <div className="text-muted-foreground">{row.projects}</div>
+            <div className="text-muted-foreground">{row.tasks}</div>
+            <div className="text-muted-foreground">{row.members}</div>
+            <div className="text-muted-foreground">{row.settings}</div>
+          </div>
+        ))}
       </div>
     </div>
   )

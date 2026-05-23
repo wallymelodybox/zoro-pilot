@@ -4,7 +4,9 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { UserAvatar } from "@/components/user-avatar"
 import { createProject } from "@/app/actions"
+import { useUser } from "@/hooks/use-user"
 import { toast } from "sonner"
 import {
   FolderKanban,
@@ -21,8 +23,18 @@ const ViewIcons = {
 
 export default function CreateProjectPage() {
   const router = useRouter()
+  const { user, loading: userLoading } = useUser()
   const [name, setName] = useState("")
   const [loading, setLoading] = useState(false)
+  const ownerName = user?.name || "Directeur Général"
+  const ownerRole = user?.role || "Directeur Général"
+  const ownerInitials = ownerName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "DG"
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
@@ -126,10 +138,15 @@ export default function CreateProjectPage() {
                 <h3 className="text-sm font-medium">Membres</h3>
                 <div className="border rounded-lg p-3 shadow-sm space-y-3">
                    <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">MZ</div>
+                      <UserAvatar
+                        name={ownerName}
+                        avatarUrl={user?.avatar_url}
+                        fallback={userLoading ? "..." : ownerInitials}
+                        className="h-8 w-8"
+                      />
                       <div className="flex flex-col">
-                         <span className="text-sm font-medium">Menann Zoro</span>
-                         <span className="text-xs text-muted-foreground">Propriétaire</span>
+                         <span className="text-sm font-medium">{userLoading ? "Chargement..." : ownerName}</span>
+                         <span className="text-xs text-muted-foreground">{ownerRole}</span>
                       </div>
                    </div>
                    <div className="border-t pt-2">

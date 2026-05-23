@@ -9,13 +9,35 @@ async function getUserOrg(supabase: any) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: profile } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
     .select('organization_id')
     .eq('id', user.id)
     .single()
 
+  if (error || !profile?.organization_id) {
+    const { data: orgId } = await supabase.rpc('get_my_org_from_members')
+    return orgId || null
+  }
+
   return profile?.organization_id || null
+}
+
+async function getCurrentProfile(supabase: any, userId: string) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, organization_id, rbac_role')
+    .eq('id', userId)
+    .single()
+
+  if (profile) return profile
+
+  const { data: profileRows } = await supabase.rpc('get_my_profile')
+  return profileRows?.[0] || null
+}
+
+function canManageOrgTasks(role?: string | null) {
+  return role === 'super_admin' || role === 'admin' || role === 'executive'
 }
 
 export async function createProject(formData: FormData) {
@@ -32,6 +54,10 @@ export async function createProject(formData: FormData) {
 
   if (!name) {
     return { error: 'Le nom du projet est requis.' }
+  }
+
+  if (!orgId) {
+    return { error: 'Organisation introuvable pour votre compte. Reconnectez-vous ou contactez l’administrateur.' }
   }
 
   // Default values for a new project
@@ -99,25 +125,57 @@ export async function createTask(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Non autorisé' }
-  
-  const projectId = formData.get('projectId') as string
-  
-  // Check permission: create_task on project scope
-  if (projectId && projectId !== "none") {
-    const canCreate = await hasPermission(user.id, 'create_task', projectId)
-    if (!canCreate) return { error: 'Vous n\'avez pas la permission de créer des tâches dans ce projet.' }
-  }
 
+  const projectId = formData.get('projectId') as string
   const title = formData.get('title') as string
   const description = formData.get('description') as string
   const priority = formData.get('priority') as string || 'medium'
   const status = formData.get('status') as string || 'todo'
-  const assigneeId = formData.get('assigneeId') as string || user.id
+  const requestedAssigneeId = formData.get('assigneeId') as string
+  const requestedVisibility = formData.get('visibility') as string
   const dueDate = formData.get('dueDate') as string
   const orgId = await getUserOrg(supabase)
+  const profile = await getCurrentProfile(supabase, user.id)
+  const isTaskManager = canManageOrgTasks(profile?.rbac_role)
 
   if (!title) {
     return { error: 'Le titre de la tâche est requis.' }
+  }
+
+  if (!orgId) {
+    return { error: 'Organisation introuvable pour votre compte. Reconnectez-vous ou contactez l’administrateur.' }
+  }
+
+  if (projectId && projectId !== "none") {
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .eq('organization_id', orgId)
+      .single()
+
+    if (!project) {
+      return { error: 'Projet introuvable dans votre organisation.' }
+    }
+  }
+
+  let assigneeId = user.id
+  let visibility = 'private'
+
+  if (isTaskManager) {
+    assigneeId = requestedAssigneeId || user.id
+    visibility = requestedVisibility === 'organization' ? 'organization' : 'private'
+
+    const { data: assigneeProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', assigneeId)
+      .eq('organization_id', orgId)
+      .single()
+
+    if (!assigneeProfile) {
+      return { error: 'Vous ne pouvez assigner une tâche qu’à un membre de votre organisation.' }
+    }
   }
 
   const newTask = {
@@ -125,6 +183,8 @@ export async function createTask(formData: FormData) {
     description: description || null,
     project_id: projectId && projectId !== "none" ? projectId : null,
     organization_id: orgId,
+    created_by: user.id,
+    visibility,
     priority,
     status,
     assignee_id: assigneeId,

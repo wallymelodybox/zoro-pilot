@@ -65,7 +65,21 @@ export function useUser() {
           organization_id: null,
         })
       } else {
-        setUser(null)
+        const { data: profileRows } = await supabase.rpc('get_my_profile')
+        const rpcProfile = profileRows?.[0]
+
+        setUser({
+          id: authUser.id,
+          email: authUser.email!,
+          name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Utilisateur',
+          role: rpcProfile?.rbac_role === 'admin' || rpcProfile?.rbac_role === 'executive'
+            ? 'Directeur Général'
+            : 'Membre',
+          avatar_url: null,
+          team_id: null,
+          rbac_role: rpcProfile?.rbac_role || 'member',
+          organization_id: rpcProfile?.organization_id || null,
+        })
       }
       setLoading(false)
     }
@@ -106,6 +120,22 @@ export function useUser() {
           team_id: null,
           rbac_role: 'super_admin',
           organization_id: null,
+        })
+      } else {
+        const { data: profileRows } = await supabase.rpc('get_my_profile')
+        const rpcProfile = profileRows?.[0]
+
+        setUser({
+          id: authUser.id,
+          email: authUser.email!,
+          name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Utilisateur',
+          role: rpcProfile?.rbac_role === 'admin' || rpcProfile?.rbac_role === 'executive'
+            ? 'Directeur Général'
+            : 'Membre',
+          avatar_url: null,
+          team_id: null,
+          rbac_role: rpcProfile?.rbac_role || 'member',
+          organization_id: rpcProfile?.organization_id || null,
         })
       }
       setLoading(false)
