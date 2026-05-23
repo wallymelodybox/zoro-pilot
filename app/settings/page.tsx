@@ -950,6 +950,49 @@ function MembersSettings() {
 
   const canManageGroups = !!user?.organization_id && canManageOrgMembers(user?.rbac_role)
   const canInviteMembers = !!user?.organization_id && canManageOrgSettings(user?.rbac_role)
+  const canManageMembers = !!user?.organization_id && canManageOrgMembers(user?.rbac_role)
+  const [editingMember, setEditingMember] = useState<any | null>(null)
+  const [editingRole, setEditingRole] = useState<string>("")
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isRemoveOpen, setIsRemoveOpen] = useState(false)
+
+  const roleLabelToRbac = (label: string) =>
+    label === "Administrateur" ? "admin" : label === "Chef de département" ? "manager" : label === "Invité" ? "viewer" : "member"
+
+  const handleUpdateMemberRole = async () => {
+    if (!editingMember) return
+    const newRbac = roleLabelToRbac(editingRole)
+    const { error } = await supabase
+      .from("profiles")
+      .update({ rbac_role: newRbac, role: editingRole })
+      .eq("id", editingMember.id)
+
+    if (error) {
+      toast.error("Impossible de mettre à jour le rôle.")
+    } else {
+      toast.success("Rôle mis à jour.")
+      setIsEditOpen(false)
+      setEditingMember(null)
+      fetchMembers()
+    }
+  }
+
+  const handleRemoveMember = async () => {
+    if (!editingMember) return
+    const { error } = await supabase
+      .from("profiles")
+      .update({ organization_id: null, rbac_role: "viewer", role: "Invité" })
+      .eq("id", editingMember.id)
+
+    if (error) {
+      toast.error("Impossible de retirer le membre.")
+    } else {
+      toast.success("Membre retiré de l'organisation.")
+      setIsRemoveOpen(false)
+      setEditingMember(null)
+      fetchMembers()
+    }
+  }
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -1113,7 +1156,7 @@ function MembersSettings() {
                           <div className="text-sm text-muted-foreground">
                             {new Date(m.created_at).toLocaleDateString('fr-FR')}
                           </div>
-                          <DropdownMenu>
+                            <DropdownMenu>
                              <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8">
                                    <MoreHorizontal className="h-4 w-4" />
@@ -1122,18 +1165,33 @@ function MembersSettings() {
                              <DropdownMenuContent align="end" className="w-48">
                                 <DropdownMenuLabel>Options membre</DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem disabled>
-                                   <Edit2 className="h-4 w-4 mr-2" />
-                                   Modifier le rôle bientôt
+                                <DropdownMenuItem
+                                 onSelect={() => {
+                                  if (!canManageMembers) return
+                                  setEditingMember(m)
+                                  setEditingRole(m.role || m.rbac_role || "Membre")
+                                  setIsEditOpen(true)
+                                 }}
+                                 disabled={!canManageMembers}
+                                >
+                                  <Edit2 className="h-4 w-4 mr-2" />
+                                  Modifier le rôle
                                 </DropdownMenuItem>
-                                <DropdownMenuItem disabled>
-                                   <ShieldAlert className="h-4 w-4 mr-2" />
-                                   Gérer les permissions bientôt
+                                <DropdownMenuItem
+                                 onSelect={() => {
+                                  if (!canManageMembers) return
+                                  setEditingMember(m)
+                                  setIsRemoveOpen(true)
+                                 }}
+                                 disabled={!canManageMembers}
+                                >
+                                  <UserX className="h-4 w-4 mr-2" />
+                                  Retirer du workspace
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem disabled className="text-destructive focus:text-destructive">
-                                   <UserX className="h-4 w-4 mr-2" />
-                                   Retirer bientôt
+                                  <ShieldAlert className="h-4 w-4 mr-2" />
+                                  Gérer les permissions avancées bientôt
                                 </DropdownMenuItem>
                              </DropdownMenuContent>
                           </DropdownMenu>
@@ -1213,6 +1271,51 @@ function MembersSettings() {
              </div>
           </TabsContent>
        </Tabs>
+      {/* Edit Role Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier le rôle</DialogTitle>
+            <DialogDescription>Choisissez un nouveau rôle pour le membre.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Rôle</label>
+              <Select value={editingRole} onValueChange={(v) => setEditingRole(v)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Choisir un rôle" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(availableRoles(user?.rbac_role || user?.role || "") || []).map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setIsEditOpen(false); setEditingMember(null) }}>Annuler</Button>
+              <Button onClick={handleUpdateMemberRole}>Enregistrer</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Remove Member Confirmation */}
+      <Dialog open={isRemoveOpen} onOpenChange={setIsRemoveOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Retirer le membre</DialogTitle>
+            <DialogDescription>Confirmez le retrait du membre de l'organisation. Cette action peut être annulée en ré-invitant le membre.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="text-sm text-muted-foreground mb-4">{editingMember ? `${editingMember.name} (${editingMember.email})` : ""}</div>
+            <DialogFooter>
+              <Button variant="ghost" onClick={() => { setIsRemoveOpen(false); setEditingMember(null) }}>Annuler</Button>
+              <Button variant="destructive" onClick={handleRemoveMember}>Retirer</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
