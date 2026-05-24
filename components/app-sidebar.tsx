@@ -43,7 +43,7 @@ import { UserAvatar } from "./user-avatar"
 
 const cx = cn
 
-const navItems = [
+export const navItems = [
   { href: "/", label: "Accueil", icon: Home },
   { href: "/strategy", label: "Stratégie & OKR", icon: Target },
   { href: "/work", label: "Projets & Travail", icon: FolderKanban },
