@@ -37,10 +37,11 @@ export default function CreateTaskPage() {
   // Default to first project if available, or empty
   const [projectId, setProjectId] = useState("")
   const [priority, setPriority] = useState("medium")
-  const [assigneeId, setAssigneeId] = useState("")
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [visibility, setVisibility] = useState("private")
+  const [progress, setProgress] = useState(0)
   const canAssignTasks = user?.rbac_role === "super_admin" || user?.rbac_role === "admin" || user?.rbac_role === "executive"
-  const selectedAssigneeId = canAssignTasks ? (assigneeId || user?.id || "") : (user?.id || "")
+  const selectedAssigneeIds = canAssignTasks ? (assigneeIds.length > 0 ? assigneeIds : [user?.id || ""]) : [user?.id || ""]
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -170,22 +171,31 @@ export default function CreateTaskPage() {
 
                 {canAssignTasks && (
                   <>
-                    <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors group">
-                      <div className="flex items-center gap-3 text-sm text-foreground">
+                    <div className="w-full px-4 py-3 hover:bg-muted/50 transition-colors group">
+                      <div className="mb-2 flex items-center gap-3 text-sm text-foreground">
                         <User className="h-4 w-4 text-blue-500" />
                         <span>Assignée à</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground min-w-40 justify-end">
-                        <Select name="assigneeId" value={selectedAssigneeId} onValueChange={setAssigneeId}>
-                          <SelectTrigger className="w-45 h-8 border-none bg-transparent shadow-none focus:ring-0 text-right justify-end px-0">
-                            <SelectValue placeholder="Choisir un membre" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {profiles.map((profile: any) => (
-                              <SelectItem key={profile.id} value={profile.id}>{profile.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {profiles.map((profile: any) => {
+                          const checked = selectedAssigneeIds.includes(profile.id)
+                          return (
+                            <label key={profile.id} className="flex items-center justify-between rounded-md border px-2 py-2 text-sm">
+                              <span className="truncate">{profile.name}</span>
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(event) => {
+                                  setAssigneeIds((current) =>
+                                    event.target.checked
+                                      ? Array.from(new Set([...current, profile.id]))
+                                      : current.filter((id) => id !== profile.id)
+                                  )
+                                }}
+                              />
+                            </label>
+                          )
+                        })}
                       </div>
                     </div>
 
@@ -208,15 +218,37 @@ export default function CreateTaskPage() {
                     </div>
                   </>
                 )}
+
+                <div className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/50 transition-colors group">
+                   <div className="flex items-center gap-3 text-sm text-foreground">
+                      <Tag className="h-4 w-4 text-blue-500" />
+                      <span>Progression</span>
+                   </div>
+                   <div className="flex items-center gap-3 text-sm text-muted-foreground min-w-44 justify-end">
+                      <Input
+                        type="range"
+                        min="0"
+                        max="100"
+                        name="progress"
+                        value={progress}
+                        onChange={(event) => setProgress(Number(event.target.value))}
+                        className="h-8 w-32 border-none bg-transparent shadow-none"
+                      />
+                      <span className="w-10 text-right font-mono">{progress}%</span>
+                   </div>
+                </div>
                 
                 {/* Hidden Inputs for Select values to work with FormData */}
                 <input type="hidden" name="projectId" value={projectId} />
                 <input type="hidden" name="priority" value={priority} />
                 <input type="hidden" name="visibility" value={canAssignTasks ? visibility : "private"} />
+                {selectedAssigneeIds.filter(Boolean).map((id) => (
+                  <input key={id} type="hidden" name="assigneeIds" value={id} />
+                ))}
 
                 {/* Hidden Inputs for defaults */}
                 <input type="hidden" name="status" value="todo" />
-                <input type="hidden" name="assigneeId" value={selectedAssigneeId} />
+                <input type="hidden" name="assigneeId" value={selectedAssigneeIds[0] || user?.id || ""} />
 
              </div>
           </div>

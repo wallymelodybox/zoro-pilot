@@ -27,6 +27,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { UserAvatar } from "@/components/user-avatar"
@@ -78,6 +79,13 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { restrictToWindowEdges } from "@dnd-kit/modifiers"
+
+function getTaskProgress(task: Task) {
+  if (typeof task.progress === "number") return task.progress
+  if (task.status === "done") return 100
+  if (task.status === "in-progress") return 50
+  return 0
+}
 
 export default function AllTasksPage() {
   const { user } = useUser()
@@ -566,6 +574,7 @@ function SortableTaskCard({ task }: { task: Task }) {
   } = useSortable({ id: task.id })
 
   const [isOpen, setIsOpen] = React.useState(false)
+  const progress = getTaskProgress(task)
 
   const style = React.useMemo(() => ({
     transform: CSS.Transform.toString(transform),
@@ -625,6 +634,13 @@ function SortableTaskCard({ task }: { task: Task }) {
                   </span>
                 )}
               </div>
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>Progression</span>
+                <span className="font-mono">{progress}%</span>
+              </div>
+              <Progress value={progress} className="h-1.5" />
             </div>
 
             {isOpen && (

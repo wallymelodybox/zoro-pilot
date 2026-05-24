@@ -27,6 +27,8 @@ export function useSupabaseData() {
   const [profiles, setProfiles] = useState<any[]>([])
   const [projectEvents, setProjectEvents] = useState<any[]>([])
   const [projectDocuments, setProjectDocuments] = useState<any[]>([])
+  const [projectMembers, setProjectMembers] = useState<any[]>([])
+  const [taskAssignees, setTaskAssignees] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [usingMockData, setUsingMockData] = useState(false)
   const supabase = createClient()
@@ -44,6 +46,8 @@ export function useSupabaseData() {
       setProfiles([])
       setProjectEvents([])
       setProjectDocuments([])
+      setProjectMembers([])
+      setTaskAssignees([])
       return
     }
 
@@ -62,7 +66,9 @@ export function useSupabaseData() {
         { data: checkinsData, error: checkinsError },
         { data: profilesData, error: profilesError },
         { data: projectEventsData, error: projectEventsError },
-        { data: projectDocumentsData, error: projectDocumentsError }
+        { data: projectDocumentsData, error: projectDocumentsError },
+        { data: projectMembersData, error: projectMembersError },
+        { data: taskAssigneesData, error: taskAssigneesError }
       ] = await Promise.all([
         supabase.from('projects').select('*').eq('organization_id', orgId),
         supabase.from('tasks').select('*').eq('organization_id', orgId),
@@ -72,10 +78,12 @@ export function useSupabaseData() {
         supabase.from('okr_checkins').select('*').eq('organization_id', orgId).order('date', { ascending: false }),
         supabase.from('profiles').select('*').eq('organization_id', orgId),
         supabase.from('project_events').select('*').eq('organization_id', orgId).order('starts_at', { ascending: true }),
-        supabase.from('project_documents').select('*').eq('organization_id', orgId).order('created_at', { ascending: false })
+        supabase.from('project_documents').select('*').eq('organization_id', orgId).order('created_at', { ascending: false }),
+        supabase.from('project_members').select('*').eq('organization_id', orgId),
+        supabase.from('task_assignees').select('*').eq('organization_id', orgId)
       ])
 
-      const fetchErrors = [projectsError, tasksError, objectivesError, pillarsError, krsError, checkinsError, profilesError, projectEventsError, projectDocumentsError].filter(Boolean)
+      const fetchErrors = [projectsError, tasksError, objectivesError, pillarsError, krsError, checkinsError, profilesError, projectEventsError, projectDocumentsError, projectMembersError, taskAssigneesError].filter(Boolean)
       if (fetchErrors.length > 0) {
         console.error('Supabase data fetch errors', fetchErrors)
       }
@@ -92,12 +100,15 @@ export function useSupabaseData() {
         name: p.name,
         teamId: p.team_id,
         ownerId: p.owner_id,
-        status: p.status,
-        startDate: p.start_date,
-        endDate: p.end_date,
-        progress: p.progress,
-        linkedObjectiveIds: [],
-        linkedKRIds: []
+          status: p.status,
+          startDate: p.start_date,
+          endDate: p.end_date,
+          progress: p.progress,
+          memberIds: (projectMembersData || [])
+            .filter((member: any) => member.project_id === p.id)
+            .map((member: any) => member.profile_id),
+          linkedObjectiveIds: [],
+          linkedKRIds: []
       })) : []
       setProjects(mappedProjects)
 
@@ -108,9 +119,13 @@ export function useSupabaseData() {
         description: t.description,
         createdBy: t.created_by,
         assigneeId: t.assignee_id,
+        assigneeIds: (taskAssigneesData || [])
+          .filter((assignee: any) => assignee.task_id === t.id)
+          .map((assignee: any) => assignee.profile_id),
         visibility: t.visibility,
         status: t.status,
         priority: t.priority,
+        progress: Number(t.progress || (t.status === 'done' ? 100 : 0)),
         dueDate: t.due_date,
         linkedKRId: t.linked_kr_id
       })) : []
@@ -156,6 +171,8 @@ export function useSupabaseData() {
       setCheckins(mappedCheckins)
       setProjectEvents(projectEventsData || [])
       setProjectDocuments(projectDocumentsData || [])
+      setProjectMembers(projectMembersData || [])
+      setTaskAssignees(taskAssigneesData || [])
 
       setUsingMockData(false)
     } catch (e) {
@@ -168,6 +185,8 @@ export function useSupabaseData() {
       setCheckins([])
       setProjectEvents([])
       setProjectDocuments([])
+      setProjectMembers([])
+      setTaskAssignees([])
       setUsingMockData(false)
     } finally {
       setLoading(false)
@@ -178,6 +197,6 @@ export function useSupabaseData() {
     fetchData()
   }, [user])
 
-  return { projects, tasks, objectives, pillars, keyResults, checkins, profiles, projectEvents, projectDocuments, loading, usingMockData, refresh: fetchData }
+  return { projects, tasks, objectives, pillars, keyResults, checkins, profiles, projectEvents, projectDocuments, projectMembers, taskAssignees, loading, usingMockData, refresh: fetchData }
 }
 

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { UserAvatar } from "@/components/user-avatar"
 import { createProject } from "@/app/actions"
 import { useUser } from "@/hooks/use-user"
+import { useSupabaseData } from "@/hooks/use-supabase"
 import { toast } from "sonner"
 import {
   FolderKanban,
@@ -24,7 +25,9 @@ const ViewIcons = {
 export default function CreateProjectPage() {
   const router = useRouter()
   const { user, loading: userLoading } = useUser()
+  const { profiles } = useSupabaseData()
   const [name, setName] = useState("")
+  const [memberIds, setMemberIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const ownerName = user?.name || "Directeur Général"
   const ownerRole = user?.role || "Directeur Général"
@@ -37,6 +40,7 @@ export default function CreateProjectPage() {
     .toUpperCase() || "DG"
 
   async function handleSubmit(formData: FormData) {
+    memberIds.forEach((id) => formData.append("memberIds", id))
     setLoading(true)
     try {
       const result = await createProject(formData)
@@ -149,11 +153,37 @@ export default function CreateProjectPage() {
                          <span className="text-xs text-muted-foreground">{ownerRole}</span>
                       </div>
                    </div>
-                   <div className="border-t pt-2">
-                      <button type="button" className="flex items-center gap-2 text-blue-500 text-sm font-medium hover:underline">
+                   <div className="border-t pt-3 space-y-2">
+                      <div className="flex items-center gap-2 text-blue-500 text-sm font-medium">
                          <Plus className="h-4 w-4" />
-                         Ajouter un membre
-                      </button>
+                         Assigner des membres
+                      </div>
+                      <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                        {profiles
+                          .filter((profile: any) => profile.id !== user?.id)
+                          .map((profile: any) => {
+                            const checked = memberIds.includes(profile.id)
+                            return (
+                              <label key={profile.id} className="flex items-center justify-between rounded-md border px-2 py-2 text-sm hover:bg-muted/50">
+                                <span className="truncate">{profile.name}</span>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(event) => {
+                                    setMemberIds((current) =>
+                                      event.target.checked
+                                        ? [...current, profile.id]
+                                        : current.filter((id) => id !== profile.id)
+                                    )
+                                  }}
+                                />
+                              </label>
+                            )
+                          })}
+                        {profiles.filter((profile: any) => profile.id !== user?.id).length === 0 && (
+                          <div className="text-xs text-muted-foreground">Aucun autre membre dans cette organisation.</div>
+                        )}
+                      </div>
                    </div>
                 </div>
              </div>

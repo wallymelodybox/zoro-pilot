@@ -57,6 +57,7 @@ export interface Project {
   name: string
   teamId: string
   ownerId: string
+  memberIds?: string[]
   status: RAGStatus
   startDate: string
   endDate: string
@@ -72,9 +73,11 @@ export interface Task {
   description?: string
   createdBy?: string
   assigneeId: string
+  assigneeIds?: string[]
   visibility?: TaskVisibility
   status: TaskStatus
   priority: Priority
+  progress?: number
   dueDate: string
   linkedKRId?: string
 }

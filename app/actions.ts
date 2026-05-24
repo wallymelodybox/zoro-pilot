@@ -40,6 +40,14 @@ function canManageOrgTasks(role?: string | null) {
   return role === 'super_admin' || role === 'admin' || role === 'executive'
 }
 
+function canManageOrgProjects(role?: string | null) {
+  return role === 'super_admin' || role === 'admin' || role === 'executive'
+}
+
+function uniqueIds(ids: string[]) {
+  return Array.from(new Set(ids.filter(Boolean)))
+}
+
 export async function createProject(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -51,6 +59,8 @@ export async function createProject(formData: FormData) {
   
   const name = formData.get('name') as string
   const orgId = await getUserOrg(supabase)
+  const profile = await getCurrentProfile(supabase, user.id)
+  const memberIds = uniqueIds([user.id, ...formData.getAll('memberIds').map(String)])
 
   if (!name) {
     return { error: 'Le nom du projet est requis.' }
@@ -58,6 +68,10 @@ export async function createProject(formData: FormData) {
 
   if (!orgId) {
     return { error: 'Organisation introuvable pour votre compte. Reconnectez-vous ou contactez l’administrateur.' }
+  }
+
+  if (!canManageOrgProjects(profile?.rbac_role)) {
+    return { error: 'Seul le DG peut créer et structurer les projets de l’organisation.' }
   }
 
   // Default values for a new project
@@ -83,6 +97,35 @@ export async function createProject(formData: FormData) {
     return { error: 'Erreur lors de la création du projet.' }
   }
 
+  if (memberIds.length > 0) {
+    const { data: validMembers } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('organization_id', orgId)
+      .in('id', memberIds)
+
+    const validMemberIds = (validMembers || []).map((member: any) => member.id)
+
+    if (validMemberIds.length > 0) {
+      const { error: membersError } = await supabase
+        .from('project_members')
+        .upsert(
+          validMemberIds.map((profileId: string) => ({
+            organization_id: orgId,
+            project_id: data.id,
+            profile_id: profileId,
+            role: profileId === user.id ? 'owner' : 'member',
+            added_by: user.id,
+          })),
+          { onConflict: 'project_id,profile_id' }
+        )
+
+      if (membersError) {
+        console.error('Error assigning project members:', membersError)
+      }
+    }
+  }
+
   // Assign 'Manager' role to the creator for this specific project
   try {
     await assignRoleToUser(user.id, 'Manager', 'project', data.id)
@@ -93,6 +136,111 @@ export async function createProject(formData: FormData) {
   revalidatePath('/work')
   revalidatePath('/')
   return { success: true, id: data.id }
+}
+
+export async function updateProject(projectId: string, formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  const profile = await getCurrentProfile(supabase, user.id)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+  if (!canManageOrgProjects(profile?.rbac_role)) {
+    return { error: 'Seul le DG peut modifier un projet de l’organisation.' }
+  }
+
+  const name = formData.get('name') as string
+  const status = formData.get('status') as string
+  const startDate = formData.get('startDate') as string
+  const endDate = formData.get('endDate') as string
+  const progress = Number(formData.get('progress') || 0)
+  const memberIds = uniqueIds([user.id, ...formData.getAll('memberIds').map(String)])
+
+  if (!name) return { error: 'Le nom du projet est requis.' }
+
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      name,
+      status: status || 'on-track',
+      start_date: startDate || null,
+      end_date: endDate || null,
+      progress: Math.max(0, Math.min(100, Number.isFinite(progress) ? progress : 0)),
+    })
+    .eq('id', projectId)
+    .eq('organization_id', orgId)
+
+  if (error) {
+    console.error('Error updating project:', error)
+    return { error: 'Erreur lors de la modification du projet.' }
+  }
+
+  const { data: validMembers } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('organization_id', orgId)
+    .in('id', memberIds)
+
+  const validMemberIds = (validMembers || []).map((member: any) => member.id)
+
+  await supabase
+    .from('project_members')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('organization_id', orgId)
+    .not('profile_id', 'in', `(${validMemberIds.join(',') || user.id})`)
+
+  if (validMemberIds.length > 0) {
+    const { error: membersError } = await supabase
+      .from('project_members')
+      .upsert(
+        validMemberIds.map((profileId: string) => ({
+          organization_id: orgId,
+          project_id: projectId,
+          profile_id: profileId,
+          role: profileId === user.id ? 'owner' : 'member',
+          added_by: user.id,
+        })),
+        { onConflict: 'project_id,profile_id' }
+      )
+
+    if (membersError) {
+      console.error('Error updating project members:', membersError)
+    }
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/')
+  return { success: true }
+}
+
+export async function deleteProject(projectId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  const profile = await getCurrentProfile(supabase, user.id)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+  if (!canManageOrgProjects(profile?.rbac_role)) {
+    return { error: 'Seul le DG peut supprimer un projet de l’organisation.' }
+  }
+
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', projectId)
+    .eq('organization_id', orgId)
+
+  if (error) {
+    console.error('Error deleting project:', error)
+    return { error: 'Erreur lors de la suppression du projet.' }
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/')
+  return { success: true }
 }
 
 export async function redirectToAdmin() {
@@ -132,8 +280,10 @@ export async function createTask(formData: FormData) {
   const priority = formData.get('priority') as string || 'medium'
   const status = formData.get('status') as string || 'todo'
   const requestedAssigneeId = formData.get('assigneeId') as string
+  const requestedAssigneeIds = formData.getAll('assigneeIds').map(String)
   const requestedVisibility = formData.get('visibility') as string
   const dueDate = formData.get('dueDate') as string
+  const requestedProgress = Number(formData.get('progress') || 0)
   const orgId = await getUserOrg(supabase)
   const profile = await getCurrentProfile(supabase, user.id)
   const isTaskManager = canManageOrgTasks(profile?.rbac_role)
@@ -159,24 +309,26 @@ export async function createTask(formData: FormData) {
     }
   }
 
-  let assigneeId = user.id
+  let assigneeIds = [user.id]
   let visibility = 'private'
 
   if (isTaskManager) {
-    assigneeId = requestedAssigneeId || user.id
+    assigneeIds = uniqueIds(requestedAssigneeIds.length > 0 ? requestedAssigneeIds : [requestedAssigneeId || user.id])
     visibility = requestedVisibility === 'organization' ? 'organization' : 'private'
 
-    const { data: assigneeProfile } = await supabase
+    const { data: assigneeProfiles } = await supabase
       .from('profiles')
       .select('id')
-      .eq('id', assigneeId)
       .eq('organization_id', orgId)
-      .single()
+      .in('id', assigneeIds)
 
-    if (!assigneeProfile) {
+    if (!assigneeProfiles || assigneeProfiles.length !== assigneeIds.length) {
       return { error: 'Vous ne pouvez assigner une tâche qu’à un membre de votre organisation.' }
     }
   }
+
+  const assigneeId = assigneeIds[0] || user.id
+  const taskProgress = Math.max(0, Math.min(100, Number.isFinite(requestedProgress) ? requestedProgress : 0))
 
   const newTask = {
     title,
@@ -187,17 +339,38 @@ export async function createTask(formData: FormData) {
     visibility,
     priority,
     status,
+    progress: status === 'done' ? 100 : taskProgress,
     assignee_id: assigneeId,
     due_date: dueDate || null,
   }
 
-  const { error } = await supabase
+  const { data: task, error } = await supabase
     .from('tasks')
     .insert([newTask])
+    .select('id')
+    .single()
 
   if (error) {
     console.error('Error creating task:', error)
     return { error: `Erreur lors de la création de la tâche: ${error.message}` }
+  }
+
+  if (task?.id) {
+    const { error: assigneesError } = await supabase
+      .from('task_assignees')
+      .upsert(
+        assigneeIds.map((profileId) => ({
+          organization_id: orgId,
+          task_id: task.id,
+          profile_id: profileId,
+          assigned_by: user.id,
+        })),
+        { onConflict: 'task_id,profile_id' }
+      )
+
+    if (assigneesError) {
+      console.error('Error assigning task members:', assigneesError)
+    }
   }
 
   revalidatePath('/work')
@@ -445,11 +618,14 @@ async function createNotification(userId: string, title: string, content: string
 export async function updateTaskStatus(taskId: string, status: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const statusProgress = status === 'done' ? 100 : status === 'todo' ? 0 : status === 'in-progress' ? 50 : undefined
+  const updatePayload: Record<string, any> = { status }
+  if (statusProgress !== undefined) updatePayload.progress = statusProgress
   
   // 1. Update the task status
   const { data: task, error } = await supabase
     .from('tasks')
-    .update({ status })
+    .update(updatePayload)
     .eq('id', taskId)
     .select('*, projects(*)')
     .single()
@@ -472,12 +648,16 @@ export async function updateTaskStatus(taskId: string, status: string) {
   if (task?.project_id) {
     const { data: tasks, error: tasksError } = await supabase
       .from('tasks')
-      .select('status')
+      .select('status, progress')
       .eq('project_id', task.project_id)
 
     if (!tasksError && tasks && tasks.length > 0) {
-      const doneTasks = tasks.filter(t => t.status === 'done').length
-      const progress = Math.round((doneTasks / tasks.length) * 100)
+      const progress = Math.round(
+        tasks.reduce((sum: number, item: any) => {
+          if (typeof item.progress === 'number') return sum + item.progress
+          return sum + (item.status === 'done' ? 100 : 0)
+        }, 0) / tasks.length
+      )
 
       const oldProgress = task.projects?.progress || 0
       
@@ -567,6 +747,51 @@ export async function updateTaskStatus(taskId: string, status: string) {
   return { success: true }
 }
 
+export async function updateTaskProgress(taskId: string, progress: number) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const value = Math.max(0, Math.min(100, Math.round(progress)))
+  const status = value >= 100 ? 'done' : value > 0 ? 'in-progress' : 'todo'
+
+  const { data: task, error } = await supabase
+    .from('tasks')
+    .update({ progress: value, status })
+    .eq('id', taskId)
+    .select('project_id')
+    .single()
+
+  if (error) {
+    console.error('Error updating task progress:', error)
+    return { error: 'Erreur lors de la mise à jour de la progression.' }
+  }
+
+  if (task?.project_id) {
+    const { data: tasks } = await supabase
+      .from('tasks')
+      .select('status, progress')
+      .eq('project_id', task.project_id)
+
+    if (tasks && tasks.length > 0) {
+      const projectProgress = Math.round(
+        tasks.reduce((sum: number, item: any) => sum + Number(item.progress || (item.status === 'done' ? 100 : 0)), 0) / tasks.length
+      )
+
+      await supabase
+        .from('projects')
+        .update({ progress: projectProgress })
+        .eq('id', task.project_id)
+    }
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/all-tasks')
+  revalidatePath('/my-day')
+  revalidatePath('/')
+  return { success: true }
+}
+
 export async function createChannel(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -606,13 +831,40 @@ export async function createChannel(formData: FormData) {
 
 export async function addProjectMember(projectId: string, profileId: string, title: string) {
   const supabase = await createClient()
-  
-  // In our current schema, we don't have a direct project_members table, 
-  // but we can use roles or simply allow access via organization membership.
-  // For now, let's assume we want to track it in a separate table if it existed,
-  // or use the RBAC system to assign a role.
-  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  const profile = await getCurrentProfile(supabase, user.id)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+  if (!canManageOrgProjects(profile?.rbac_role)) {
+    return { error: 'Seul le DG peut ajouter des membres à un projet.' }
+  }
+
+  const { data: member } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', profileId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!member) {
+    return { error: 'Ce membre n’appartient pas à votre organisation.' }
+  }
+
   try {
+    const { error } = await supabase
+      .from('project_members')
+      .upsert({
+        organization_id: orgId,
+        project_id: projectId,
+        profile_id: profileId,
+        role: title?.toLowerCase() === 'owner' ? 'owner' : 'member',
+        added_by: user.id,
+      }, { onConflict: 'project_id,profile_id' })
+
+    if (error) throw error
+
     await assignRoleToUser(profileId, 'Member', 'project', projectId)
     revalidatePath('/work')
     return { success: true }

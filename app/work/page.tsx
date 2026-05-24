@@ -18,7 +18,7 @@ import { ChatPanel } from "@/components/chat-panel"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { useUser } from "@/hooks/use-user"
 import { createClient } from "@/lib/supabase/client"
-import { createTask, updateTaskStatus, addProjectMember, createProjectEvent, createProjectDocument } from "@/app/actions"
+import { createTask, updateTaskStatus, updateTaskProgress, addProjectMember, updateProject, deleteProject, createProjectEvent, createProjectDocument } from "@/app/actions"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -146,6 +146,22 @@ function isThisWeek(value?: string | null) {
   return date >= start && date <= end
 }
 
+function getTaskAssigneeIds(task: Task) {
+  return task.assigneeIds && task.assigneeIds.length > 0 ? task.assigneeIds : task.assigneeId ? [task.assigneeId] : []
+}
+
+function getTaskProgress(task: Task) {
+  if (typeof task.progress === "number") return task.progress
+  if (task.status === "done") return 100
+  if (task.status === "in-progress") return 50
+  return 0
+}
+
+function getProjectProgress(project: Project, tasks: Task[]) {
+  if (tasks.length === 0) return project.progress || 0
+  return Math.round(tasks.reduce((sum, task) => sum + getTaskProgress(task), 0) / tasks.length)
+}
+
 function makeCalendarUrl(title: string, start?: string | null, details?: string) {
   if (!start) return "#"
   const date = new Date(start)
@@ -172,7 +188,7 @@ function ProjectHeader({
   members: any[]
 }) {
   const done = tasks.filter(t => t.status === "done").length
-  const calculatedProgress = tasks.length > 0 ? Math.round((done / tasks.length) * 100) : project.progress || 0
+  const calculatedProgress = getProjectProgress(project, tasks)
 
   return (
     <div className="grid gap-4 border-b bg-card/40 px-6 py-4 xl:grid-cols-[1.25fr_1fr]">
@@ -259,7 +275,7 @@ function ProjectKpiStrip({
   })
   const load = profiles.map(profile => ({
     profile,
-    count: tasks.filter(t => t.assigneeId === profile.id && t.status !== "done").length,
+    count: tasks.filter(t => getTaskAssigneeIds(t).includes(profile.id) && t.status !== "done").length,
   })).sort((a, b) => b.count - a.count)[0]
   const thisWeek = upcoming.filter((item: any) => isThisWeek(item.dueDate || item.starts_at)).length
 
@@ -295,12 +311,27 @@ function TaskCard({
   canEdit: boolean
   profiles: any[]
 }) {
-  const assignee = profiles.find(p => p.id === task.assigneeId)
+  const assignees = profiles.filter(p => getTaskAssigneeIds(task).includes(p.id))
+  const [localProgress, setLocalProgress] = useState(getTaskProgress(task))
   const linkedKR = task.linkedKRId
     ? objectives
         .flatMap((o) => o.keyResults)
         .find((kr) => kr.id === task.linkedKRId)
     : null
+
+  useEffect(() => {
+    setLocalProgress(getTaskProgress(task))
+  }, [task.id, task.progress, task.status])
+
+  const commitProgress = async () => {
+    if (!canEdit || localProgress === getTaskProgress(task)) return
+    const res = await updateTaskProgress(task.id, localProgress)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+    toast.success("Progression mise à jour")
+  }
 
   return (
     <div
@@ -330,10 +361,16 @@ function TaskCard({
         )}
       </div>
       <div className="flex items-center gap-2">
-        {assignee && (
-          <div className="flex items-center gap-1.5">
-            <UserAvatar name={assignee.name} avatarUrl={assignee.avatar_url} fallback={assignee.name.charAt(0)} className="h-5 w-5 text-xs" />
-            <span className="text-xs text-muted-foreground font-sans truncate max-w-20">{assignee.name.split(" ")[0]}</span>
+        {assignees.length > 0 && (
+          <div className="flex items-center gap-1.5 min-w-0">
+            <div className="flex -space-x-1">
+              {assignees.slice(0, 3).map(assignee => (
+                <UserAvatar key={assignee.id} name={assignee.name} avatarUrl={assignee.avatar_url} fallback={assignee.name.charAt(0)} className="h-5 w-5 border border-background text-xs" />
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground font-sans truncate max-w-24">
+              {assignees.length === 1 ? assignees[0].name.split(" ")[0] : `${assignees.length} membres`}
+            </span>
           </div>
         )}
         {task.dueDate && (
@@ -347,6 +384,27 @@ function TaskCard({
             <CalendarPlus className="h-3 w-3" />
             {task.dueDate.split("-").slice(1).join("/")}
           </a>
+        )}
+      </div>
+      <div className="mt-3 space-y-1">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>Progression</span>
+          <span className="font-mono">{localProgress}%</span>
+        </div>
+        {canEdit ? (
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={localProgress}
+            onChange={(event) => setLocalProgress(Number(event.target.value))}
+            onBlur={commitProgress}
+            onMouseUp={commitProgress}
+            onTouchEnd={commitProgress}
+            className="h-2 w-full accent-primary"
+          />
+        ) : (
+          <Progress value={localProgress} className="h-2" />
         )}
       </div>
     </div>
@@ -629,9 +687,167 @@ function MembersColumn({ project, profiles, onRefresh }: { project: Project; pro
   )
 }
 
+function ProjectManageDialog({
+  project,
+  profiles,
+  memberIds,
+  onRefresh,
+}: {
+  project: Project
+  profiles: any[]
+  memberIds: string[]
+  onRefresh: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(project.name)
+  const [status, setStatus] = useState(project.status)
+  const [startDate, setStartDate] = useState(project.startDate || "")
+  const [endDate, setEndDate] = useState(project.endDate || "")
+  const [progress, setProgress] = useState(project.progress || 0)
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(memberIds)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setName(project.name)
+    setStatus(project.status)
+    setStartDate(project.startDate || "")
+    setEndDate(project.endDate || "")
+    setProgress(project.progress || 0)
+    setSelectedMemberIds(memberIds)
+  }, [open, project, memberIds])
+
+  const submit = async () => {
+    const fd = new FormData()
+    fd.set("name", name)
+    fd.set("status", status)
+    fd.set("startDate", startDate)
+    fd.set("endDate", endDate)
+    fd.set("progress", String(progress))
+    selectedMemberIds.forEach(id => fd.append("memberIds", id))
+
+    setSaving(true)
+    const res = await updateProject(project.id, fd)
+    setSaving(false)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+    toast.success("Projet mis à jour")
+    setOpen(false)
+    onRefresh()
+  }
+
+  const remove = async () => {
+    if (!window.confirm(`Supprimer définitivement "${project.name}" ?`)) return
+    setDeleting(true)
+    const res = await deleteProject(project.id)
+    setDeleting(false)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+    toast.success("Projet supprimé")
+    setOpen(false)
+    onRefresh()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button onClick={() => setOpen(true)} size="sm" variant="outline" className="h-8 gap-2">
+        <Settings2 className="h-4 w-4" />
+        Gérer
+      </Button>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Modifier le projet</DialogTitle>
+          <DialogDescription>Seul le DG peut modifier les informations, les membres et supprimer le projet.</DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="grid gap-2">
+            <Label>Nom du projet</Label>
+            <Input value={name} onChange={(event) => setName(event.target.value)} />
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-2">
+              <Label>Statut</Label>
+              <Select value={status} onValueChange={(value: any) => setStatus(value)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="on-track">En cours</SelectItem>
+                  <SelectItem value="at-risk">À risque</SelectItem>
+                  <SelectItem value="off-track">En retard</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Début</Label>
+              <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Deadline</Label>
+              <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between">
+              <Label>Progression manuelle</Label>
+              <span className="text-sm font-mono text-muted-foreground">{progress}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={progress}
+              onChange={(event) => setProgress(Number(event.target.value))}
+              className="h-2 w-full accent-primary"
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label>Membres du projet</Label>
+            <div className="grid max-h-52 gap-2 overflow-y-auto rounded-lg border p-2 md:grid-cols-2">
+              {profiles.map((profile: any) => {
+                const checked = selectedMemberIds.includes(profile.id)
+                return (
+                  <label key={profile.id} className="flex items-center justify-between rounded-md border px-2 py-2 text-sm">
+                    <span className="truncate">{profile.name}</span>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => {
+                        setSelectedMemberIds((current) =>
+                          event.target.checked
+                            ? Array.from(new Set([...current, profile.id]))
+                            : current.filter((id) => id !== profile.id)
+                        )
+                      }}
+                    />
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="gap-2 sm:justify-between">
+          <Button variant="destructive" onClick={remove} disabled={deleting || saving}>
+            {deleting ? "Suppression..." : "Supprimer"}
+          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+            <Button onClick={submit} disabled={saving || !name.trim()}>
+              {saving ? "Enregistrement..." : "Enregistrer"}
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function WorkPage() {
   const { user } = useUser()
-  const { projects, tasks, objectives, profiles, projectEvents, projectDocuments, loading, refresh } = useSupabaseData()
+  const { projects, tasks, objectives, profiles, projectEvents, projectDocuments, projectMembers: projectMemberRows, loading, refresh } = useSupabaseData()
   const [selectedProjectId, setSelectedProjectId] = useState<string>("")
   const [currentView, setCurrentView] = useState("kanban")
   
@@ -649,7 +865,11 @@ export default function WorkPage() {
   const selectedProjectDocuments = selectedProject ? projectDocuments.filter((doc: any) => doc.project_id === selectedProject.id) : []
   const projectMemberIds = new Set([
     selectedProject?.ownerId,
+    ...(projectMemberRows || [])
+      .filter((member: any) => member.project_id === selectedProject?.id)
+      .map((member: any) => member.profile_id),
     ...projectTasks.map(task => task.assigneeId),
+    ...projectTasks.flatMap(task => getTaskAssigneeIds(task)),
     ...selectedProjectDocuments.map((doc: any) => doc.created_by),
     ...selectedProjectEvents.map((event: any) => event.created_by),
   ].filter(Boolean))
@@ -657,7 +877,7 @@ export default function WorkPage() {
 
   // Check permissions
   const isDG = user?.rbac_role === 'admin' || user?.rbac_role === 'executive' || user?.rbac_role === 'super_admin'
-  const canEditProject = isDG || (selectedProject && selectedProject.ownerId === user?.id)
+  const canEditProject = isDG
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen text-sm text-muted-foreground">Chargement des projets...</div>
@@ -755,10 +975,18 @@ export default function WorkPage() {
                  />
               </div>
               {isDG && (
-                <Button size="sm" className="h-8 rounded-lg font-bold font-sans gap-2 ml-2">
-                  <Plus className="h-4 w-4" />
-                  Action
-                </Button>
+                <>
+                  <ProjectManageDialog
+                    project={selectedProject}
+                    profiles={profiles}
+                    memberIds={Array.from(projectMemberIds)}
+                    onRefresh={refresh}
+                  />
+                  <Button size="sm" className="h-8 rounded-lg font-bold font-sans gap-2 ml-2">
+                    <Plus className="h-4 w-4" />
+                    Action
+                  </Button>
+                </>
               )}
            </div>
         </div>
@@ -1070,10 +1298,11 @@ function ProjectSideRail({
         <h3 className="mb-3 font-semibold">Membres</h3>
         <div className="space-y-2">
           {members.slice(0, 6).map(member => {
-            const active = tasks.filter(t => t.assigneeId === member.id && t.status !== "done").length
-            const late = tasks.filter(t => t.assigneeId === member.id && isOverdue(t)).length
-            const done = tasks.filter(t => t.assigneeId === member.id && t.status === "done").length
-            const total = tasks.filter(t => t.assigneeId === member.id).length
+            const memberTasks = tasks.filter(t => getTaskAssigneeIds(t).includes(member.id))
+            const active = memberTasks.filter(t => t.status !== "done").length
+            const late = memberTasks.filter(isOverdue).length
+            const done = memberTasks.filter(t => t.status === "done").length
+            const total = memberTasks.length
             const performance = total > 0 ? Math.round((done / total) * 100) : 0
             return (
               <div key={member.id} className="grid grid-cols-[1fr_auto] gap-2 rounded-md border p-2">
@@ -1087,6 +1316,7 @@ function ProjectSideRail({
                 <div className="text-right text-xs text-muted-foreground">
                   <div>{active} actives</div>
                   <div>{late} retard · {performance}%</div>
+                  <Progress value={performance} className="mt-1 h-1.5 w-20" />
                 </div>
               </div>
             )
@@ -1154,7 +1384,8 @@ function ProjectTaskList({ projectTasks, onCanEdit, profiles }: { projectTasks: 
     <ScrollArea className="h-full pr-4">
       <div className="space-y-2">
         {projectTasks.map((task) => {
-          const assignee = profiles.find(p => p.id === task.assigneeId)
+          const assignees = profiles.filter(p => getTaskAssigneeIds(task).includes(p.id))
+          const progress = getTaskProgress(task)
           return (
             <div
               key={task.id}
@@ -1181,16 +1412,23 @@ function ProjectTaskList({ projectTasks, onCanEdit, profiles }: { projectTasks: 
                   </span>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>{getTaskStatusLabel(task.status)}</span>
+                    <span>·</span>
+                    <span>{progress}%</span>
                   </div>
+                  <Progress value={progress} className="mt-2 h-1.5 w-56 max-w-full" />
                 </div>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2 min-w-30">
-                  {assignee ? (
+                  {assignees.length > 0 ? (
                     <>
-                      <UserAvatar name={assignee.name} avatarUrl={assignee.avatar_url} fallback={assignee.name.charAt(0)} className="h-6 w-6" />
+                      <div className="flex -space-x-1">
+                        {assignees.slice(0, 3).map(assignee => (
+                          <UserAvatar key={assignee.id} name={assignee.name} avatarUrl={assignee.avatar_url} fallback={assignee.name.charAt(0)} className="h-6 w-6 border border-background" />
+                        ))}
+                      </div>
                       <span className="text-xs text-muted-foreground truncate max-w-20">
-                        {assignee.name.split(" ")[0]}
+                        {assignees.length === 1 ? assignees[0].name.split(" ")[0] : `${assignees.length} membres`}
                       </span>
                     </>
                   ) : (
