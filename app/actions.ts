@@ -138,6 +138,151 @@ export async function createProject(formData: FormData) {
   return { success: true, id: data.id }
 }
 
+export async function createCommission(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  const profile = await getCurrentProfile(supabase, user.id)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+  if (!canManageOrgProjects(profile?.rbac_role)) {
+    return { error: 'Seul le DG peut ajouter des commissions.' }
+  }
+
+  const name = (formData.get('name') as string)?.trim()
+  const managerId = formData.get('managerId') as string
+  const memberIds = uniqueIds([managerId, ...formData.getAll('memberIds').map(String)])
+
+  if (!name) return { error: 'Le nom de la commission est requis.' }
+
+  if (memberIds.length > 0) {
+    const { data: validMembers } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('organization_id', orgId)
+      .in('id', memberIds)
+
+    if ((validMembers || []).length !== memberIds.length) {
+      return { error: 'Chaque membre de la commission doit appartenir à votre organisation.' }
+    }
+  }
+
+  const { data: team, error } = await supabase
+    .from('teams')
+    .insert({
+      name,
+      manager_id: managerId || user.id,
+      organization_id: orgId,
+      type: 'commission',
+    })
+    .select('id')
+    .single()
+
+  if (error || !team) {
+    console.error('Error creating commission:', error)
+    return { error: 'Erreur lors de la création de la commission.' }
+  }
+
+  if (memberIds.length > 0) {
+    const { error: membersError } = await supabase
+      .from('profiles')
+      .update({ team_id: team.id })
+      .eq('organization_id', orgId)
+      .in('id', memberIds)
+
+    if (membersError) {
+      console.error('Error assigning commission members:', membersError)
+      return { error: 'Commission créée, mais impossible d’assigner ses membres.' }
+    }
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/settings')
+  return { success: true, id: team.id }
+}
+
+export async function createSubProject(parentProjectId: string, formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  const profile = await getCurrentProfile(supabase, user.id)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+  if (!canManageOrgProjects(profile?.rbac_role)) {
+    return { error: 'Seul le DG peut ajouter des sous-projets.' }
+  }
+
+  const name = (formData.get('name') as string)?.trim()
+  const status = formData.get('status') as string || 'on-track'
+  const endDate = formData.get('endDate') as string
+  const memberIds = uniqueIds([user.id, ...formData.getAll('memberIds').map(String)])
+
+  if (!name) return { error: 'Le nom du sous-projet est requis.' }
+
+  const { data: parentProject } = await supabase
+    .from('projects')
+    .select('id, team_id')
+    .eq('id', parentProjectId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!parentProject) return { error: 'Projet parent introuvable dans votre organisation.' }
+
+  const { data: subProject, error } = await supabase
+    .from('projects')
+    .insert({
+      name,
+      status,
+      progress: 0,
+      owner_id: user.id,
+      organization_id: orgId,
+      team_id: parentProject.team_id,
+      parent_project_id: parentProjectId,
+      start_date: new Date().toISOString().split('T')[0],
+      end_date: endDate || null,
+    })
+    .select('id')
+    .single()
+
+  if (error || !subProject) {
+    console.error('Error creating sub-project:', error)
+    return { error: 'Erreur lors de la création du sous-projet.' }
+  }
+
+  const { data: validMembers } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('organization_id', orgId)
+    .in('id', memberIds)
+
+  const validMemberIds = (validMembers || []).map((member: any) => member.id)
+
+  if (validMemberIds.length > 0) {
+    const { error: membersError } = await supabase
+      .from('project_members')
+      .upsert(
+        validMemberIds.map((profileId: string) => ({
+          organization_id: orgId,
+          project_id: subProject.id,
+          profile_id: profileId,
+          role: profileId === user.id ? 'owner' : 'member',
+          added_by: user.id,
+        })),
+        { onConflict: 'project_id,profile_id' }
+      )
+
+    if (membersError) {
+      console.error('Error assigning sub-project members:', membersError)
+    }
+  }
+
+  revalidatePath('/work')
+  revalidatePath('/')
+  return { success: true, id: subProject.id }
+}
+
 export async function updateProject(projectId: string, formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

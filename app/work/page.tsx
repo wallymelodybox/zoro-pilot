@@ -18,7 +18,7 @@ import { ChatPanel } from "@/components/chat-panel"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { useUser } from "@/hooks/use-user"
 import { createClient } from "@/lib/supabase/client"
-import { createTask, updateTaskStatus, updateTaskProgress, addProjectMember, updateProject, deleteProject, createProjectEvent, createProjectDocument } from "@/app/actions"
+import { createTask, updateTaskStatus, updateTaskProgress, addProjectMember, updateProject, deleteProject, createProjectEvent, createProjectDocument, createCommission, createSubProject } from "@/app/actions"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -191,7 +191,7 @@ function ProjectHeader({
   const calculatedProgress = getProjectProgress(project, tasks)
 
   return (
-    <div className="grid gap-4 border-b bg-card/40 px-6 py-4 xl:grid-cols-[1.25fr_1fr]">
+    <div className="grid gap-4 border-b bg-card px-6 py-4 xl:grid-cols-[1.25fr_1fr]">
       <div className="space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -227,7 +227,7 @@ function ProjectHeader({
         </div>
       </div>
 
-      <div className="flex flex-col justify-center gap-3 rounded-lg border bg-background/50 p-4">
+      <div className="flex flex-col justify-center gap-3 rounded-lg border bg-background p-4">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium">Progression globale</span>
           <span className="font-mono text-lg font-semibold">{calculatedProgress}%</span>
@@ -845,6 +845,171 @@ function ProjectManageDialog({
   )
 }
 
+function ProjectActionDialog({
+  project,
+  profiles,
+  onRefresh,
+  onProjectCreated,
+}: {
+  project: Project
+  profiles: any[]
+  onRefresh: () => void
+  onProjectCreated: (projectId: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [mode, setMode] = useState<"sub-project" | "commission">("sub-project")
+  const [name, setName] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [managerId, setManagerId] = useState("")
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+
+  const reset = () => {
+    setName("")
+    setEndDate("")
+    setManagerId("")
+    setSelectedMemberIds([])
+    setMode("sub-project")
+  }
+
+  const toggleMember = (profileId: string, checked: boolean) => {
+    setSelectedMemberIds((current) =>
+      checked
+        ? Array.from(new Set([...current, profileId]))
+        : current.filter((id) => id !== profileId)
+    )
+  }
+
+  const submit = async () => {
+    const fd = new FormData()
+    fd.set("name", name)
+    selectedMemberIds.forEach((id) => fd.append("memberIds", id))
+
+    setSaving(true)
+    const res = mode === "commission"
+      ? await createCommission(fdWithManager(fd, managerId))
+      : await createSubProject(project.id, fdWithSubProjectFields(fd, endDate))
+    setSaving(false)
+
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+
+    toast.success(mode === "commission" ? "Commission ajoutée" : "Sous-projet ajouté")
+    setOpen(false)
+    reset()
+    onRefresh()
+
+    if (mode === "sub-project" && res?.id) {
+      onProjectCreated(res.id)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(value) => {
+      setOpen(value)
+      if (!value) reset()
+    }}>
+      <Button size="sm" className="h-8 rounded-lg font-bold font-sans gap-2 ml-2" onClick={() => setOpen(true)}>
+        <Plus className="h-4 w-4" />
+        Action
+      </Button>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Nouvelle action DG</DialogTitle>
+          <DialogDescription>
+            Ajoutez une commission ou créez un sous-projet rattaché à {project.name}.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="grid gap-4">
+          <div className="grid grid-cols-2 rounded-lg border bg-muted p-1">
+            <button
+              type="button"
+              onClick={() => setMode("sub-project")}
+              className={cn("rounded-md px-3 py-2 text-sm font-medium transition-colors", mode === "sub-project" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              Sous-projet
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("commission")}
+              className={cn("rounded-md px-3 py-2 text-sm font-medium transition-colors", mode === "commission" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              Commission
+            </button>
+          </div>
+
+          <div className="grid gap-2">
+            <Label>{mode === "commission" ? "Nom de la commission" : "Nom du sous-projet"}</Label>
+            <Input value={name} onChange={(event) => setName(event.target.value)} placeholder={mode === "commission" ? "ex: Commission finance" : "ex: Phase pilote terrain"} />
+          </div>
+
+          {mode === "commission" ? (
+            <div className="grid gap-2">
+              <Label>Responsable</Label>
+              <Select value={managerId} onValueChange={setManagerId}>
+                <SelectTrigger><SelectValue placeholder="Choisir un responsable" /></SelectTrigger>
+                <SelectContent>
+                  {profiles.map((profile: any) => (
+                    <SelectItem key={profile.id} value={profile.id}>{profile.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="grid gap-2">
+              <Label>Deadline</Label>
+              <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+            </div>
+          )}
+
+          <div className="grid gap-2">
+            <Label>Membres à assigner</Label>
+            <div className="grid max-h-56 gap-2 overflow-y-auto rounded-lg border p-2 md:grid-cols-2">
+              {profiles.map((profile: any) => {
+                const checked = selectedMemberIds.includes(profile.id)
+                return (
+                  <label key={profile.id} className="flex items-center justify-between rounded-md border bg-background px-2 py-2 text-sm">
+                    <span className="truncate">{profile.name}</span>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(event) => toggleMember(profile.id, event.target.checked)}
+                    />
+                  </label>
+                )
+              })}
+              {profiles.length === 0 && (
+                <div className="text-sm text-muted-foreground">Aucun membre disponible dans cette organisation.</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+          <Button onClick={submit} disabled={saving || !name.trim()}>
+            {saving ? "Création..." : mode === "commission" ? "Ajouter la commission" : "Créer le sous-projet"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function fdWithManager(formData: FormData, managerId: string) {
+  if (managerId) formData.set("managerId", managerId)
+  return formData
+}
+
+function fdWithSubProjectFields(formData: FormData, endDate: string) {
+  formData.set("status", "on-track")
+  if (endDate) formData.set("endDate", endDate)
+  return formData
+}
+
 export default function WorkPage() {
   const { user } = useUser()
   const { projects, tasks, objectives, profiles, projectEvents, projectDocuments, projectMembers: projectMemberRows, loading, refresh } = useSupabaseData()
@@ -861,6 +1026,7 @@ export default function WorkPage() {
   const selectedProject = projects.find((p) => p.id === selectedProjectId)
   // Filter tasks for the selected project locally
   const projectTasks = selectedProject ? tasks.filter(t => t.projectId === selectedProject.id) : []
+  const subProjects = selectedProject ? projects.filter(p => p.parentProjectId === selectedProject.id) : []
   const selectedProjectEvents = selectedProject ? projectEvents.filter((event: any) => event.project_id === selectedProject.id) : []
   const selectedProjectDocuments = selectedProject ? projectDocuments.filter((doc: any) => doc.project_id === selectedProject.id) : []
   const projectMemberIds = new Set([
@@ -906,9 +1072,9 @@ export default function WorkPage() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-transparent">
+    <div className="flex h-screen flex-col bg-background">
       {/* Header */}
-      <header className="flex flex-col border-b bg-card/40 backdrop-blur-md">
+      <header className="flex flex-col border-b bg-card">
         {/* Top Row: Breadcrumb & User */}
         <div className="flex items-center justify-between px-4 py-2 border-b border-border/40">
            <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -982,10 +1148,12 @@ export default function WorkPage() {
                     memberIds={Array.from(projectMemberIds)}
                     onRefresh={refresh}
                   />
-                  <Button size="sm" className="h-8 rounded-lg font-bold font-sans gap-2 ml-2">
-                    <Plus className="h-4 w-4" />
-                    Action
-                  </Button>
+                  <ProjectActionDialog
+                    project={selectedProject}
+                    profiles={profiles}
+                    onRefresh={refresh}
+                    onProjectCreated={setSelectedProjectId}
+                  />
                 </>
               )}
            </div>
@@ -996,7 +1164,7 @@ export default function WorkPage() {
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
         {/* Right Board Area */}
-        <main className="flex-1 min-w-0 overflow-y-auto bg-muted/10 p-6">
+        <main className="flex-1 min-w-0 overflow-y-auto bg-muted/30 p-6">
           <ProjectKpiStrip
             tasks={projectTasks}
             events={selectedProjectEvents}
@@ -1028,6 +1196,8 @@ export default function WorkPage() {
             documents={selectedProjectDocuments}
             members={projectMembers}
             allProfiles={profiles}
+            subProjects={subProjects}
+            onSelectProject={setSelectedProjectId}
             onRefresh={refresh}
           />
           </div>
@@ -1236,6 +1406,8 @@ function ProjectSideRail({
   documents,
   members,
   allProfiles,
+  subProjects,
+  onSelectProject,
   onRefresh,
 }: {
   project: Project
@@ -1244,6 +1416,8 @@ function ProjectSideRail({
   documents: any[]
   members: any[]
   allProfiles: any[]
+  subProjects: Project[]
+  onSelectProject: (projectId: string) => void
   onRefresh: () => void
 }) {
   const recentActivity = [
@@ -1274,6 +1448,29 @@ function ProjectSideRail({
 
   return (
     <aside className="space-y-4">
+      <section className="rounded-lg border bg-card p-4">
+        <h3 className="mb-3 font-semibold">Sous-projets</h3>
+        <div className="space-y-2">
+          {subProjects.map(subProject => (
+            <button
+              key={subProject.id}
+              type="button"
+              onClick={() => onSelectProject(subProject.id)}
+              className="flex w-full items-center justify-between rounded-md border p-2 text-left hover:bg-muted/50"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">{subProject.name}</div>
+                <div className="text-xs text-muted-foreground">{formatDate(subProject.endDate)} · {subProject.progress || 0}%</div>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          ))}
+          {subProjects.length === 0 && (
+            <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">Aucun sous-projet rattaché.</div>
+          )}
+        </div>
+      </section>
+
       <section className="rounded-lg border bg-card p-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-semibold">Documents projet</h3>

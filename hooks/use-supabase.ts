@@ -99,6 +99,7 @@ export function useSupabaseData() {
         id: p.id,
         name: p.name,
         teamId: p.team_id,
+        parentProjectId: p.parent_project_id,
         ownerId: p.owner_id,
           status: p.status,
           startDate: p.start_date,

@@ -56,6 +56,7 @@ export interface Project {
   id: string
   name: string
   teamId: string
+  parentProjectId?: string | null
   ownerId: string
   memberIds?: string[]
   status: RAGStatus
