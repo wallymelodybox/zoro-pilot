@@ -9,16 +9,19 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm hover:shadow-md transition-shadow',
         destructive:
-          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
+          'bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60 shadow-sm hover:shadow-md transition-shadow',
         outline:
-          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50',
+          'border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50 hover:shadow-sm transition-shadow',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80 shadow-sm hover:shadow-md transition-shadow',
         ghost:
           'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
         link: 'text-primary underline-offset-4 hover:underline',
+        success: 'bg-success text-white hover:bg-success/90 shadow-sm hover:shadow-md transition-shadow',
+        warning: 'bg-warning text-white hover:bg-warning/90 shadow-sm hover:shadow-md transition-shadow',
+        info: 'bg-primary text-primary-foreground hover:bg-primary/80 shadow-sm hover:shadow-md transition-shadow',
       },
       size: {
         default: 'h-9 px-4 py-2 has-[>svg]:px-3',
