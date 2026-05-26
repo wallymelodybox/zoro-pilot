@@ -12,7 +12,8 @@ import { toast } from "sonner"
 import {
   FolderKanban,
   ChevronRight,
-  Plus
+  Plus,
+  DollarSign
 } from "lucide-react"
 import Link from "next/link"
 
@@ -28,6 +29,7 @@ export default function CreateProjectPage() {
   const { profiles } = useSupabaseData()
   const [name, setName] = useState("")
   const [memberIds, setMemberIds] = useState<string[]>([])
+  const [budget, setBudget] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const ownerName = user?.name || "Directeur Général"
   const ownerRole = user?.role || "Directeur Général"
@@ -41,6 +43,9 @@ export default function CreateProjectPage() {
 
   async function handleSubmit(formData: FormData) {
     memberIds.forEach((id) => formData.append("memberIds", id))
+    if (budget !== null) {
+      formData.append("budget", budget.toString())
+    }
     setLoading(true)
     try {
       const result = await createProject(formData)
@@ -106,7 +111,7 @@ export default function CreateProjectPage() {
                 </div>
              </div>
 
-             {/* Name Input */}
+             {/* Name & Budget Inputs */}
              <div className="space-y-4">
                 <div className="flex items-center gap-3 border rounded-lg px-3 py-2 shadow-sm">
                    <FolderKanban className="h-5 w-5 text-blue-500" />
@@ -117,6 +122,17 @@ export default function CreateProjectPage() {
                      value={name}
                      onChange={(e) => setName(e.target.value)}
                      autoFocus
+                   />
+                </div>
+                
+                <div className="flex items-center gap-3 border rounded-lg px-3 py-2 shadow-sm">
+                   <DollarSign className="h-5 w-5 text-emerald-500" />
+                   <Input 
+                     type="number"
+                     placeholder="Budget alloué (Fr CFA) - optionnel"
+                     className="border-none shadow-none focus-visible:ring-0 p-0 h-auto font-medium"
+                     value={budget || ''}
+                     onChange={(e) => setBudget(e.target.value ? Number(e.target.value) : null)}
                    />
                 </div>
 

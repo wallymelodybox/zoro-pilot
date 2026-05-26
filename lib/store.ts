@@ -65,6 +65,7 @@ export interface Project {
   progress: number
   linkedObjectiveIds: string[]
   linkedKRIds: string[]
+  budget?: number | null
 }
 
 export interface Task {
@@ -81,6 +82,7 @@ export interface Task {
   progress?: number
   dueDate: string
   linkedKRId?: string
+  budget?: number | null
 }
 
 export interface OKRCheckin {

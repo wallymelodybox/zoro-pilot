@@ -61,6 +61,8 @@ export async function createProject(formData: FormData) {
   const orgId = await getUserOrg(supabase)
   const profile = await getCurrentProfile(supabase, user.id)
   const memberIds = uniqueIds([user.id, ...formData.getAll('memberIds').map(String)])
+  const budgetValue = formData.get('budget') as string
+  const budget = budgetValue ? Number(budgetValue) : null
 
   if (!name) {
     return { error: 'Le nom du projet est requis.' }
@@ -84,6 +86,7 @@ export async function createProject(formData: FormData) {
     team_id: formData.get('teamId') as string || null,
     start_date: new Date().toISOString().split('T')[0],
     end_date: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    budget,
   }
 
   const { data, error } = await supabase
@@ -300,6 +303,8 @@ export async function updateProject(projectId: string, formData: FormData) {
   const startDate = formData.get('startDate') as string
   const endDate = formData.get('endDate') as string
   const progress = Number(formData.get('progress') || 0)
+  const budgetValue = formData.get('budget') as string
+  const budget = budgetValue ? Number(budgetValue) : null
   const memberIds = uniqueIds([user.id, ...formData.getAll('memberIds').map(String)])
 
   if (!name) return { error: 'Le nom du projet est requis.' }
@@ -312,6 +317,7 @@ export async function updateProject(projectId: string, formData: FormData) {
       start_date: startDate || null,
       end_date: endDate || null,
       progress: Math.max(0, Math.min(100, Number.isFinite(progress) ? progress : 0)),
+      budget,
     })
     .eq('id', projectId)
     .eq('organization_id', orgId)
@@ -429,6 +435,8 @@ export async function createTask(formData: FormData) {
   const requestedVisibility = formData.get('visibility') as string
   const dueDate = formData.get('dueDate') as string
   const requestedProgress = Number(formData.get('progress') || 0)
+  const budgetValue = formData.get('budget') as string
+  const budget = budgetValue ? Number(budgetValue) : null
   const orgId = await getUserOrg(supabase)
   const profile = await getCurrentProfile(supabase, user.id)
   const isTaskManager = canManageOrgTasks(profile?.rbac_role)
@@ -487,6 +495,7 @@ export async function createTask(formData: FormData) {
     progress: status === 'done' ? 100 : taskProgress,
     assignee_id: assigneeId,
     due_date: dueDate || null,
+    budget,
   }
 
   const { data: task, error } = await supabase

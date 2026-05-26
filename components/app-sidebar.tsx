@@ -21,6 +21,7 @@ import {
   Activity,
   Shield,
   Handshake,
+  DollarSign,
 } from "lucide-react"
 import {
   ResponsiveContainer,
@@ -47,6 +48,7 @@ export const navItems = [
   { href: "/", label: "Accueil", icon: Home },
   { href: "/strategy", label: "Stratégie & OKR", icon: Target },
   { href: "/work", label: "Projets & Travail", icon: FolderKanban },
+  { href: "/finance", label: "Gestion Financière", icon: DollarSign },
   { href: "/calendar", label: "Calendrier global", icon: CalendarDays },
   { href: "/my-day", label: "Ma journée", icon: Sun },
   { href: "/all-tasks", label: "Toutes les tâches", icon: Layers },
@@ -424,7 +426,7 @@ export function AppSidebar() {
 
           {!collapsed && isStrategicNotebook && (
             <div className="mb-4 relative rounded-lg border border-dashed border-primary/30 bg-accent/60 p-3 shadow-sm">
-              <div className="absolute -top-3 right-4 rounded-sm bg-[color:var(--notebook-tape)] px-5 py-1 text-[0px] shadow-sm rotate-3">tape</div>
+              <div className="absolute -top-3 right-4 rounded-sm bg-(--notebook-tape) px-5 py-1 text-[0px] shadow-sm rotate-3">tape</div>
               <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <span>Tâches terminées</span>
                 <span className="text-primary">☆</span>
