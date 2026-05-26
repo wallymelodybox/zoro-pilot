@@ -52,6 +52,27 @@ export interface KeyResult {
   ownerId: string
 }
 
+export interface SubBudget {
+  id: string
+  name: string
+  projectId: string
+  amount: number
+  description?: string
+  parentSubBudgetId?: string | null
+}
+
+export interface FinancialTransaction {
+  id: string
+  subBudgetId?: string | null
+  projectId?: string | null
+  title: string
+  description?: string
+  amount: number
+  type: "expense" | "income"
+  date: string
+  category?: string
+}
+
 export interface Project {
   id: string
   name: string
@@ -66,6 +87,8 @@ export interface Project {
   linkedObjectiveIds: string[]
   linkedKRIds: string[]
   budget?: number | null
+  subBudgets?: SubBudget[]
+  transactions?: FinancialTransaction[]
 }
 
 export interface Task {

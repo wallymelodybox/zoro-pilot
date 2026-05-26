@@ -8,6 +8,8 @@ import {
   type KeyResult, 
   type Pillar, 
   type OKRCheckin,
+  type SubBudget,
+  type FinancialTransaction,
   projects as mockProjects, 
   tasks as mockTasks,
   objectives as mockObjectives,
@@ -24,6 +26,8 @@ export function useSupabaseData() {
   const [pillars, setPillars] = useState<Pillar[]>([])
   const [keyResults, setKeyResults] = useState<KeyResult[]>([])
   const [checkins, setCheckins] = useState<OKRCheckin[]>([])
+  const [subBudgets, setSubBudgets] = useState<SubBudget[]>([])
+  const [financialTransactions, setFinancialTransactions] = useState<FinancialTransaction[]>([])
   const [profiles, setProfiles] = useState<any[]>([])
   const [projectEvents, setProjectEvents] = useState<any[]>([])
   const [projectDocuments, setProjectDocuments] = useState<any[]>([])
@@ -64,6 +68,8 @@ export function useSupabaseData() {
         { data: pillarsData, error: pillarsError },
         { data: krsData, error: krsError },
         { data: checkinsData, error: checkinsError },
+        { data: subBudgetsData, error: subBudgetsError },
+        { data: transactionsData, error: transactionsError },
         { data: profilesData, error: profilesError },
         { data: projectEventsData, error: projectEventsError },
         { data: projectDocumentsData, error: projectDocumentsError },
@@ -76,6 +82,8 @@ export function useSupabaseData() {
         supabase.from('pillars').select('*').eq('organization_id', orgId),
         supabase.from('key_results').select('*').eq('organization_id', orgId),
         supabase.from('okr_checkins').select('*').eq('organization_id', orgId).order('date', { ascending: false }),
+        supabase.from('sub_budgets').select('*'),
+        supabase.from('financial_transactions').select('*'),
         supabase.from('profiles').select('*').eq('organization_id', orgId),
         supabase.from('project_events').select('*').eq('organization_id', orgId).order('starts_at', { ascending: true }),
         supabase.from('project_documents').select('*').eq('organization_id', orgId).order('created_at', { ascending: false }),
@@ -83,7 +91,7 @@ export function useSupabaseData() {
         supabase.from('task_assignees').select('*').eq('organization_id', orgId)
       ])
 
-      const fetchErrors = [projectsError, tasksError, objectivesError, pillarsError, krsError, checkinsError, profilesError, projectEventsError, projectDocumentsError, projectMembersError, taskAssigneesError].filter(Boolean)
+      const fetchErrors = [projectsError, tasksError, objectivesError, pillarsError, krsError, checkinsError, subBudgetsError, transactionsError, profilesError, projectEventsError, projectDocumentsError, projectMembersError, taskAssigneesError].filter(Boolean)
       if (fetchErrors.length > 0) {
         console.error('Supabase data fetch errors', fetchErrors)
       }
@@ -101,17 +109,41 @@ export function useSupabaseData() {
         teamId: p.team_id,
         parentProjectId: p.parent_project_id,
         ownerId: p.owner_id,
-          status: p.status,
-          startDate: p.start_date,
-          endDate: p.end_date,
-          progress: p.progress,
-          memberIds: (projectMembersData || [])
-            .filter((member: any) => member.project_id === p.id)
-            .map((member: any) => member.profile_id),
-          linkedObjectiveIds: [],
-          linkedKRIds: []
+        status: p.status,
+        startDate: p.start_date,
+        endDate: p.end_date,
+        progress: p.progress,
+        memberIds: (projectMembersData || [])
+          .filter((member: any) => member.project_id === p.id)
+          .map((member: any) => member.profile_id),
+        linkedObjectiveIds: [],
+        linkedKRIds: [],
+        budget: p.budget
       })) : []
       setProjects(mappedProjects)
+
+      const mappedSubBudgets = subBudgetsData ? subBudgetsData.map((sb: any) => ({
+        id: sb.id,
+        name: sb.name,
+        projectId: sb.project_id,
+        amount: sb.amount,
+        description: sb.description,
+        parentSubBudgetId: sb.parent_sub_budget_id
+      })) : []
+      setSubBudgets(mappedSubBudgets)
+
+      const mappedTransactions = transactionsData ? transactionsData.map((t: any) => ({
+        id: t.id,
+        subBudgetId: t.sub_budget_id,
+        projectId: t.project_id,
+        title: t.title,
+        description: t.description,
+        amount: t.amount,
+        type: t.type,
+        date: t.date,
+        category: t.category
+      })) : []
+      setFinancialTransactions(mappedTransactions)
 
       const mappedTasks = tasksData ? tasksData.map((t: any) => ({
         id: t.id,
@@ -198,6 +230,6 @@ export function useSupabaseData() {
     fetchData()
   }, [user])
 
-  return { projects, tasks, objectives, pillars, keyResults, checkins, profiles, projectEvents, projectDocuments, projectMembers, taskAssignees, loading, usingMockData, refresh: fetchData }
+  return { projects, tasks, objectives, pillars, keyResults, checkins, subBudgets, financialTransactions, profiles, projectEvents, projectDocuments, projectMembers, taskAssignees, loading, usingMockData, refresh: fetchData }
 }
 
