@@ -873,15 +873,37 @@ function MembersSettings() {
   const [groupName, setGroupName] = useState("")
   const [members, setMembers] = useState<any[]>([])
   const [groups, setGroups] = useState<any[]>([])
+  const [invites, setInvites] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [groupsLoading, setGroupsLoading] = useState(true)
+  const [invitesLoading, setInvitesLoading] = useState(true)
 
   useEffect(() => {
     if (user?.organization_id) {
       fetchMembers()
       fetchGroups()
+      fetchInvites()
     }
   }, [user?.organization_id])
+
+  async function fetchInvites() {
+    setInvitesLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('invites')
+        .select('*')
+        .eq('organization_id', user?.organization_id)
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      setInvites(data || [])
+    } catch (error) {
+      console.error("Error fetching invites:", error)
+      setInvites([])
+    } finally {
+      setInvitesLoading(false)
+    }
+  }
 
   async function fetchMembers() {
     setLoading(true)
@@ -930,15 +952,26 @@ function MembersSettings() {
     return []
   }
 
+  const generateInviteCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    let code = ''
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return code
+  }
+
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inviteEmail) return
 
     try {
+      const inviteCode = generateInviteCode()
       const { data: invite, error } = await supabase
         .from('invites')
         .insert({
           token: Math.random().toString(36).substring(2, 15),
+          invite_code: inviteCode,
           organization_id: user?.organization_id,
           invited_email: inviteEmail,
           rbac_role_assigned: inviteRole === "Administrateur" ? "admin" : 
@@ -957,19 +990,18 @@ function MembersSettings() {
         return
       }
 
-      const inviteUrl = `${window.location.origin}/invite/${invite.token}`
-      console.log('Invitation URL:', inviteUrl)
-      toast.success(`Invitation générée pour ${inviteEmail}`)
+      toast.success(`Invitation générée pour ${inviteEmail} - Code: ${inviteCode}`)
 
       try {
-        await navigator.clipboard.writeText(inviteUrl)
-        toast.info('Lien d\'invitation copié dans le presse-papier !')
+        await navigator.clipboard.writeText(inviteCode)
+        toast.info('Code d\'invitation copié dans le presse-papier !')
       } catch (clipErr) {
         console.warn('Clipboard write failed:', clipErr)
       }
 
       setIsInviteOpen(false)
       setInviteEmail('')
+      fetchInvites()
     } catch (err) {
       console.error('Unexpected error generating invite:', err)
       toast.error('Erreur inattendue lors de la génération de l\'invitation.')
@@ -1179,6 +1211,7 @@ function MembersSettings() {
           <TabsList className="mb-4">
              <TabsTrigger value="members">Membres</TabsTrigger>
              <TabsTrigger value="groups">Groupes</TabsTrigger>
+             <TabsTrigger value="invitations">Invitations</TabsTrigger>
           </TabsList>
 
           <TabsContent value="members" className="flex-1 flex flex-col space-y-4 outline-none">
@@ -1348,6 +1381,79 @@ function MembersSettings() {
                          </DropdownMenu>
                       </div>
                    )))}
+                </div>
+             </div>
+          </TabsContent>
+
+          <TabsContent value="invitations" className="flex-1 flex flex-col space-y-4 outline-none">
+             {/* Invitations List */}
+             <div className="border rounded-lg flex-1 overflow-hidden flex flex-col">
+                <div className="bg-muted/50 px-4 py-3 border-b grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 text-xs font-medium text-muted-foreground">
+                   <div>Email</div>
+                   <div>Code</div>
+                   <div>Rôle</div>
+                   <div>Statut</div>
+                   <div className="w-8"></div>
+                </div>
+                <div className="overflow-auto flex-1">
+                   {invitesLoading ? (
+                     <div className="p-10 text-center text-muted-foreground">Chargement des invitations...</div>
+                   ) : invites.length === 0 ? (
+                     <div className="p-10 text-center text-muted-foreground">Aucune invitation générée.</div>
+                   ) : (
+                     invites.map((inv, i) => (
+                        <div 
+                          key={inv.id} 
+                          className={cn(
+                            "px-4 py-3 border-b last:border-0 grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center hover:bg-muted/5 transition-colors animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both",
+                            `[animation-delay:${i * 50}ms]`
+                          )}
+                        >
+                          <div className="text-sm font-medium">{inv.invited_email}</div>
+                          <div>
+                            <Badge className="font-mono">{inv.invite_code || "N/A"}</Badge>
+                          </div>
+                          <div>
+                             <span className={cn(
+                               "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                               inv.rbac_role_assigned === 'admin' || inv.rbac_role_assigned === 'executive'
+                                 ? "bg-purple-100 text-purple-700"
+                                 : "bg-blue-100 text-blue-700"
+                             )}>
+                                {inv.role_assigned}
+                             </span>
+                          </div>
+                          <div>
+                            {inv.is_used ? (
+                              <Badge tone="good">Utilisée</Badge>
+                            ) : new Date(inv.expires_at) < new Date() ? (
+                              <Badge tone="critical">Expirée</Badge>
+                            ) : (
+                              <Badge tone="neutral">Active</Badge>
+                            )}
+                          </div>
+                          {!inv.is_used && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={async () => {
+                                if (inv.invite_code) {
+                                  try {
+                                    await navigator.clipboard.writeText(inv.invite_code)
+                                    toast.success('Code copié dans le presse-papier !')
+                                  } catch {
+                                    toast.error('Impossible de copier le code')
+                                  }
+                                }
+                              }}
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                          )}
+                       </div>
+                     ))
+                   )}
                 </div>
              </div>
           </TabsContent>

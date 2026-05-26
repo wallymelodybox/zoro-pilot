@@ -3,11 +3,13 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Command, Globe, Shield } from "lucide-react"
+import { Command, Globe, Shield, KeyRound } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { login } from "./actions"
 import { LoginCarousel } from "./login-carousel"
-import { use } from "react"
+import { use, useState } from "react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useRouter } from "next/navigation"
 
 export default function LoginPage({
   searchParams,
@@ -15,6 +17,8 @@ export default function LoginPage({
   searchParams: Promise<{ error?: string; next?: string }>
 }) {
   const resolvedSearchParams = use(searchParams)
+  const router = useRouter()
+  const [inviteCode, setInviteCode] = useState("")
   
   const isBORoute = resolvedSearchParams?.next?.includes('bo-zoro-control-2026-secure')
 
@@ -24,6 +28,13 @@ export default function LoginPage({
       formData.append('next', resolvedSearchParams.next)
     }
     await login(formData)
+  }
+
+  const handleInviteCodeSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (inviteCode.trim()) {
+      router.push(`/invite/${inviteCode.trim()}`)
+    }
   }
 
   return (
@@ -83,36 +94,98 @@ export default function LoginPage({
           </div>
 
           <div className="w-full space-y-6">
-            <div className="grid gap-6">
-              <form action={handleLogin}>
-                <div className="grid gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email professionnel</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      placeholder="nom@entreprise.com"
-                      type="email"
-                      autoCapitalize="none"
-                      autoComplete="email"
-                      autoCorrect="off"
-                      required
-                    />
+            {!isBORoute ? (
+              <Tabs defaultValue="login" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="login">Connexion</TabsTrigger>
+                  <TabsTrigger value="invite">Invitation</TabsTrigger>
+                </TabsList>
+                <TabsContent value="login">
+                  <form action={handleLogin}>
+                    <div className="grid gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="email">Email professionnel</Label>
+                        <Input
+                          id="email"
+                          name="email"
+                          placeholder="nom@entreprise.com"
+                          type="email"
+                          autoCapitalize="none"
+                          autoComplete="email"
+                          autoCorrect="off"
+                          required
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="password">Mot de passe</Label>
+                        <Input 
+                          id="password" 
+                          name="password"
+                          type="password" 
+                          required 
+                        />
+                      </div>
+                      <Button type="submit">
+                        Se connecter
+                      </Button>
+                    </div>
+                  </form>
+                </TabsContent>
+                <TabsContent value="invite">
+                  <form onSubmit={handleInviteCodeSubmit}>
+                    <div className="grid gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="invite-code">Code d'invitation</Label>
+                        <Input
+                          id="invite-code"
+                          placeholder="Ex: ABC123"
+                          value={inviteCode}
+                          onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                          autoCapitalize="characters"
+                          required
+                        />
+                      </div>
+                      <Button type="submit">
+                        <KeyRound className="h-4 w-4 mr-2" />
+                        Utiliser mon code
+                      </Button>
+                    </div>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            ) : (
+              <div className="grid gap-6">
+                <form action={handleLogin}>
+                  <div className="grid gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">Email professionnel</Label>
+                      <Input
+                        id="email"
+                        name="email"
+                        placeholder="nom@entreprise.com"
+                        type="email"
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        autoCorrect="off"
+                        required
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="password">Mot de passe</Label>
+                      <Input 
+                        id="password" 
+                        name="password"
+                        type="password" 
+                        required 
+                      />
+                    </div>
+                    <Button type="submit">
+                      Se connecter
+                    </Button>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Mot de passe / Code d'accès</Label>
-                    <Input 
-                      id="password" 
-                      name="password"
-                      type="password" 
-                      required 
-                    />
-                  </div>
-                  <Button type="submit">
-                    Se connecter
-                  </Button>
-                </div>
-              </form>
+                </form>
+              </div>
+            )}
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

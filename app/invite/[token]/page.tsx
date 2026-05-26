@@ -16,11 +16,13 @@ export default function InvitePage({ params }: { params: { token: string } }) {
 
   useEffect(() => {
     async function validateInvite() {
-      const { data, error } = await supabase
+      let query = supabase
         .from('invites')
         .select('*, organizations(name)')
-        .eq('token', params.token)
-        .single()
+      
+      query = query.or(`token.eq.${params.token},invite_code.eq.${params.token}`)
+      
+      const { data, error } = await query.single()
 
       if (error || !data) {
         setStatus('invalid')
