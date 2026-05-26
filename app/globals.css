@@ -480,3 +480,32 @@
     -webkit-tap-highlight-color: transparent;
   }
 }
+
+@layer components {
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="drawer-content"] {
+    background-color: var(--background) !important;
+    color: var(--foreground) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  [data-slot="popover-content"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="select-content"],
+  [data-slot="command-dialog"] {
+    background-color: var(--popover) !important;
+    color: var(--popover-foreground) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  [data-slot="dialog-overlay"],
+  [data-slot="alert-dialog-overlay"],
+  [data-slot="sheet-overlay"],
+  [data-slot="drawer-overlay"] {
+    background-color: rgb(0 0 0 / 0.9) !important;
+  }
+}
