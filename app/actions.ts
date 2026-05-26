@@ -937,6 +937,109 @@ export async function updateTaskProgress(taskId: string, progress: number) {
   return { success: true }
 }
 
+export async function updateTaskAssignees(taskId: string, assigneeIds: string[]) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  const profile = await getCurrentProfile(supabase, user.id)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+  if (!canManageOrgTasks(profile?.rbac_role)) {
+    return { error: 'Seul le DG peut assigner les tâches à plusieurs membres.' }
+  }
+
+  const memberIds = uniqueIds(assigneeIds)
+
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id')
+    .eq('id', taskId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!task) return { error: 'Tâche introuvable dans votre organisation.' }
+
+  if (memberIds.length === 0) {
+    const { error: clearError } = await supabase
+      .from('task_assignees')
+      .delete()
+      .eq('task_id', taskId)
+      .eq('organization_id', orgId)
+
+    if (clearError) {
+      console.error('Error clearing task assignees:', clearError)
+      return { error: "Erreur lors du retrait des assignations." }
+    }
+
+    await supabase
+      .from('tasks')
+      .update({ assignee_id: null })
+      .eq('id', taskId)
+      .eq('organization_id', orgId)
+
+    revalidatePath('/all-tasks')
+    revalidatePath('/work')
+    revalidatePath('/my-day')
+    return { success: true }
+  }
+
+  const { data: validMembers } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('organization_id', orgId)
+    .in('id', memberIds)
+
+  if (!validMembers || validMembers.length !== memberIds.length) {
+    return { error: 'Vous ne pouvez assigner une tâche qu’à des membres de votre organisation.' }
+  }
+
+  const { error: deleteError } = await supabase
+    .from('task_assignees')
+    .delete()
+    .eq('task_id', taskId)
+    .eq('organization_id', orgId)
+    .not('profile_id', 'in', `(${memberIds.join(',')})`)
+
+  if (deleteError) {
+    console.error('Error pruning task assignees:', deleteError)
+    return { error: "Erreur lors de la mise à jour des assignations." }
+  }
+
+  const { error: upsertError } = await supabase
+    .from('task_assignees')
+    .upsert(
+      memberIds.map((profileId) => ({
+        organization_id: orgId,
+        task_id: taskId,
+        profile_id: profileId,
+        assigned_by: user.id,
+      })),
+      { onConflict: 'task_id,profile_id' }
+    )
+
+  if (upsertError) {
+    console.error('Error updating task assignees:', upsertError)
+    return { error: "Erreur lors de l’assignation des membres." }
+  }
+
+  const { error: taskError } = await supabase
+    .from('tasks')
+    .update({ assignee_id: memberIds[0] })
+    .eq('id', taskId)
+    .eq('organization_id', orgId)
+
+  if (taskError) {
+    console.error('Error updating primary task assignee:', taskError)
+    return { error: "Assignations enregistrées, mais le responsable principal n’a pas pu être mis à jour." }
+  }
+
+  revalidatePath('/all-tasks')
+  revalidatePath('/work')
+  revalidatePath('/my-day')
+  return { success: true }
+}
+
 export async function createChannel(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

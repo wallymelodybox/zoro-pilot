@@ -4,7 +4,7 @@ import * as React from "react"
 import { useState } from "react"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { useUser } from "@/hooks/use-user"
-import { getUserById, getPriorityLabel, getTaskStatusLabel, getPriorityColor, type Task, type TaskStatus } from "@/lib/store"
+import { getPriorityLabel, getTaskStatusLabel, getPriorityColor, type Task, type TaskStatus } from "@/lib/store"
 import {
   List,
   Columns3,
@@ -55,7 +55,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { createTask, updateTaskStatus, deleteTask } from "@/app/actions"
+import { createTask, updateTaskStatus, updateTaskAssignees, deleteTask } from "@/app/actions"
 import { toast } from "sonner"
 import {
   DndContext,
@@ -87,6 +87,42 @@ function getTaskProgress(task: Task) {
   return 0
 }
 
+function getTaskAssigneeIds(task: Task) {
+  return task.assigneeIds && task.assigneeIds.length > 0 ? task.assigneeIds : task.assigneeId ? [task.assigneeId] : []
+}
+
+function TaskAssignees({ task, profiles }: { task: Task; profiles: any[] }) {
+  const assignees = profiles.filter((profile: any) => getTaskAssigneeIds(task).includes(profile.id))
+
+  if (assignees.length === 0) {
+    return (
+      <span className="text-xs text-muted-foreground italic flex items-center gap-1">
+        <UserIcon className="h-3 w-3" />
+        Non assignée
+      </span>
+    )
+  }
+
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <div className="flex -space-x-1">
+        {assignees.slice(0, 4).map((assignee: any) => (
+          <UserAvatar
+            key={assignee.id}
+            name={assignee.name}
+            avatarUrl={assignee.avatar_url}
+            fallback={assignee.name?.[0] || "U"}
+            className="h-6 w-6 border border-background"
+          />
+        ))}
+      </div>
+      <span className="truncate text-xs text-muted-foreground max-w-24">
+        {assignees.length === 1 ? assignees[0].name.split(" ")[0] : `${assignees.length} membres`}
+      </span>
+    </div>
+  )
+}
+
 export default function AllTasksPage() {
   const { user } = useUser()
   const { tasks, projects, profiles, loading, refresh } = useSupabaseData()
@@ -98,10 +134,10 @@ export default function AllTasksPage() {
   const [createDescription, setCreateDescription] = React.useState("")
   const [createPriority, setCreatePriority] = React.useState("medium")
   const [createDueDate, setCreateDueDate] = React.useState("")
-  const [createAssigneeId, setCreateAssigneeId] = React.useState("")
+  const [createAssigneeIds, setCreateAssigneeIds] = React.useState<string[]>([])
   const [createVisibility, setCreateVisibility] = React.useState("private")
   const canAssignTasks = user?.rbac_role === "super_admin" || user?.rbac_role === "admin" || user?.rbac_role === "executive"
-  const selectedAssigneeId = canAssignTasks ? (createAssigneeId || user?.id || "") : (user?.id || "")
+  const selectedAssigneeIds = canAssignTasks ? createAssigneeIds : [user?.id || ""].filter(Boolean)
 
   if (loading) {
     return <div className="flex items-center justify-center h-screen text-muted-foreground">Chargement des tâches...</div>
@@ -113,7 +149,7 @@ export default function AllTasksPage() {
     setCreateDescription("")
     setCreatePriority("medium")
     setCreateDueDate("")
-    setCreateAssigneeId(user?.id || "")
+    setCreateAssigneeIds(user?.id ? [user.id] : [])
     setCreateVisibility("private")
     setIsCreateOpen(true)
   }
@@ -127,7 +163,8 @@ export default function AllTasksPage() {
     fd.set("status", createStatus)
     fd.set("priority", createPriority)
     fd.set("projectId", "none")
-    fd.set("assigneeId", selectedAssigneeId)
+    selectedAssigneeIds.forEach((id) => fd.append("assigneeIds", id))
+    if (selectedAssigneeIds[0]) fd.set("assigneeId", selectedAssigneeIds[0])
     fd.set("visibility", canAssignTasks ? createVisibility : "private")
     if (createDueDate) fd.set("dueDate", createDueDate)
 
@@ -212,19 +249,19 @@ export default function AllTasksPage() {
 
       <main className="flex-1 bg-transparent p-6 overflow-hidden">
          {currentView === "list" && (
-            <CardList tasks={tasks} projects={projects} onRefresh={refresh} />
+            <CardList tasks={tasks} projects={projects} profiles={profiles} canAssignTasks={canAssignTasks} onRefresh={refresh} />
          )}
          {currentView === "kanban" && (
-            <KanbanView tasks={tasks} onRefresh={refresh} />
+            <KanbanView tasks={tasks} profiles={profiles} canAssignTasks={canAssignTasks} onRefresh={refresh} />
          )}
          {currentView === "planning" && (
             <PlanningView tasks={tasks} projects={projects} />
          )}
          {currentView === "assignments" && (
-            <AssignmentsView tasks={tasks} />
+            <AssignmentsView tasks={tasks} profiles={profiles} />
          )}
          {currentView === "done" && (
-            <CardList tasks={doneTasks} projects={projects} onRefresh={refresh} />
+            <CardList tasks={doneTasks} projects={projects} profiles={profiles} canAssignTasks={canAssignTasks} onRefresh={refresh} />
          )}
          {currentView === "files" && (
             <div className="flex items-center justify-center h-full text-muted-foreground flex-col gap-2">
@@ -268,17 +305,28 @@ export default function AllTasksPage() {
               Statut: {getTaskStatusLabel(createStatus)}
             </div>
             {canAssignTasks && (
-              <div className="grid grid-cols-2 gap-3">
-                <Select value={selectedAssigneeId} onValueChange={setCreateAssigneeId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Assignée à" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profiles.map((profile: any) => (
-                      <SelectItem key={profile.id} value={profile.id}>{profile.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid gap-3">
+                <div className="grid max-h-44 gap-2 overflow-y-auto rounded-lg border p-2">
+                  {profiles.map((profile: any) => {
+                    const checked = createAssigneeIds.includes(profile.id)
+                    return (
+                      <label key={profile.id} className="flex items-center justify-between rounded-md border bg-background px-2 py-2 text-sm">
+                        <span className="truncate">{profile.name}</span>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(event) => {
+                            setCreateAssigneeIds((current) =>
+                              event.target.checked
+                                ? Array.from(new Set([...current, profile.id]))
+                                : current.filter((id) => id !== profile.id)
+                            )
+                          }}
+                        />
+                      </label>
+                    )
+                  })}
+                </div>
                 <Select value={createVisibility} onValueChange={setCreateVisibility}>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Visibilité" />
@@ -307,9 +355,13 @@ export default function AllTasksPage() {
 
 function KanbanView({
   tasks,
+  profiles,
+  canAssignTasks,
   onRefresh,
 }: {
   tasks: Task[]
+  profiles: any[]
+  canAssignTasks: boolean
   onRefresh?: () => void
 }) {
   const [localTasks, setLocalTasks] = React.useState<Task[]>(tasks)
@@ -320,6 +372,7 @@ function KanbanView({
   const [createDescription, setCreateDescription] = React.useState("")
   const [createPriority, setCreatePriority] = React.useState("medium")
   const [createDueDate, setCreateDueDate] = React.useState("")
+  const [createAssigneeIds, setCreateAssigneeIds] = React.useState<string[]>([])
   const statuses: TaskStatus[] = ["todo", "in-progress", "blocked", "done"]
 
   React.useEffect(() => {
@@ -341,6 +394,7 @@ function KanbanView({
     setCreateDescription("")
     setCreatePriority("medium")
     setCreateDueDate("")
+    setCreateAssigneeIds([])
     setIsCreateOpen(true)
   }
 
@@ -354,6 +408,8 @@ function KanbanView({
     fd.set("priority", createPriority)
     fd.set("projectId", "none")
     fd.set("visibility", "private")
+    createAssigneeIds.forEach((id) => fd.append("assigneeIds", id))
+    if (createAssigneeIds[0]) fd.set("assigneeId", createAssigneeIds[0])
     if (createDueDate) fd.set("dueDate", createDueDate)
 
     const res = await createTask(fd)
@@ -442,6 +498,9 @@ function KanbanView({
             key={status}
             status={status}
             tasks={localTasks.filter(t => t.status === status)}
+            profiles={profiles}
+            canAssignTasks={canAssignTasks}
+            onRefresh={onRefresh}
             onAdd={() => openCreate(status)}
           />
         ))}
@@ -502,6 +561,29 @@ function KanbanView({
             <div className="text-xs text-muted-foreground">
               Statut: {getTaskStatusLabel(createStatus)}
             </div>
+            {canAssignTasks && (
+              <div className="grid max-h-44 gap-2 overflow-y-auto rounded-lg border p-2">
+                {profiles.map((profile: any) => {
+                  const checked = createAssigneeIds.includes(profile.id)
+                  return (
+                    <label key={profile.id} className="flex items-center justify-between rounded-md border bg-background px-2 py-2 text-sm">
+                      <span className="truncate">{profile.name}</span>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(event) => {
+                          setCreateAssigneeIds((current) =>
+                            event.target.checked
+                              ? Array.from(new Set([...current, profile.id]))
+                              : current.filter((id) => id !== profile.id)
+                          )
+                        }}
+                      />
+                    </label>
+                  )
+                })}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
@@ -520,10 +602,16 @@ function KanbanView({
 function KanbanColumn({
   status,
   tasks,
+  profiles,
+  canAssignTasks,
+  onRefresh,
   onAdd,
 }: {
   status: TaskStatus
   tasks: Task[]
+  profiles: any[]
+  canAssignTasks: boolean
+  onRefresh?: () => void
   onAdd: () => void
 }) {
   const { setNodeRef } = useDroppable({ id: status })
@@ -554,7 +642,7 @@ function KanbanColumn({
         >
           <div className="space-y-3 min-h-20">
             {tasks.map(task => (
-              <SortableTaskCard key={task.id} task={task} />
+              <SortableTaskCard key={task.id} task={task} profiles={profiles} canAssignTasks={canAssignTasks} onRefresh={onRefresh} />
             ))}
           </div>
         </SortableContext>
@@ -563,7 +651,7 @@ function KanbanColumn({
   )
 }
 
-function SortableTaskCard({ task }: { task: Task }) {
+function SortableTaskCard({ task, profiles, canAssignTasks, onRefresh }: { task: Task; profiles: any[]; canAssignTasks: boolean; onRefresh?: () => void }) {
   const {
     attributes,
     listeners,
@@ -617,15 +705,9 @@ function SortableTaskCard({ task }: { task: Task }) {
             </div>
             <div className="flex items-center justify-between mt-1">
               <div className="flex items-center gap-2">
-                {task.assigneeId ? (
-                  (() => {
-                    const user = getUserById(task.assigneeId)
-                    return <UserAvatar name={user?.name || "?"} fallback={user?.avatar || "?"} className="h-5 w-5" />
-                  })()
-                ) : (
-                  <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center">
-                    <UserIcon className="h-3 w-3 text-muted-foreground" />
-                  </div>
+                <TaskAssignees task={task} profiles={profiles} />
+                {canAssignTasks && (
+                  <TaskAssigneeDialog task={task} profiles={profiles} onRefresh={onRefresh} />
                 )}
                 {task.dueDate && (
                   <span className="text-[10px] text-muted-foreground flex items-center gap-1">
@@ -656,6 +738,92 @@ function SortableTaskCard({ task }: { task: Task }) {
         </button>
       </div>
     </div>
+  )
+}
+
+function TaskAssigneeDialog({ task, profiles, onRefresh }: { task: Task; profiles: any[]; onRefresh?: () => void }) {
+  const [open, setOpen] = React.useState(false)
+  const [selectedIds, setSelectedIds] = React.useState<string[]>(getTaskAssigneeIds(task))
+  const [saving, setSaving] = React.useState(false)
+
+  React.useEffect(() => {
+    if (open) setSelectedIds(getTaskAssigneeIds(task))
+  }, [open, task])
+
+  const toggle = (profileId: string, checked: boolean) => {
+    setSelectedIds((current) =>
+      checked
+        ? Array.from(new Set([...current, profileId]))
+        : current.filter((id) => id !== profileId)
+    )
+  }
+
+  const submit = async () => {
+    setSaving(true)
+    const res = await updateTaskAssignees(task.id, selectedIds)
+    setSaving(false)
+
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+
+    toast.success("Assignations mises à jour")
+    setOpen(false)
+    onRefresh?.()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-7 gap-1 px-2 text-xs"
+        onClick={(event) => {
+          event.stopPropagation()
+          setOpen(true)
+        }}
+      >
+        <Users className="h-3.5 w-3.5" />
+        Assigner
+      </Button>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Assigner la tâche</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <div className="text-sm font-medium">{task.title}</div>
+          <div className="grid max-h-72 gap-2 overflow-y-auto rounded-lg border p-2">
+            {profiles.map((profile: any) => {
+              const checked = selectedIds.includes(profile.id)
+              return (
+                <label key={profile.id} className="flex items-center justify-between rounded-md border bg-background px-2 py-2 text-sm">
+                  <span className="truncate">{profile.name}</span>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(event) => toggle(profile.id, event.target.checked)}
+                  />
+                </label>
+              )
+            })}
+            {profiles.length === 0 && (
+              <div className="text-sm text-muted-foreground">Aucun membre disponible.</div>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {selectedIds.length} membre(s) sélectionné(s)
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
+          <Button onClick={submit} disabled={saving}>
+            {saving ? "Enregistrement..." : "Enregistrer"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -724,14 +892,17 @@ function PlanningView({ tasks, projects }: { tasks: Task[], projects: any[] }) {
   )
 }
 
-function AssignmentsView({ tasks }: { tasks: Task[] }) {
+function AssignmentsView({ tasks, profiles }: { tasks: Task[]; profiles: any[] }) {
   const groupedTasks: Record<string, Task[]> = {}
   const unassignedTasks: Task[] = []
 
   tasks.forEach(task => {
-    if (task.assigneeId) {
-      if (!groupedTasks[task.assigneeId]) groupedTasks[task.assigneeId] = []
-      groupedTasks[task.assigneeId].push(task)
+    const assigneeIds = getTaskAssigneeIds(task)
+    if (assigneeIds.length > 0) {
+      assigneeIds.forEach((assigneeId) => {
+        if (!groupedTasks[assigneeId]) groupedTasks[assigneeId] = []
+        groupedTasks[assigneeId].push(task)
+      })
     } else {
       unassignedTasks.push(task)
     }
@@ -740,7 +911,7 @@ function AssignmentsView({ tasks }: { tasks: Task[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-auto h-full pr-2 pb-4">
       {Object.entries(groupedTasks).map(([assigneeId, userTasks], i) => {
-        const user = getUserById(assigneeId)
+        const profile = profiles.find((item: any) => item.id === assigneeId)
         return (
           <div 
             key={assigneeId} 
@@ -750,9 +921,9 @@ function AssignmentsView({ tasks }: { tasks: Task[] }) {
             )}
           >
             <div className="p-4 border-b flex items-center gap-3 bg-muted/5">
-              <UserAvatar name={user?.name || "Utilisateur"} fallback={user?.avatar || "U"} className="h-8 w-8" />
+              <UserAvatar name={profile?.name || "Utilisateur"} avatarUrl={profile?.avatar_url} fallback={profile?.name?.[0] || "U"} className="h-8 w-8" />
               <div className="flex flex-col">
-                <span className="text-sm font-semibold">{user?.name}</span>
+                <span className="text-sm font-semibold">{profile?.name || "Utilisateur"}</span>
                 <span className="text-[10px] text-muted-foreground">{userTasks.length} tâches assignées</span>
               </div>
             </div>
@@ -799,7 +970,7 @@ function AssignmentsView({ tasks }: { tasks: Task[] }) {
   )
 }
 
-function CardList({ tasks, projects, onRefresh }: { tasks: Task[], projects: any[], onRefresh?: () => void }) {
+function CardList({ tasks, projects, profiles, canAssignTasks, onRefresh }: { tasks: Task[], projects: any[], profiles: any[], canAssignTasks: boolean, onRefresh?: () => void }) {
    const [openTaskId, setOpenTaskId] = React.useState<string | null>(null)
 
    return (
@@ -807,8 +978,6 @@ function CardList({ tasks, projects, onRefresh }: { tasks: Task[], projects: any
          <div className="space-y-2">
             {tasks.map((task, i) => {
                const project = projects.find(p => p.id === task.projectId)
-               const assignee = getUserById(task.assigneeId)
-               
                const isOpen = openTaskId === task.id
 
                return (
@@ -851,18 +1020,8 @@ function CardList({ tasks, projects, onRefresh }: { tasks: Task[], projects: any
                      </div>
 
                      <div className="flex items-center gap-6">
-                        <div className="flex items-center gap-2 min-w-30">
-                           {assignee ? (
-                              <>
-                                 <UserAvatar name={assignee.name} fallback={assignee.avatar} className="h-6 w-6" />
-                                 <span className="text-xs text-muted-foreground truncate max-w-20">{assignee.name.split(' ')[0]}</span>
-                              </>
-                           ) : (
-                              <span className="text-xs text-muted-foreground italic flex items-center gap-1">
-                                 <UserIcon className="h-3 w-3" />
-                                 Non assigné
-                              </span>
-                           )}
+                        <div className="flex items-center gap-2 min-w-36">
+                           <TaskAssignees task={task} profiles={profiles} />
                         </div>
 
                         <div className="flex items-center gap-2 min-w-25">
@@ -887,6 +1046,12 @@ function CardList({ tasks, projects, onRefresh }: { tasks: Task[], projects: any
                               </Button>
                            </DropdownMenuTrigger>
                            <DropdownMenuContent align="end" className="w-48">
+                              {canAssignTasks && (
+                                <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                                  <TaskAssigneeDialog task={task} profiles={profiles} onRefresh={onRefresh} />
+                                </DropdownMenuItem>
+                              )}
+                              {canAssignTasks && <DropdownMenuSeparator />}
                               <DropdownMenuItem onClick={async () => {
                                  const res = await updateTaskStatus(task.id, 'done')
                                  if (res.success) {
