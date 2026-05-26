@@ -2,15 +2,21 @@
 
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { CheckCircle2, XCircle, Loader2, Mail, Building, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 
 export default function InvitePage({ params }: { params: { token: string } }) {
-  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'expired' | 'used'>('loading')
+  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'expired' | 'used' | 'signup'>('loading')
   const [inviteData, setInviteData] = useState<any>(null)
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [name, setName] = useState("")
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -40,19 +46,54 @@ export default function InvitePage({ params }: { params: { token: string } }) {
       }
 
       setInviteData(data)
+      setName(data.invited_email.split('@')[0])
       setStatus('valid')
     }
 
     validateInvite()
   }, [params.token])
 
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!password || password !== confirmPassword) {
+      toast.error("Les mots de passe ne correspondent pas.")
+      return
+    }
+    if (password.length < 6) {
+      toast.error("Le mot de passe doit contenir au moins 6 caractères.")
+      return
+    }
+
+    setLoading(true)
+    try {
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: inviteData.invited_email,
+        password,
+        options: {
+          data: {
+            full_name: name
+          }
+        }
+      })
+
+      if (signUpError) {
+        toast.error(signUpError.message)
+        setLoading(false)
+        return
+      }
+
+      toast.success("Compte créé avec succès!")
+      router.push('/')
+    } catch (err) {
+      console.error(err)
+      toast.error("Erreur lors de la création du compte.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleAccept = () => {
-    // Store invite token in session/local storage for the login/signup process
-    localStorage.setItem('zoro_invite_token', params.token)
-    localStorage.setItem('zoro_invited_email', inviteData.invited_email)
-    
-    toast.success("Invitation acceptée ! Vous allez être redirigé vers la connexion.")
-    router.push(`/login?email=${encodeURIComponent(inviteData.invited_email)}`)
+    setStatus('signup')
   }
 
   return (
@@ -62,12 +103,13 @@ export default function InvitePage({ params }: { params: { token: string } }) {
           <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center">
             {status === 'loading' && <Loader2 className="h-8 w-8 text-primary animate-spin" />}
             {status === 'valid' && <ShieldCheck className="h-8 w-8 text-primary" />}
+            {status === 'signup' && <CheckCircle2 className="h-8 w-8 text-primary" />}
             {(status === 'invalid' || status === 'expired' || status === 'used') && <XCircle className="h-8 w-8 text-destructive" />}
           </div>
           
           <CardTitle className="text-2xl font-bold">
             {status === 'loading' && "Vérification de l'invitation..."}
-            {status === 'valid' && "Invitation Zoro Pilot"}
+            {(status === 'valid' || status === 'signup') && "Invitation Zoro Pilot"}
             {status === 'invalid' && "Invitation invalide"}
             {status === 'expired' && "Invitation expirée"}
             {status === 'used' && "Invitation déjà utilisée"}
@@ -75,6 +117,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
           
           <CardDescription>
             {status === 'valid' && `Vous avez été invité à rejoindre l'organisation ${inviteData?.organizations?.name}.`}
+            {status === 'signup' && `Complétez votre inscription pour rejoindre ${inviteData?.organizations?.name}.`}
             {status === 'invalid' && "Ce lien d'invitation n'existe pas ou a été corrompu."}
             {status === 'expired' && "Cette invitation n'est plus valide car sa date d'expiration est dépassée."}
             {status === 'used' && "Cette invitation a déjà été consommée par un autre utilisateur."}
@@ -105,6 +148,56 @@ export default function InvitePage({ params }: { params: { token: string } }) {
             <p className="text-[10px] text-center text-muted-foreground uppercase tracking-widest font-bold">
               Zoro Pilot • Accès sécurisé
             </p>
+          </CardContent>
+        )}
+
+        {status === 'signup' && (
+          <CardContent className="space-y-6">
+            <form onSubmit={handleSignUp} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nom complet</Label>
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Votre nom"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  value={inviteData?.invited_email}
+                  disabled
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Mot de passe</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={loading} className="w-full py-6 text-lg font-semibold">
+                {loading ? "Création du compte..." : "Créer mon compte"}
+              </Button>
+            </form>
           </CardContent>
         )}
 
