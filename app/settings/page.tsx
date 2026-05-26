@@ -91,7 +91,7 @@ const canManageOrgSettings = (role?: string | null) =>
   role === "super_admin" || role === "admin" || role === "executive"
 
 const canManageOrgMembers = (role?: string | null) =>
-  role === "super_admin" || role === "admin" || role === "executive" || role === "manager"
+  role === "super_admin" || role === "admin" || role === "executive"
 
 function NotConfigured({
   title,
@@ -112,13 +112,21 @@ function SettingsContent() {
   const { user, loading: userLoading } = useUser()
   const searchParams = useSearchParams()
   const sectionParam = searchParams.get("section") as SettingsSection | null
-  const [activeSection, setActiveSection] = useState<SettingsSection>(sectionParam || "members")
+  const isDGOrAdmin = canManageOrgSettings(user?.rbac_role)
+  
+  const [activeSection, setActiveSection] = useState<SettingsSection>(
+    isDGOrAdmin ? (sectionParam || "members") : "account"
+  )
 
   useEffect(() => {
     if (sectionParam) {
-      setActiveSection(sectionParam)
+      if (isDGOrAdmin || ["account", "notifications", "theme", "security"].includes(sectionParam)) {
+        setActiveSection(sectionParam)
+      } else {
+        setActiveSection("account")
+      }
     }
-  }, [sectionParam])
+  }, [sectionParam, isDGOrAdmin])
 
   if (userLoading) {
     return <div className="p-10 text-center">Chargement...</div>
@@ -134,7 +142,7 @@ function SettingsContent() {
         { id: "security", icon: Shield, label: "Sécurité" },
       ]
     },
-    { 
+    ...(isDGOrAdmin ? [{ 
       title: "Organisation", 
       items: [
         { id: "organization", icon: Building, label: user?.organization_name || "Organisation", sub: user?.role },
@@ -143,7 +151,7 @@ function SettingsContent() {
         { id: "billing", icon: CreditCard, label: "Abonnement" },
         { id: "permissions", icon: Lock, label: "Permissions" },
       ]
-    },
+    }] : []),
   ]
 
   const renderContent = () => {
@@ -1015,18 +1023,12 @@ function MembersSettings() {
     }
 
     // Never allow non-super_admin to modify the app owner
-    if (editingMember.rbac_role === 'super_admin' && user?.rbac_role !== 'super_admin') {
+    if ((editingMember.rbac_role as string) === 'super_admin' && user?.rbac_role !== 'super_admin') {
       toast.error("Impossible de modifier le propriétaire de l'application.")
       return
     }
 
     const newRbac = roleLabelToRbac(editingRole)
-
-    // Prevent granting owner role through the UI unless current user is owner
-    if (newRbac === 'super_admin' && user?.rbac_role !== 'super_admin') {
-      toast.error("Vous n'avez pas le droit d'attribuer le rôle Propriétaire.")
-      return
-    }
 
     const { error } = await supabase
       .from("profiles")
