@@ -1427,7 +1427,7 @@ function MembersSettings() {
                             {inv.is_used ? (
                               <Badge tone="good">Utilisée</Badge>
                             ) : new Date(inv.expires_at) < new Date() ? (
-                              <Badge tone="critical">Expirée</Badge>
+                              <Badge tone="bad">Expirée</Badge>
                             ) : (
                               <Badge tone="neutral">Active</Badge>
                             )}
