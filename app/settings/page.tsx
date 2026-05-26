@@ -917,7 +917,7 @@ function MembersSettings() {
       return ["Administrateur", "Chef de département", "Membre", "Invité"]
     }
     if (userRole === "executive") {
-      return ["Membre", "Invité"]
+      return ["Administrateur", "Chef de département", "Membre", "Invité"]
     }
     return []
   }
@@ -925,37 +925,47 @@ function MembersSettings() {
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!inviteEmail) return
-    
-    const { data: invite, error } = await supabase
-      .from('invites')
-      .insert({
-        token: Math.random().toString(36).substring(2, 15),
-        organization_id: user?.organization_id,
-        invited_email: inviteEmail,
-        rbac_role_assigned: inviteRole === "Administrateur" ? "admin" : 
-                            inviteRole === "Chef de département" ? "manager" : "member",
-        role_assigned: inviteRole,
-        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 jours
-        created_by: user?.id
-      })
-      .select()
-      .single()
 
-    if (error) {
-      toast.error("Erreur lors de la génération de l'invitation")
-      return
+    try {
+      const { data: invite, error } = await supabase
+        .from('invites')
+        .insert({
+          token: Math.random().toString(36).substring(2, 15),
+          organization_id: user?.organization_id,
+          invited_email: inviteEmail,
+          rbac_role_assigned: inviteRole === "Administrateur" ? "admin" : 
+                              inviteRole === "Chef de département" ? "manager" : "member",
+          role_assigned: inviteRole,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 jours
+          created_by: user?.id
+        })
+        .select()
+        .single()
+
+      if (error || !invite) {
+        console.error('Invite insert error:', error)
+        const msg = error?.message || 'Erreur lors de la génération de l\'invitation.'
+        toast.error(`${msg} Si l'erreur persiste, vérifiez les permissions RLS.`)
+        return
+      }
+
+      const inviteUrl = `${window.location.origin}/invite/${invite.token}`
+      console.log('Invitation URL:', inviteUrl)
+      toast.success(`Invitation générée pour ${inviteEmail}`)
+
+      try {
+        await navigator.clipboard.writeText(inviteUrl)
+        toast.info('Lien d\'invitation copié dans le presse-papier !')
+      } catch (clipErr) {
+        console.warn('Clipboard write failed:', clipErr)
+      }
+
+      setIsInviteOpen(false)
+      setInviteEmail('')
+    } catch (err) {
+      console.error('Unexpected error generating invite:', err)
+      toast.error('Erreur inattendue lors de la génération de l\'invitation.')
     }
-
-    const inviteUrl = `${window.location.origin}/invite/${invite.token}`
-    
-    console.log("Invitation URL:", inviteUrl)
-    toast.success(`Invitation générée pour ${inviteEmail}`)
-    
-    navigator.clipboard.writeText(inviteUrl)
-    toast.info("Lien d'invitation copié dans le presse-papier !")
-    
-    setIsInviteOpen(false)
-    setInviteEmail("")
   }
 
   const handleCreateGroup = (e: React.FormEvent) => {
@@ -997,7 +1007,27 @@ function MembersSettings() {
 
   const handleUpdateMemberRole = async () => {
     if (!editingMember) return
+
+    // Prevent users from changing their own role unless they are super_admin (app owner)
+    if (editingMember.id === user?.id && user?.rbac_role !== 'super_admin') {
+      toast.error("Vous ne pouvez pas modifier votre propre rôle. Contactez le propriétaire de l'application.")
+      return
+    }
+
+    // Never allow non-super_admin to modify the app owner
+    if (editingMember.rbac_role === 'super_admin' && user?.rbac_role !== 'super_admin') {
+      toast.error("Impossible de modifier le propriétaire de l'application.")
+      return
+    }
+
     const newRbac = roleLabelToRbac(editingRole)
+
+    // Prevent granting owner role through the UI unless current user is owner
+    if (newRbac === 'super_admin' && user?.rbac_role !== 'super_admin') {
+      toast.error("Vous n'avez pas le droit d'attribuer le rôle Propriétaire.")
+      return
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({ rbac_role: newRbac, role: editingRole })
@@ -1015,6 +1045,19 @@ function MembersSettings() {
 
   const handleRemoveMember = async () => {
     if (!editingMember) return
+
+    // Prevent users from removing themselves unless they are super_admin (app owner)
+    if (editingMember.id === user?.id && user?.rbac_role !== 'super_admin') {
+      toast.error("Vous ne pouvez pas vous retirer de l'organisation. Contactez le propriétaire de l'application.")
+      return
+    }
+
+    // Prevent removing the app owner by non-owner users
+    if (editingMember.rbac_role === 'super_admin' && user?.rbac_role !== 'super_admin') {
+      toast.error("Impossible de retirer le propriétaire de l'application.")
+      return
+    }
+
     const { error } = await supabase
       .from("profiles")
       .update({ organization_id: null, rbac_role: "viewer", role: "Invité" })
