@@ -1490,6 +1490,10 @@ export function StrategicDashboard() {
     return <PMOClarityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
   }
 
+  if (variant === "strategic-notebook") {
+    return <PMOClarityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
+  }
+
   return <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
 }
 

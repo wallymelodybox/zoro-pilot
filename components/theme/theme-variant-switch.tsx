@@ -9,6 +9,7 @@ const items: { id: ThemeVariant; label: string }[] = [
   { id: "ai-productivity", label: "Option 2" },
   { id: "executive-futurist", label: "Option 3" },
   { id: "pmo-clarity", label: "Option 4" },
+  { id: "strategic-notebook", label: "Carnet" },
 ];
 
 export function ThemeVariantSwitch({ className }: { className?: string }) {

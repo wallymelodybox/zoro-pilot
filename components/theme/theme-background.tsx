@@ -51,6 +51,19 @@ export function ThemeBackground() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.65),transparent_55%)]" suppressHydrationWarning />
         </>
       )}
+
+      {/* 5) STRATEGIC NOTEBOOK (Light / paper journal) */}
+      {variant === "strategic-notebook" && (
+        <>
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,253,247,0.98),rgba(251,247,238,0.96))]" suppressHydrationWarning />
+          <div className="absolute inset-0 opacity-70 bg-[repeating-linear-gradient(0deg,transparent_0,transparent_30px,rgba(76,93,154,0.12)_31px,transparent_32px)]" suppressHydrationWarning />
+          <div className="absolute inset-0 opacity-45 bg-[linear-gradient(90deg,transparent_0,transparent_72px,rgba(232,121,157,0.20)_73px,transparent_74px)]" suppressHydrationWarning />
+          <div className="absolute left-10 top-0 h-full w-8 opacity-35 bg-[radial-gradient(circle,rgba(76,93,154,0.36)_0_3px,transparent_4px)] bg-[size:26px_58px]" suppressHydrationWarning />
+          <div className="absolute right-10 top-10 text-4xl text-primary/25 rotate-12" suppressHydrationWarning>☆</div>
+          <div className="absolute left-[32%] top-20 text-3xl text-amber-400/35 -rotate-12" suppressHydrationWarning>✦</div>
+          <div className="absolute bottom-12 right-[28%] text-5xl text-pink-300/35 rotate-6" suppressHydrationWarning>✿</div>
+        </>
+      )}
     </div>
   )
 }

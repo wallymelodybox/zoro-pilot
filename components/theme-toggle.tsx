@@ -36,6 +36,9 @@ export function ThemeToggle() {
         <DropdownMenuItem onClick={() => setVariant("pmo-clarity")}>
           Option 4 (PMO Clarity)
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setVariant("strategic-notebook")}>
+          Strategic Notebook
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

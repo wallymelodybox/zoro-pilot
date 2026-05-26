@@ -470,7 +470,7 @@ function ThemeSettings() {
         <p className="text-xs text-muted-foreground">
           Choisissez une ambiance visuelle pour toute l&apos;application.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 max-w-4xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 max-w-5xl">
           <button
             type="button"
             onClick={() => setVariant("command-center")}
@@ -540,6 +540,24 @@ function ThemeSettings() {
             <span className="text-sm font-medium">PMO Clarity</span>
             <span className="text-[11px] text-muted-foreground">
               Interface claire, compacte et orientée exécution projet.
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setVariant("strategic-notebook")}
+            className={`flex flex-col items-start gap-2 rounded-xl border p-3 text-left transition-all ${
+              variant === "strategic-notebook"
+                ? "border-primary bg-primary/5 shadow-sm"
+                : "border-border/60 hover:border-primary/40 hover:bg-muted/40"
+            }`}
+          >
+            <span className="text-xs font-semibold uppercase tracking-widest text-primary">
+              Carnet
+            </span>
+            <span className="text-sm font-medium">Strategic Notebook</span>
+            <span className="text-[11px] text-muted-foreground">
+              Cahier de pilotage vivant, cartes sticky notes et ambiance pastel.
             </span>
           </button>
         </div>

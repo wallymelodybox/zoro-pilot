@@ -257,13 +257,14 @@ export function AppSidebar() {
   const { user } = useUser()
   const { tasks } = useSupabaseData()
   const isPmoClarity = variant === "pmo-clarity"
+  const isStrategicNotebook = variant === "strategic-notebook"
 
   const items = useMemo<NavItem[]>(() => {
     return [...navItems]
   }, [])
 
   const widthClass =
-    isPmoClarity
+    isPmoClarity || isStrategicNotebook
       ? (collapsed ? "w-20" : "w-[17rem]")
       : variant === "executive-futurist"
       ? (collapsed ? "w-20" : "w-80")
@@ -272,8 +273,8 @@ export function AppSidebar() {
   const asideClass = cn(
     "flex h-full flex-col overflow-hidden transition-all duration-300",
     "border border-border",
-    isPmoClarity
-      ? "rounded-xl bg-card/85 backdrop-blur-md shadow-[0_14px_34px_rgba(19,45,35,0.10)]"
+    isPmoClarity || isStrategicNotebook
+      ? "rounded-xl bg-card shadow-[0_14px_34px_rgba(19,45,35,0.10)]"
       : "rounded-3xl bg-card/40 backdrop-blur-xl shadow-2xl",
     widthClass
   )
@@ -281,7 +282,7 @@ export function AppSidebar() {
   const getItemClass = (isActive: boolean) => {
     return cn(
       "flex items-center gap-3 px-3 py-2.5 text-sm transition group",
-      isPmoClarity ? "rounded-lg" : "rounded-xl",
+      isPmoClarity || isStrategicNotebook ? "rounded-lg" : "rounded-xl",
       // Base text color from tokens
       "text-muted-foreground hover:text-foreground",
       // Hover surface
@@ -294,7 +295,7 @@ export function AppSidebar() {
 
   const logoBadgeClass = cn(
     "flex h-10 w-10 shrink-0 items-center justify-center transition-all",
-    isPmoClarity ? "rounded-lg" : "rounded-xl",
+    isPmoClarity || isStrategicNotebook ? "rounded-lg" : "rounded-xl",
     "border border-border",
     // glass badge
     "bg-[var(--glass-bg)] backdrop-blur-xl",
@@ -302,7 +303,9 @@ export function AppSidebar() {
   )
 
   const subtitle =
-    isPmoClarity
+    isStrategicNotebook
+      ? "Strategic Notebook"
+      : isPmoClarity
       ? "PMO Clarity"
       : variant === "executive-futurist"
         ? "Strategic Intelligence"
@@ -415,6 +418,25 @@ export function AppSidebar() {
                   <div className="text-sm font-semibold text-destructive">{tasks.filter(t => t.status === "blocked").length}</div>
                   <div className="text-[10px] text-muted-foreground">Bloquées</div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {!collapsed && isStrategicNotebook && (
+            <div className="mb-4 relative rounded-lg border border-dashed border-primary/30 bg-accent/60 p-3 shadow-sm">
+              <div className="absolute -top-3 right-4 rounded-sm bg-[color:var(--notebook-tape)] px-5 py-1 text-[0px] shadow-sm rotate-3">tape</div>
+              <div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span>Tâches terminées</span>
+                <span className="text-primary">☆</span>
+              </div>
+              <div className="text-2xl font-semibold text-foreground">{tasks.filter(t => t.status === 'done').length} / {tasks.length}</div>
+              <div className="mt-2 h-1.5 w-full rounded-full bg-background overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full bg-primary transition-all duration-500",
+                    `w-[${(tasks.filter(t => t.status === 'done').length / (tasks.length || 1)) * 100}%]`
+                  )}
+                />
               </div>
             </div>
           )}
