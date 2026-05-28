@@ -12,7 +12,7 @@ import { toast } from "sonner"
 
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
-  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'expired' | 'used' | 'signup'>('loading')
+  const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'expired' | 'used' | 'signup' | 'check_email'>('loading')
   const [inviteData, setInviteData] = useState<any>(null)
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
@@ -91,8 +91,13 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
         return
       }
 
-      toast.success("Compte créé avec succès!")
-      router.push('/')
+      const hasSession = !!authData?.session
+      if (hasSession) {
+        toast.success("Compte créé avec succès!")
+        router.push('/')
+      } else {
+        setStatus('check_email')
+      }
     } catch (err) {
       console.error(err)
       toast.error("Erreur lors de la création du compte.")
@@ -113,12 +118,14 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             {status === 'loading' && <Loader2 className="h-8 w-8 text-primary animate-spin" />}
             {status === 'valid' && <ShieldCheck className="h-8 w-8 text-primary" />}
             {status === 'signup' && <CheckCircle2 className="h-8 w-8 text-primary" />}
+            {status === 'check_email' && <Mail className="h-8 w-8 text-primary" />}
             {(status === 'invalid' || status === 'expired' || status === 'used') && <XCircle className="h-8 w-8 text-destructive" />}
           </div>
           
           <CardTitle className="text-2xl font-bold">
             {status === 'loading' && "Vérification de l'invitation..."}
             {(status === 'valid' || status === 'signup') && "Invitation Zoro Pilot"}
+            {status === 'check_email' && "Vérifiez vos emails"}
             {status === 'invalid' && "Invitation invalide"}
             {status === 'expired' && "Invitation expirée"}
             {status === 'used' && "Invitation déjà utilisée"}
@@ -127,6 +134,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           <CardDescription>
             {status === 'valid' && `Vous avez été invité à rejoindre l'organisation ${inviteData?.organizations?.name}.`}
             {status === 'signup' && `Complétez votre inscription pour rejoindre ${inviteData?.organizations?.name}.`}
+            {status === 'check_email' && `Un email de confirmation a été envoyé à ${inviteData?.invited_email}. Cliquez sur le lien dans cet email avant de vous connecter.`}
             {status === 'invalid' && "Ce lien d'invitation n'existe pas ou a été corrompu."}
             {status === 'expired' && "Cette invitation n'est plus valide car sa date d'expiration est dépassée."}
             {status === 'used' && "Cette invitation a déjà été consommée par un autre utilisateur."}
@@ -207,6 +215,23 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 {loading ? "Création du compte..." : "Créer mon compte"}
               </Button>
             </form>
+          </CardContent>
+        )}
+
+        {status === 'check_email' && (
+          <CardContent className="space-y-4">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground mb-1">Étapes restantes :</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Ouvrez votre boîte mail</li>
+                <li>Cliquez sur le lien de confirmation</li>
+                <li>Revenez ici pour vous connecter</li>
+              </ol>
+              <p className="mt-3 text-xs">Pensez à vérifier vos spams si vous ne voyez rien.</p>
+            </div>
+            <Button onClick={() => router.push('/login')} className="w-full">
+              J'ai confirmé mon email, me connecter
+            </Button>
           </CardContent>
         )}
 

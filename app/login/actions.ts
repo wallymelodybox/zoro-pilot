@@ -118,6 +118,9 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
+    if (error.message === 'Email not confirmed') {
+      redirect(`/login?error=${encodeURIComponent("Vous devez confirmer votre email avant de vous connecter. Vérifiez votre boîte mail (et vos spams).")}`)
+    }
     if (error.message === 'Invalid login credentials') {
       const { data: pendingInvite } = await supabase
         .from('invites')
