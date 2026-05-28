@@ -22,17 +22,25 @@ export default function InvitePage({ params }: { params: { token: string } }) {
 
   useEffect(() => {
     async function validateInvite() {
-      let query = supabase
+      const { data, error } = await supabase
         .from('invites')
-        .select('*, organizations(name)')
-      
-      query = query.or(`token.eq.${params.token},invite_code.eq.${params.token}`)
-      
-      const { data, error } = await query.single()
+        .select('*')
+        .or(`token.eq.${params.token},invite_code.eq.${params.token}`)
+        .maybeSingle()
 
       if (error || !data) {
+        console.error('Invite lookup error:', error, 'token:', params.token)
         setStatus('invalid')
         return
+      }
+
+      if (data.organization_id) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', data.organization_id)
+          .maybeSingle()
+        if (org) (data as any).organizations = org
       }
 
       if (data.is_used) {
