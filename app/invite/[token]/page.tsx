@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label"
 import { CheckCircle2, XCircle, Loader2, Mail, Building, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
 
-export default function InvitePage({ params }: { params: { token: string } }) {
+export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params)
   const [status, setStatus] = useState<'loading' | 'valid' | 'invalid' | 'expired' | 'used' | 'signup'>('loading')
   const [inviteData, setInviteData] = useState<any>(null)
   const [password, setPassword] = useState("")
@@ -25,11 +26,11 @@ export default function InvitePage({ params }: { params: { token: string } }) {
       const { data, error } = await supabase
         .from('invites')
         .select('*')
-        .or(`token.eq.${params.token},invite_code.eq.${params.token}`)
+        .or(`token.eq.${token},invite_code.eq.${token}`)
         .maybeSingle()
 
       if (error || !data) {
-        console.error('Invite lookup error:', error, 'token:', params.token)
+        console.error('Invite lookup error:', error, 'token:', token)
         setStatus('invalid')
         return
       }
@@ -59,7 +60,7 @@ export default function InvitePage({ params }: { params: { token: string } }) {
     }
 
     validateInvite()
-  }, [params.token])
+  }, [token])
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
