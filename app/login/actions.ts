@@ -118,6 +118,19 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
+    if (error.message === 'Invalid login credentials') {
+      const { data: pendingInvite } = await supabase
+        .from('invites')
+        .select('invite_code, token')
+        .eq('invited_email', email)
+        .eq('is_used', false)
+        .gt('expires_at', new Date().toISOString())
+        .maybeSingle()
+
+      if (pendingInvite) {
+        redirect(`/invite/${pendingInvite.invite_code || pendingInvite.token}`)
+      }
+    }
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
