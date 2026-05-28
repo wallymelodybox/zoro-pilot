@@ -79,6 +79,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
         email: inviteData.invited_email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             full_name: name
           }
