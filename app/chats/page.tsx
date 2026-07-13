@@ -15,6 +15,9 @@ import {
   MessageSquare,
   PlusCircle,
   AtSign,
+  Phone,
+  Users,
+  X,
 } from "lucide-react"
 import {
   type Message,
@@ -45,7 +48,8 @@ import {
 import { Label } from "@/components/ui/label"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { createClient } from "@/lib/supabase/client"
-import { bootstrapChat, createChannel } from "@/app/actions"
+import { bootstrapChat, createChannel, addChannelMember, removeChannelMember } from "@/app/actions"
+import { CallRoom } from "@/components/call-room"
 import { toast } from "sonner"
 
 export default function ChatsPage() {
@@ -63,6 +67,10 @@ export default function ChatsPage() {
   const [creating, setCreating] = React.useState(false)
   const [isMemberMentionOpen, setIsMemberMentionOpen] = React.useState(false)
   const [mentionSearch, setMentionSearch] = React.useState("")
+  const [isMembersDialogOpen, setIsMembersDialogOpen] = React.useState(false)
+  const [channelMemberIds, setChannelMemberIds] = React.useState<string[]>([])
+  const [membersActionPending, setMembersActionPending] = React.useState<string | null>(null)
+  const [isCallOpen, setIsCallOpen] = React.useState(false)
 
   const { projects, tasks } = useSupabaseData()
 
@@ -171,6 +179,40 @@ export default function ChatsPage() {
     () => channels.find((c) => c.id === activeChannelId) ?? null,
     [channels, activeChannelId]
   )
+
+  const orgMemberIdsForActiveChannel = React.useMemo(() => {
+    if (!activeChannel?.organizationId) return []
+    return Object.keys(orgTitles)
+      .filter((k) => k.endsWith(`:${activeChannel.organizationId}`))
+      .map((k) => k.split(":")[0])
+  }, [activeChannel, orgTitles])
+
+  const loadChannelMembers = React.useCallback(async () => {
+    if (!activeChannelId) return
+    const { data } = await supabase
+      .from("channel_members")
+      .select("user_id")
+      .eq("channel_id", activeChannelId)
+    setChannelMemberIds((data ?? []).map((m) => m.user_id))
+  }, [activeChannelId, supabase])
+
+  React.useEffect(() => {
+    loadChannelMembers()
+  }, [loadChannelMembers])
+
+  const handleToggleChannelMember = async (profileId: string, isMember: boolean) => {
+    if (!activeChannelId) return
+    setMembersActionPending(profileId)
+    const result = isMember
+      ? await removeChannelMember(activeChannelId, profileId)
+      : await addChannelMember(activeChannelId, profileId)
+    setMembersActionPending(null)
+    if ("error" in result && result.error) {
+      toast.error(result.error)
+      return
+    }
+    await loadChannelMembers()
+  }
 
   const availableOrgs = React.useMemo(() => {
     if (!currentUserId) return []
@@ -511,11 +553,31 @@ export default function ChatsPage() {
                     {activeChannel.name}
                   </h2>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold">
-                    {activeChannel.memberIds.length} membres
+                    {channelMemberIds.length} membres
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  title="Appel de groupe"
+                  onClick={() => setIsCallOpen(true)}
+                >
+                  <Phone className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full"
+                  title="Membres"
+                  onClick={() => setIsMembersDialogOpen(true)}
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
                 <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full">
                   <Search className="h-4 w-4" />
                 </Button>
@@ -891,6 +953,66 @@ export default function ChatsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={isMembersDialogOpen} onOpenChange={setIsMembersDialogOpen}>
+        <DialogContent className="rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Membres — {activeChannel?.name}</DialogTitle>
+            <DialogDescription>
+              Ajoutez ou retirez des membres de l'organisation dans ce canal.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-96 overflow-y-auto space-y-1">
+            {orgMemberIdsForActiveChannel.length === 0 && (
+              <p className="text-sm text-muted-foreground py-4 text-center">
+                Aucun membre trouvé pour cette organisation.
+              </p>
+            )}
+            {orgMemberIdsForActiveChannel.map((profileId) => {
+              const profile = profiles[profileId]
+              const isMember = channelMemberIds.includes(profileId)
+              const pending = membersActionPending === profileId
+              return (
+                <div key={profileId} className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-muted/50">
+                  <div className="flex items-center gap-3">
+                    <UserAvatar name={profile?.name ?? profileId} fallback={(profile?.name ?? "?").substring(0, 2).toUpperCase()} className="h-8 w-8" />
+                    <div>
+                      <p className="text-sm font-medium">{profile?.name ?? "Utilisateur"}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-widest">{profile?.role}</p>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isMember ? "outline" : "default"}
+                    disabled={pending}
+                    onClick={() => handleToggleChannelMember(profileId, isMember)}
+                    className="rounded-xl gap-2"
+                  >
+                    {pending ? (
+                      <div className="h-3.5 w-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                    ) : isMember ? (
+                      <X className="h-3.5 w-3.5" />
+                    ) : (
+                      <Plus className="h-3.5 w-3.5" />
+                    )}
+                    {isMember ? "Retirer" : "Ajouter"}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {activeChannel && (
+        <CallRoom
+          channelId={activeChannel.id}
+          channelName={activeChannel.name}
+          open={isCallOpen}
+          onOpenChange={setIsCallOpen}
+        />
+      )}
     </div>
   )
 }

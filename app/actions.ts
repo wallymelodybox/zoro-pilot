@@ -1131,6 +1131,71 @@ export async function addProjectMember(projectId: string, profileId: string, tit
   }
 }
 
+export async function addChannelMember(channelId: string, profileId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+
+  const { data: channel } = await supabase
+    .from('channels')
+    .select('id')
+    .eq('id', channelId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!channel) return { error: 'Canal introuvable.' }
+
+  const { data: member } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('id', profileId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!member) return { error: 'Ce membre n’appartient pas à votre organisation.' }
+
+  const { error } = await supabase
+    .from('channel_members')
+    .upsert({ channel_id: channelId, user_id: profileId }, { onConflict: 'channel_id,user_id' })
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/chats')
+  return { success: true }
+}
+
+export async function removeChannelMember(channelId: string, profileId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+
+  const { data: channel } = await supabase
+    .from('channels')
+    .select('id')
+    .eq('id', channelId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!channel) return { error: 'Canal introuvable.' }
+
+  const { error } = await supabase
+    .from('channel_members')
+    .delete()
+    .eq('channel_id', channelId)
+    .eq('user_id', profileId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/chats')
+  return { success: true }
+}
+
 // --- GMAIL INTEGRATION (SIMULATED) ---
 
 export async function connectGmail() {
