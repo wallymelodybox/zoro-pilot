@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { CheckCircle2, XCircle, Loader2, Mail, Building, ShieldCheck } from "lucide-react"
 import { toast } from "sonner"
+import { finalizeInviteAcceptance } from "./actions"
 
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
@@ -92,7 +93,20 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
         return
       }
 
-      const hasSession = !!authData?.session
+      if (!authData?.user) {
+        toast.error("Erreur lors de la création du compte.")
+        setLoading(false)
+        return
+      }
+
+      const finalizeResult = await finalizeInviteAcceptance(token, authData.user.id, inviteData.invited_email, name)
+      if (finalizeResult.error) {
+        toast.error(finalizeResult.error)
+        setLoading(false)
+        return
+      }
+
+      const hasSession = !!authData.session
       if (hasSession) {
         toast.success("Compte créé avec succès!")
         router.push('/')
