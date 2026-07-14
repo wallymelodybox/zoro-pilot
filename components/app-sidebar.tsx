@@ -41,6 +41,7 @@ import { useThemeVariant } from "@/components/theme/variant-provider"
 import { useUser } from "@/hooks/use-user"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { UserAvatar } from "./user-avatar"
+import { NotificationBell } from "./notification-bell"
 
 const cx = cn
 
@@ -457,18 +458,18 @@ export function AppSidebar() {
           )}
 
           {/* User Profile Section */}
-          <div className={cn("mb-4 px-2", collapsed && "px-0 flex justify-center")}>
-            <Link 
-              href="/settings" 
+          <div className={cn("mb-4 px-2 flex items-center gap-2", collapsed && "px-0 flex-col justify-center")}>
+            <Link
+              href="/settings"
               className={cn(
-                "flex items-center gap-3 p-2 rounded-xl transition-colors hover:bg-accent/35 group",
-                collapsed && "p-1"
+                "flex flex-1 min-w-0 items-center gap-3 p-2 rounded-xl transition-colors hover:bg-accent/35 group",
+                collapsed && "p-1 flex-none"
               )}
             >
-              <UserAvatar 
-                name={user?.name || "Utilisateur"} 
-                avatarUrl={user?.avatar_url} 
-                fallback={user?.name?.charAt(0) || "U"} 
+              <UserAvatar
+                name={user?.name || "Utilisateur"}
+                avatarUrl={user?.avatar_url}
+                fallback={user?.name?.charAt(0) || "U"}
                 className="h-9 w-9 border border-border/50 group-hover:border-primary/50 transition-colors"
               />
               {!collapsed && (
@@ -478,6 +479,7 @@ export function AppSidebar() {
                 </div>
               )}
             </Link>
+            <NotificationBell />
           </div>
 
           <button

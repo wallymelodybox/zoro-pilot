@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Card, CardContent } from "@/components/ui/card"
@@ -30,6 +30,18 @@ import {
 } from "@/lib/store"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/lib/supabase/client"
+import { useUser } from "@/hooks/use-user"
+
+type NotificationRow = {
+  id: string
+  title: string
+  content: string
+  type: "info" | "alert" | "success" | "task" | "message"
+  link: string | null
+  is_read: boolean
+  created_at: string
+}
 
 export default function InboxPage() {
   const [activeTab, setActiveTab] = useState("tout")
@@ -38,8 +50,41 @@ export default function InboxPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [readIds, setReadIds] = useState<Set<string>>(() => new Set())
   const [archivedIds, setArchivedIds] = useState<Set<string>>(() => new Set())
+  const [notifications, setNotifications] = useState<NotificationRow[]>([])
 
-  const CURRENT_USER_ID = "u1"
+  const { user } = useUser()
+  const supabase = useMemo(() => createClient(), [])
+
+  useEffect(() => {
+    if (!user?.id) return
+
+    let isMounted = true
+    supabase
+      .from("notifications")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(100)
+      .then(({ data }) => {
+        if (isMounted && data) setNotifications(data as NotificationRow[])
+      })
+
+    const channel = supabase
+      .channel(`inbox-notifications:${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          setNotifications((prev) => [payload.new as NotificationRow, ...prev])
+        }
+      )
+      .subscribe()
+
+    return () => {
+      isMounted = false
+      supabase.removeChannel(channel)
+    }
+  }, [supabase, user?.id])
 
   const filters = [
     { id: "tout", label: "Tout" },
@@ -70,7 +115,21 @@ export default function InboxPage() {
   }
 
   const buildChatItems = (): InboxItem[] => {
-    return []
+    return notifications.map((n) => {
+      const id = `notif:${n.id}`
+      const isUnread = !readIds.has(id) && !n.is_read
+      return {
+        id,
+        source: "chat",
+        category: n.type === "message" ? "message" : "comment",
+        title: n.title,
+        subtitle: n.type === "task" ? "Tâche" : n.type === "message" ? "Message" : "Notification",
+        snippet: n.content,
+        date: n.created_at,
+        isUnread,
+        hasMention: false,
+      } satisfies InboxItem
+    })
   }
 
   const buildGmailItems = (): InboxItem[] => {
@@ -118,6 +177,12 @@ export default function InboxPage() {
       next.add(id)
       return next
     })
+
+    if (id.startsWith("notif:")) {
+      const notifId = id.slice("notif:".length)
+      setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, is_read: true } : n)))
+      void supabase.from("notifications").update({ is_read: true }).eq("id", notifId)
+    }
   }
 
   const toggleArchive = (id: string) => {

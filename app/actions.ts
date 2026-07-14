@@ -527,10 +527,37 @@ export async function createTask(formData: FormData) {
     }
   }
 
+  if (task?.id) {
+    const profile = await getCurrentProfile(supabase, user.id)
+    const actorName = profile?.name || 'Un membre'
+
+    if (visibility === 'organization') {
+      await notifyOrganization(
+        supabase,
+        orgId,
+        'Nouvelle tâche',
+        `${actorName} a créé la tâche "${title}" pour toute l'organisation.`,
+        'task',
+        { excludeUserId: user.id, actorId: user.id, link: '/all-tasks' }
+      )
+    } else {
+      const assigneesToNotify = assigneeIds.filter((id) => id !== user.id)
+      for (const assigneeId of assigneesToNotify) {
+        await createNotification(
+          assigneeId,
+          'Nouvelle tâche assignée',
+          `${actorName} vous a assigné la tâche "${title}".`,
+          'task',
+          { organizationId: orgId, actorId: user.id, link: '/all-tasks' }
+        )
+      }
+    }
+  }
+
   revalidatePath('/work')
   revalidatePath('/all-tasks')
   revalidatePath('/my-day')
-  
+
   return { success: true }
 }
 
@@ -711,6 +738,84 @@ export async function bootstrapChat() {
   }
 }
 
+export async function sendChatMessage(payload: {
+  channelId: string
+  content: string
+  type?: string
+  attachments?: any[] | null
+  entityType?: string | null
+  entityId?: string | null
+  entityTitle?: string | null
+}) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const { data: channel } = await supabase
+    .from('channels')
+    .select('id, name, type, organization_id')
+    .eq('id', payload.channelId)
+    .single()
+
+  if (!channel) return { error: 'Canal introuvable.' }
+
+  const { data: message, error } = await supabase
+    .from('messages')
+    .insert({
+      channel_id: payload.channelId,
+      sender_id: user.id,
+      content: payload.content,
+      type: payload.type || 'text',
+      attachments: payload.attachments ?? null,
+      entity_type: payload.entityType ?? null,
+      entity_id: payload.entityId ?? null,
+      entity_title: payload.entityTitle ?? null,
+    })
+    .select('*')
+    .single()
+
+  if (error || !message) {
+    console.error('Error sending message:', error)
+    return { error: "Erreur lors de l'envoi du message." }
+  }
+
+  const profile = await getCurrentProfile(supabase, user.id)
+  const senderName = profile?.name || 'Un membre'
+  const preview = payload.content?.trim() ? payload.content.slice(0, 140) : 'a envoyé une pièce jointe.'
+
+  if (channel.type === 'dm') {
+    const { data: members } = await supabase
+      .from('channel_members')
+      .select('user_id')
+      .eq('channel_id', channel.id)
+      .neq('user_id', user.id)
+
+    for (const member of members || []) {
+      await createNotification(
+        member.user_id,
+        `Message de ${senderName}`,
+        preview,
+        'message',
+        { organizationId: channel.organization_id, actorId: user.id, link: '/chats' }
+      )
+    }
+  } else if (channel.type === 'public' && channel.organization_id) {
+    await notifyOrganization(
+      supabase,
+      channel.organization_id,
+      `${senderName} dans #${channel.name}`,
+      preview,
+      'message',
+      { excludeUserId: user.id, actorId: user.id, link: '/chats' }
+    )
+  }
+
+  revalidatePath('/chats')
+  revalidatePath('/inbox')
+
+  return { success: true, message }
+}
+
 export async function getTeamHierarchy(managerId: string) {
   const supabase = await createClient()
   
@@ -757,16 +862,71 @@ export async function getManagerViewData() {
   return { teamProjects, teamIds }
 }
 
-async function createNotification(userId: string, title: string, content: string, type: 'info' | 'alert' | 'success' = 'info') {
+async function createNotification(
+  userId: string,
+  title: string,
+  content: string,
+  type: 'info' | 'alert' | 'success' | 'task' | 'message' = 'info',
+  options?: { organizationId?: string | null; actorId?: string | null; link?: string | null }
+) {
   const supabase = await createClient()
-  
-  // Check if messages table can be used for system notifications
-  // or if we should create a dedicated notification table
-  // For now, we'll send a message to the user's personal channel or just log it
-  console.log(`Notification for ${userId}: ${title} - ${content}`)
-  
-  // In a real app, we'd insert into a 'notifications' table
-  // For the demo, let's use the 'messages' table with a 'system' type if a system channel exists
+
+  const { error } = await supabase.from('notifications').insert({
+    user_id: userId,
+    organization_id: options?.organizationId ?? null,
+    actor_id: options?.actorId ?? null,
+    title,
+    content,
+    type,
+    link: options?.link ?? null,
+  })
+
+  if (error) {
+    console.error('Error creating notification:', error)
+  }
+}
+
+// Notify every member of an organization (optionally excluding one, e.g. the actor)
+async function notifyOrganization(
+  supabase: any,
+  organizationId: string,
+  title: string,
+  content: string,
+  type: 'info' | 'alert' | 'success' | 'task' | 'message' = 'info',
+  options?: { excludeUserId?: string | null; actorId?: string | null; link?: string | null }
+) {
+  const { data: members, error } = await supabase
+    .from('organization_members')
+    .select('profile_id')
+    .eq('organization_id', organizationId)
+
+  if (error || !members) {
+    console.error('Error fetching organization members for notification:', error)
+    return
+  }
+
+  const recipientIds = uniqueIds(
+    members
+      .map((m: any) => m.profile_id as string)
+      .filter((id: string) => id && id !== options?.excludeUserId)
+  )
+
+  if (recipientIds.length === 0) return
+
+  const rows = recipientIds.map((userId) => ({
+    user_id: userId,
+    organization_id: organizationId,
+    actor_id: options?.actorId ?? null,
+    title,
+    content,
+    type,
+    link: options?.link ?? null,
+  }))
+
+  const { error: insertError } = await supabase.from('notifications').insert(rows)
+  if (insertError) {
+    console.error('Error broadcasting organization notification:', insertError)
+  }
 }
 
 export async function updateTaskStatus(taskId: string, status: string) {
@@ -789,12 +949,24 @@ export async function updateTaskStatus(taskId: string, status: string) {
     return { error: 'Erreur lors de la mise à jour du statut.' }
   }
 
-  // Notification: If task is DONE, notify the project owner
-  if (status === 'done' && task.projects?.owner_id && task.projects.owner_id !== user?.id) {
-    await createNotification(
-      task.projects.owner_id, 
-      'Tâche terminée', 
-      `La tâche "${task.title}" du projet "${task.projects.name}" a été marquée comme terminée.`
+  // Notification: If task is DONE, notify all organization members
+  if (status === 'done' && task.organization_id) {
+    const { data: actorProfile } = user ? await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', user.id)
+      .single() : { data: null }
+
+    const actorName = actorProfile?.name || 'Un membre'
+    const projectLabel = task.projects?.name ? ` du projet "${task.projects.name}"` : ''
+
+    await notifyOrganization(
+      supabase,
+      task.organization_id,
+      'Tâche terminée',
+      `${actorName} a marqué la tâche "${task.title}"${projectLabel} comme terminée.`,
+      'task',
+      { excludeUserId: user?.id, actorId: user?.id, link: '/all-tasks' }
     )
   }
 

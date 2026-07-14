@@ -49,10 +49,30 @@ import {
 } from "@/components/ui/dialog"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { createClient } from "@/lib/supabase/client"
-import { bootstrapChat } from "@/app/actions"
+import { bootstrapChat, sendChatMessage } from "@/app/actions"
 
 // --- Fake current user for demo ---
 // Current user comes from Supabase Auth
+
+// Deterministic per-member bubble colors so each participant is visually distinct in chat
+const MEMBER_BUBBLE_COLORS = [
+  { bg: "bg-sky-500/15", text: "text-sky-600 dark:text-sky-300", ring: "ring-sky-500/30" },
+  { bg: "bg-emerald-500/15", text: "text-emerald-600 dark:text-emerald-300", ring: "ring-emerald-500/30" },
+  { bg: "bg-amber-500/15", text: "text-amber-600 dark:text-amber-300", ring: "ring-amber-500/30" },
+  { bg: "bg-fuchsia-500/15", text: "text-fuchsia-600 dark:text-fuchsia-300", ring: "ring-fuchsia-500/30" },
+  { bg: "bg-rose-500/15", text: "text-rose-600 dark:text-rose-300", ring: "ring-rose-500/30" },
+  { bg: "bg-indigo-500/15", text: "text-indigo-600 dark:text-indigo-300", ring: "ring-indigo-500/30" },
+  { bg: "bg-teal-500/15", text: "text-teal-600 dark:text-teal-300", ring: "ring-teal-500/30" },
+  { bg: "bg-orange-500/15", text: "text-orange-600 dark:text-orange-300", ring: "ring-orange-500/30" },
+]
+
+function getMemberColor(userId: string) {
+  let hash = 0
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) >>> 0
+  }
+  return MEMBER_BUBBLE_COLORS[hash % MEMBER_BUBBLE_COLORS.length]
+}
 
 interface ChatPanelProps {
   contextId?: string // If provided, opens specific context channel
@@ -262,19 +282,18 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
         }
       }
 
-      const payload: any = {
-        channel_id: activeChannelId,
-        sender_id: currentUserId,
+      const res = await sendChatMessage({
+        channelId: activeChannelId,
         content: newMessage,
         type: draftEntityRef ? "entity" : uploadedAttachments && uploadedAttachments.length > 0 ? "file" : "text",
         attachments: uploadedAttachments ?? null,
-        entity_type: draftEntityRef?.type ?? null,
-        entity_id: draftEntityRef?.id ?? null,
-        entity_title: draftEntityRef?.title ?? null,
-      }
+        entityType: draftEntityRef?.type ?? null,
+        entityId: draftEntityRef?.id ?? null,
+        entityTitle: draftEntityRef?.title ?? null,
+      })
 
-      const { data, error } = await supabase.from("messages").insert(payload).select("*").single()
-      if (error) throw error
+      if (res.error || !res.message) throw new Error(res.error || "Erreur envoi message")
+      const data = res.message
 
       const inserted: Message = {
         id: data.id,
@@ -482,6 +501,7 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                       (activeChannel?.organizationId
                         ? orgTitles[`${msg.senderId}:${activeChannel.organizationId}`]
                         : undefined) || sender?.role || sender?.name || "?"
+                    const memberColor = getMemberColor(msg.senderId)
                     return (
                       <div
                         key={msg.id}
@@ -490,7 +510,7 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                           isMe ? "ml-auto flex-row-reverse" : ""
                         )}
                       >
-                        <Avatar className="h-8 w-8 mt-0.5">
+                        <Avatar className={cn("h-8 w-8 mt-0.5 ring-2", isMe ? "ring-primary/30" : memberColor.ring)}>
                           <AvatarImage src={sender?.avatar} />
                           <AvatarFallback>{sender?.name.substring(0, 2)}</AvatarFallback>
                         </Avatar>
@@ -499,21 +519,21 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
                           isMe ? "items-end" : "items-start"
                         )}>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-muted-foreground">
+                            <span className={cn("text-xs font-medium", isMe ? "text-muted-foreground" : memberColor.text)}>
                               {senderChatName}
                             </span>
                             <span className="text-[10px] text-muted-foreground/70">
                               {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </span>
                           </div>
-                          
+
                           {/* Message Content with context menu simulation */}
                           <div className="relative">
                             <div className={cn(
                               "p-3 rounded-2xl text-sm shadow-sm",
-                              isMe 
-                                ? "bg-primary text-primary-foreground rounded-tr-none" 
-                                : "bg-muted rounded-tl-none"
+                              isMe
+                                ? "bg-primary text-primary-foreground rounded-tr-none"
+                                : cn(memberColor.bg, "text-foreground rounded-tl-none")
                             )}>
                               {msg.type === "entity" && msg.entityRef ? (
                                 <div className="rounded-xl border border-border/40 bg-background/40 p-3 text-xs">
