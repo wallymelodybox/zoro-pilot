@@ -354,13 +354,13 @@ export default function ChatsPage() {
     }
   }
 
-  const handleCallOpenChange = (open: boolean) => {
+  const handleCallOpenChange = React.useCallback((open: boolean) => {
     setIsCallOpen(open)
     if (!open && activeCallId) {
       void endCall(activeCallId)
       setActiveCallId(null)
     }
-  }
+  }, [activeCallId])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value

@@ -70,6 +70,9 @@ export function IncomingCallListener() {
 
   const channelName = incomingCall?.channels?.name || "Discussion"
   const callerName = incomingCall?.profiles?.name || "Un membre"
+  const handleJoinedCallOpenChange = React.useCallback((open: boolean) => {
+    if (!open) setJoinedCall(null)
+  }, [])
 
   return (
     <>
@@ -94,7 +97,7 @@ export function IncomingCallListener() {
           channelId={joinedCall.channel_id}
           channelName={joinedCall.channels?.name || "Discussion"}
           open
-          onOpenChange={(open) => !open && setJoinedCall(null)}
+          onOpenChange={handleJoinedCallOpenChange}
         />
       )}
     </>

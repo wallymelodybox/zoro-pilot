@@ -88,11 +88,21 @@ export function CallRoom({
   const [url, setUrl] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [minimized, setMinimized] = React.useState(false)
+  const onOpenChangeRef = React.useRef(onOpenChange)
+
+  React.useEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+  }, [onOpenChange])
+
+  const closeCall = React.useCallback(() => {
+    onOpenChangeRef.current(false)
+  }, [])
 
   React.useEffect(() => {
     if (!open) {
       setToken(null)
       setUrl(null)
+      setLoading(false)
       setMinimized(false)
       return
     }
@@ -104,7 +114,7 @@ export function CallRoom({
       setLoading(false)
       if ("error" in res && res.error) {
         toast.error(res.error)
-        onOpenChange(false)
+        closeCall()
         return
       }
       if ("token" in res && res.token && res.url) {
@@ -114,7 +124,7 @@ export function CallRoom({
     })
 
     return () => { cancelled = true }
-  }, [open, channelId, onOpenChange])
+  }, [open, channelId, closeCall])
 
   if (!open) return null
 
@@ -146,7 +156,7 @@ export function CallRoom({
             video
             data-lk-theme="default"
             className="flex h-full min-h-0 w-full flex-col"
-            onDisconnected={() => onOpenChange(false)}
+            onDisconnected={closeCall}
           >
             <header className={cn(
               "z-10 flex shrink-0 items-center border-b border-white/10 bg-[#11141b]",
@@ -169,7 +179,7 @@ export function CallRoom({
                   size="icon"
                   className="h-9 w-9 rounded-full bg-red-500 text-white hover:bg-red-600"
                   title="Quitter l’appel"
-                  onClick={() => onOpenChange(false)}
+                  onClick={closeCall}
                 >
                   <PhoneOff className="h-4 w-4" />
                 </Button>
