@@ -627,7 +627,7 @@ export async function createProjectDocument(formData: FormData) {
   const fileType = formData.get('fileType') as string
 
   if (!projectId || !name || !url) {
-    return { error: 'Projet, nom et lien du document sont requis.' }
+    return { error: 'Projet, nom et source du document sont requis.' }
   }
 
   const { data: project } = await supabase

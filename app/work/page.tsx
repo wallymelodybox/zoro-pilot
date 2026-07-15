@@ -1350,19 +1350,62 @@ function DocumentDialog({ projectId, onCreated }: { projectId: string; onCreated
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [url, setUrl] = useState("")
+  const [source, setSource] = useState<"file" | "link">("file")
+  const [file, setFile] = useState<File | null>(null)
   const [version, setVersion] = useState("v1")
   const [saving, setSaving] = useState(false)
 
   const submit = async () => {
+    if (source === "file" && !file) return
+
+    let documentUrl = url.trim()
+    let uploadedPath: string | null = null
+    let fileType = ""
+
+    setSaving(true)
+    if (source === "file" && file) {
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error("Le fichier ne doit pas dépasser 20 Mo.")
+        setSaving(false)
+        return
+      }
+
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        toast.error("Vous devez être connecté pour ajouter un document.")
+        setSaving(false)
+        return
+      }
+
+      const extension = file.name.includes(".") ? `.${file.name.split(".").pop()?.toLowerCase()}` : ""
+      uploadedPath = `${user.id}/${projectId}/${crypto.randomUUID()}${extension}`
+      const { error: uploadError } = await supabase.storage
+        .from("project-documents")
+        .upload(uploadedPath, file, { contentType: file.type || undefined })
+
+      if (uploadError) {
+        toast.error(`Échec de l’envoi du fichier : ${uploadError.message}`)
+        setSaving(false)
+        return
+      }
+
+      documentUrl = supabase.storage.from("project-documents").getPublicUrl(uploadedPath).data.publicUrl
+      fileType = file.type || extension.slice(1)
+    }
+
     const fd = new FormData()
     fd.set("projectId", projectId)
-    fd.set("name", name)
-    fd.set("url", url)
+    fd.set("name", name.trim())
+    fd.set("url", documentUrl)
     fd.set("version", version)
-    setSaving(true)
+    fd.set("fileType", fileType)
     const res = await createProjectDocument(fd)
     setSaving(false)
     if (res?.error) {
+      if (uploadedPath) {
+        await createClient().storage.from("project-documents").remove([uploadedPath])
+      }
       toast.error(res.error)
       return
     }
@@ -1370,6 +1413,8 @@ function DocumentDialog({ projectId, onCreated }: { projectId: string; onCreated
     setOpen(false)
     setName("")
     setUrl("")
+    setFile(null)
+    setSource("file")
     setVersion("v1")
     onCreated()
   }
@@ -1383,16 +1428,41 @@ function DocumentDialog({ projectId, onCreated }: { projectId: string; onCreated
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Ajouter un document</DialogTitle>
-          <DialogDescription>Ajoutez un lien Drive, SharePoint ou un document partagé.</DialogDescription>
+          <DialogDescription>Importez un fichier depuis votre appareil ou ajoutez un lien partagé.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-1">
+            <Button type="button" variant={source === "file" ? "secondary" : "ghost"} onClick={() => setSource("file")}>
+              <Upload className="mr-2 h-4 w-4" /> Fichier local
+            </Button>
+            <Button type="button" variant={source === "link" ? "secondary" : "ghost"} onClick={() => setSource("link")}>
+              <LinkIcon className="mr-2 h-4 w-4" /> Lien externe
+            </Button>
+          </div>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du document" />
-          <Input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+          {source === "file" ? (
+            <div className="grid gap-1.5">
+              <Label htmlFor={`project-document-${projectId}`}>Choisir un fichier (20 Mo maximum)</Label>
+              <Input
+                id={`project-document-${projectId}`}
+                type="file"
+                onChange={(e) => {
+                  const selectedFile = e.target.files?.[0] || null
+                  setFile(selectedFile)
+                  if (selectedFile && !name) setName(selectedFile.name)
+                }}
+              />
+            </div>
+          ) : (
+            <Input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." />
+          )}
           <Input value={version} onChange={(e) => setVersion(e.target.value)} placeholder="Version" />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-          <Button onClick={submit} disabled={saving || !name || !url}>Ajouter</Button>
+          <Button onClick={submit} disabled={saving || !name.trim() || (source === "file" ? !file : !url.trim())}>
+            {saving ? "Ajout en cours…" : "Ajouter"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
