@@ -1385,7 +1385,12 @@ function DocumentDialog({ projectId, onCreated }: { projectId: string; onCreated
         .upload(uploadedPath, file, { contentType: file.type || undefined })
 
       if (uploadError) {
-        toast.error(`Échec de l’envoi du fichier : ${uploadError.message}`)
+        const missingBucket = uploadError.message.toLowerCase().includes("bucket not found")
+        toast.error(
+          missingBucket
+            ? "Le stockage des documents n’est pas encore initialisé. Appliquez la migration Supabase 20260715020000_project_documents_storage.sql."
+            : `Échec de l’envoi du fichier : ${uploadError.message}`
+        )
         setSaving(false)
         return
       }
