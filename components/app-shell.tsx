@@ -7,6 +7,7 @@ import { AppSidebar, navItems } from "@/components/app-sidebar"
 import { usePathname } from "next/navigation"
 import { ThemeBackground } from "@/components/theme/theme-background"
 import { cn } from "@/lib/utils"
+import { IncomingCallListener } from "@/components/incoming-call-listener"
 
 const mobileNavItems = [
   ...navItems.filter((item) => ["/", "/work", "/my-day", "/all-tasks"].includes(item.href)),
@@ -77,6 +78,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <MobileNavigation pathname={pathname} />
+      <IncomingCallListener />
     </div>
   )
 }

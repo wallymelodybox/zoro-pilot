@@ -50,6 +50,7 @@ import { useSupabaseData } from "@/hooks/use-supabase"
 import { createClient } from "@/lib/supabase/client"
 import { bootstrapChat, createChannel, addChannelMember, removeChannelMember } from "@/app/actions"
 import { CallRoom } from "@/components/call-room"
+import { endCall, startCall } from "@/app/chats/call-actions"
 import { toast } from "sonner"
 
 export default function ChatsPage() {
@@ -71,6 +72,8 @@ export default function ChatsPage() {
   const [channelMemberIds, setChannelMemberIds] = React.useState<string[]>([])
   const [membersActionPending, setMembersActionPending] = React.useState<string | null>(null)
   const [isCallOpen, setIsCallOpen] = React.useState(false)
+  const [activeCallId, setActiveCallId] = React.useState<string | null>(null)
+  const [isStartingCall, setIsStartingCall] = React.useState(false)
 
   const { projects, tasks } = useSupabaseData()
 
@@ -335,6 +338,29 @@ export default function ChatsPage() {
     }
   }
 
+  const handleStartCall = async () => {
+    if (!activeChannelId || isStartingCall) return
+    setIsStartingCall(true)
+    const result = await startCall(activeChannelId)
+    setIsStartingCall(false)
+    if ("error" in result && result.error) {
+      toast.error(result.error)
+      return
+    }
+    if ("callId" in result && result.callId) {
+      setActiveCallId(result.callId)
+      setIsCallOpen(true)
+    }
+  }
+
+  const handleCallOpenChange = (open: boolean) => {
+    setIsCallOpen(open)
+    if (!open && activeCallId) {
+      void endCall(activeCallId)
+      setActiveCallId(null)
+    }
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setNewMessage(value)
@@ -564,7 +590,8 @@ export default function ChatsPage() {
                   size="icon"
                   className="h-9 w-9 rounded-full"
                   title="Appel de groupe"
-                  onClick={() => setIsCallOpen(true)}
+                  onClick={handleStartCall}
+                  disabled={isStartingCall}
                 >
                   <Phone className="h-4 w-4" />
                 </Button>
@@ -1010,7 +1037,7 @@ export default function ChatsPage() {
           channelId={activeChannel.id}
           channelName={activeChannel.name}
           open={isCallOpen}
-          onOpenChange={setIsCallOpen}
+          onOpenChange={handleCallOpenChange}
         />
       )}
     </div>
