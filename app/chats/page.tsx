@@ -178,6 +178,13 @@ export default function ChatsPage() {
     load()
   }, [supabase, reloadKey])
 
+  React.useEffect(() => {
+    const channelId = new URLSearchParams(window.location.search).get("channel")
+    if (channelId && channels.some((channel) => channel.id === channelId)) {
+      setActiveChannelId(channelId)
+    }
+  }, [channels])
+
   const activeChannel = React.useMemo(
     () => channels.find((c) => c.id === activeChannelId) ?? null,
     [channels, activeChannelId]
@@ -491,15 +498,19 @@ export default function ChatsPage() {
             ...current,
             [data.channel_id]: data.content || "Pièce jointe",
           }))
+          if (data.sender_id !== currentUserId) {
+            const senderName = profiles[data.sender_id]?.name || "Un membre"
+            toast.info(`${senderName} : ${data.content || "Nouvelle pièce jointe"}`)
+          }
         }
       )
       .subscribe()
 
     return () => { void supabase.removeChannel(messageChannel) }
-  }, [activeChannelId, supabase])
+  }, [activeChannelId, currentUserId, profiles, supabase])
 
   return (
-    <div className="flex h-full bg-transparent overflow-hidden">
+    <div className="flex h-full min-h-0 bg-transparent overflow-hidden">
       {/* Channels Sidebar */}
       <div className="w-80 flex flex-col border-r border-border/40 bg-card/40 backdrop-blur-xl">
         <div className="p-6 border-b border-border/40">
@@ -608,11 +619,11 @@ export default function ChatsPage() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col bg-transparent">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-transparent">
         {activeChannel ? (
           <>
             {/* Chat Header */}
-            <header className="h-16 flex items-center justify-between px-6 border-b border-border/40 bg-card/20 backdrop-blur-md">
+            <header className="h-16 shrink-0 flex items-center justify-between px-6 border-b border-border/40 bg-card/20 backdrop-blur-md">
               <div className="flex items-center gap-3">
                 <UserAvatar name={activeChannel.name} fallback={activeChannel.name.substring(0, 2).toUpperCase()} className="h-9 w-9" />
                 <div>
@@ -657,7 +668,7 @@ export default function ChatsPage() {
             </header>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-6">
+            <ScrollArea className="flex-1 min-h-0 p-6">
               <div className="max-w-4xl mx-auto space-y-6 pb-4">
                 {localMessages.map((msg, i) => {
                   const isMe = currentUserId ? msg.senderId === currentUserId : false
@@ -783,7 +794,7 @@ export default function ChatsPage() {
             </ScrollArea>
 
             {/* Input */}
-            <footer className="relative p-6 border-t border-border/40 bg-card/20 backdrop-blur-md">
+            <footer className="relative shrink-0 p-6 border-t border-border/40 bg-card/20 backdrop-blur-md">
               <div className="max-w-4xl mx-auto">
                 <div className="flex flex-col gap-2">
                   {replyingTo && (

@@ -785,31 +785,35 @@ export async function sendChatMessage(payload: {
   const senderName = profile?.name || 'Un membre'
   const preview = payload.content?.trim() ? payload.content.slice(0, 140) : 'a envoyé une pièce jointe.'
 
-  if (channel.type === 'dm') {
-    const { data: members } = await supabase
-      .from('channel_members')
-      .select('user_id')
-      .eq('channel_id', channel.id)
-      .neq('user_id', user.id)
+  const { data: channelMembers, error: membersError } = await supabase
+    .from('channel_members')
+    .select('user_id')
+    .eq('channel_id', channel.id)
+    .neq('user_id', user.id)
 
-    for (const member of members || []) {
-      await createNotification(
-        member.user_id,
-        `Message de ${senderName}`,
-        preview,
-        'message',
-        { organizationId: channel.organization_id, actorId: user.id, link: '/chats' }
+  if (membersError) {
+    console.error('Error fetching channel members for message notification:', membersError)
+  } else {
+    const recipientIds = uniqueIds((channelMembers || []).map((member: any) => member.user_id))
+    if (recipientIds.length > 0) {
+      const notificationTitle = channel.type === 'dm'
+        ? `Message de ${senderName}`
+        : `${senderName} dans #${channel.name}`
+      const { error: notificationError } = await supabase.from('notifications').insert(
+        recipientIds.map((recipientId) => ({
+          user_id: recipientId,
+          organization_id: channel.organization_id,
+          actor_id: user.id,
+          title: notificationTitle,
+          content: preview,
+          type: 'message',
+          link: `/chats?channel=${channel.id}`,
+        }))
       )
+      if (notificationError) {
+        console.error('Error creating message notifications:', notificationError)
+      }
     }
-  } else if (channel.type === 'public' && channel.organization_id) {
-    await notifyOrganization(
-      supabase,
-      channel.organization_id,
-      `${senderName} dans #${channel.name}`,
-      preview,
-      'message',
-      { excludeUserId: user.id, actorId: user.id, link: '/chats' }
-    )
   }
 
   revalidatePath('/chats')
