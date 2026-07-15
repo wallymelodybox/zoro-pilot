@@ -746,6 +746,7 @@ export async function sendChatMessage(payload: {
   entityType?: string | null
   entityId?: string | null
   entityTitle?: string | null
+  replyToId?: string | null
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -770,6 +771,7 @@ export async function sendChatMessage(payload: {
       entity_type: payload.entityType ?? null,
       entity_id: payload.entityId ?? null,
       entity_title: payload.entityTitle ?? null,
+      reply_to_id: payload.replyToId ?? null,
     })
     .select('*')
     .single()

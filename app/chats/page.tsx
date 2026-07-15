@@ -48,7 +48,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { createClient } from "@/lib/supabase/client"
-import { bootstrapChat, createChannel, addChannelMember, removeChannelMember } from "@/app/actions"
+import { bootstrapChat, createChannel, addChannelMember, removeChannelMember, sendChatMessage } from "@/app/actions"
 import { CallRoom } from "@/components/call-room"
 import { endCall, startCall } from "@/app/chats/call-actions"
 import { toast } from "sonner"
@@ -271,20 +271,19 @@ export default function ChatsPage() {
         }
       }
 
-      const payload: any = {
-        channel_id: activeChannelId,
-        sender_id: currentUserId,
+      const result = await sendChatMessage({
+        channelId: activeChannelId,
         content: newMessage,
         type: draftEntityRef ? "entity" : uploadedAttachments && uploadedAttachments.length > 0 ? "file" : "text",
         attachments: uploadedAttachments ?? null,
-        entity_type: draftEntityRef?.type ?? null,
-        entity_id: draftEntityRef?.id ?? null,
-        entity_title: draftEntityRef?.title ?? null,
-        reply_to_id: currentReplyingTo?.id,
-      }
-
-      const { data, error } = await supabase.from("messages").insert(payload).select("*").single()
-      if (error) throw error
+        entityType: draftEntityRef?.type ?? null,
+        entityId: draftEntityRef?.id ?? null,
+        entityTitle: draftEntityRef?.title ?? null,
+        replyToId: currentReplyingTo?.id ?? null,
+      })
+      if ("error" in result && result.error) throw new Error(result.error)
+      if (!("message" in result) || !result.message) throw new Error("Message introuvable après l’envoi.")
+      const data = result.message
 
       const inserted: Message = {
         id: data.id,
@@ -300,7 +299,9 @@ export default function ChatsPage() {
           : undefined,
       }
 
-      setLocalMessages((prev) => [...prev, inserted])
+      setLocalMessages((prev) =>
+        prev.some((message) => message.id === inserted.id) ? prev : [...prev, inserted]
+      )
       setNewMessage("")
       setDraftAttachments([])
       setDraftEntityRef(null)
@@ -454,6 +455,47 @@ export default function ChatsPage() {
       }))
       setLocalMessages(mapped)
     })()
+
+    const messageChannel = supabase
+      .channel(`chat-messages:${activeChannelId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `channel_id=eq.${activeChannelId}`,
+        },
+        (payload) => {
+          const data = payload.new as any
+          const incomingMessage: Message = {
+            id: data.id,
+            channelId: data.channel_id,
+            senderId: data.sender_id,
+            content: data.content,
+            timestamp: data.created_at,
+            type: data.type,
+            attachments: data.attachments ?? undefined,
+            replyToId: data.reply_to_id ?? undefined,
+            entityRef: data.entity_type
+              ? { type: data.entity_type, id: data.entity_id, title: data.entity_title }
+              : undefined,
+          }
+
+          setLocalMessages((current) =>
+            current.some((message) => message.id === incomingMessage.id)
+              ? current
+              : [...current, incomingMessage]
+          )
+          setLastMessageByChannelId((current) => ({
+            ...current,
+            [data.channel_id]: data.content || "Pièce jointe",
+          }))
+        }
+      )
+      .subscribe()
+
+    return () => { void supabase.removeChannel(messageChannel) }
   }, [activeChannelId, supabase])
 
   return (
