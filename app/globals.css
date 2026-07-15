@@ -275,6 +275,111 @@
   --chart-tooltip-border: rgba(15, 23, 42, 0.10);
 }
 
+/* =========================================================
+   GLOBAL CONVERSATIONAL THEME
+   Warm neutral surfaces, deep green navigation and vivid actions.
+   The data-dashboard-theme selector intentionally keeps this palette
+   consistent when a legacy dashboard variant is selected.
+   ========================================================= */
+:root,
+html:root[data-dashboard-theme] {
+  --background: oklch(0.975 0.012 105);
+  --foreground: oklch(0.245 0.025 175);
+  --card: oklch(0.995 0.006 105);
+  --card-foreground: oklch(0.245 0.025 175);
+  --popover: oklch(0.995 0.006 105);
+  --popover-foreground: oklch(0.245 0.025 175);
+  --primary: oklch(0.57 0.16 158);
+  --primary-foreground: oklch(0.99 0.005 105);
+  --secondary: oklch(0.935 0.025 145);
+  --secondary-foreground: oklch(0.28 0.055 165);
+  --muted: oklch(0.94 0.014 105);
+  --muted-foreground: oklch(0.49 0.025 175);
+  --accent: oklch(0.91 0.045 150);
+  --accent-foreground: oklch(0.27 0.065 165);
+  --border: oklch(0.875 0.022 130);
+  --input: oklch(0.91 0.02 130);
+  --ring: oklch(0.57 0.16 158);
+  --chart-1: oklch(0.57 0.16 158);
+  --chart-2: oklch(0.48 0.11 185);
+  --chart-3: oklch(0.72 0.13 85);
+  --chart-4: oklch(0.62 0.15 135);
+  --chart-5: oklch(0.56 0.09 220);
+  --radius: 0.85rem;
+  --sidebar: oklch(0.31 0.075 170);
+  --sidebar-foreground: oklch(0.96 0.012 145);
+  --sidebar-primary: oklch(0.74 0.17 150);
+  --sidebar-primary-foreground: oklch(0.20 0.045 170);
+  --sidebar-accent: oklch(0.40 0.08 168);
+  --sidebar-accent-foreground: oklch(0.99 0.005 145);
+  --sidebar-border: oklch(0.44 0.06 170);
+  --sidebar-ring: oklch(0.74 0.17 150);
+  --glass-bg: color-mix(in oklab, var(--card) 88%, transparent);
+  --glass-border: color-mix(in oklab, var(--primary) 13%, transparent);
+  --glass-shadow: 0 18px 50px rgba(21, 61, 52, 0.10);
+  --glow-primary: rgba(37, 211, 102, 0.24);
+}
+
+.dark,
+html:root[data-dashboard-theme].dark {
+  --background: oklch(0.17 0.025 175);
+  --foreground: oklch(0.93 0.012 145);
+  --card: oklch(0.215 0.028 175);
+  --card-foreground: oklch(0.93 0.012 145);
+  --popover: oklch(0.225 0.03 175);
+  --popover-foreground: oklch(0.94 0.012 145);
+  --primary: oklch(0.69 0.17 153);
+  --primary-foreground: oklch(0.16 0.035 170);
+  --secondary: oklch(0.27 0.035 172);
+  --secondary-foreground: oklch(0.91 0.015 145);
+  --muted: oklch(0.265 0.026 175);
+  --muted-foreground: oklch(0.68 0.022 160);
+  --accent: oklch(0.31 0.055 164);
+  --accent-foreground: oklch(0.95 0.012 145);
+  --border: oklch(0.32 0.032 173);
+  --input: oklch(0.27 0.032 173);
+  --ring: oklch(0.69 0.17 153);
+  --sidebar: oklch(0.135 0.03 176);
+  --sidebar-foreground: oklch(0.91 0.014 145);
+  --sidebar-primary: oklch(0.69 0.17 153);
+  --sidebar-primary-foreground: oklch(0.15 0.035 170);
+  --sidebar-accent: oklch(0.235 0.045 171);
+  --sidebar-accent-foreground: oklch(0.96 0.012 145);
+  --sidebar-border: oklch(0.27 0.032 173);
+  --sidebar-ring: oklch(0.69 0.17 153);
+  --glass-shadow: 0 24px 64px rgba(0, 0, 0, 0.32);
+}
+
+@layer base {
+  body {
+    letter-spacing: -0.006em;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 28%, transparent);
+  }
+}
+
+@layer components {
+  [data-slot="button"],
+  [data-slot="input"],
+  [data-slot="textarea"],
+  [data-slot="card"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dialog-content"] {
+    transition: border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  }
+
+  [data-slot="button"]:active {
+    transform: scale(0.98);
+  }
+
+  [data-slot="input"]:focus-visible,
+  [data-slot="textarea"]:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 18%, transparent);
+  }
+}
+
 /* PMO CLARITY (Light / dense operational cockpit) */
 :root[data-dashboard-theme="pmo-clarity"] {
   --background: oklch(0.97 0.012 135);
