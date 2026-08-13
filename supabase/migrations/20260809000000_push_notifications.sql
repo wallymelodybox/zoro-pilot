@@ -39,21 +39,28 @@ begin
     return new;
   end if;
 
-  perform net.http_post(
-    url := project_url || '/functions/v1/send-push',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'Authorization', 'Bearer ' || service_key
-    ),
-    body := jsonb_build_object(
-      'notification_id', new.id,
-      'user_id', new.user_id,
-      'title', new.title,
-      'content', new.content,
-      'link', new.link,
-      'type', new.type
-    )
-  );
+  -- The push dispatch is best-effort: if pg_net/the Edge Function is down or
+  -- errors, that must never roll back the notification insert itself, since
+  -- the in-app Realtime path depends on this row existing regardless of push.
+  begin
+    perform net.http_post(
+      url := project_url || '/functions/v1/send-push',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || service_key
+      ),
+      body := jsonb_build_object(
+        'notification_id', new.id,
+        'user_id', new.user_id,
+        'title', new.title,
+        'content', new.content,
+        'link', new.link,
+        'type', new.type
+      )
+    );
+  exception when others then
+    null;
+  end;
 
   return new;
 end;

@@ -114,10 +114,24 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           message: {
             token: profile.fcm_token,
-            notification: { title: payload.title, body: payload.content },
-            data: { link: payload.link ?? "", type: payload.type },
+            // Data-only (no top-level `notification` block): the mobile app already
+            // owns notification display end-to-end (foreground via the Supabase
+            // Realtime subscription in NotificationService.show, background/terminated
+            // via firebaseBackgroundMessageHandler in push_service.dart calling
+            // NotificationService.showRaw). Including `notification` here would make
+            // Android/iOS display it automatically *in addition* to that, duplicating
+            // every push.
+            data: {
+              link: payload.link ?? "",
+              type: payload.type,
+              title: payload.title,
+              content: payload.content,
+            },
             android: { priority: "high" },
-            apns: { payload: { aps: { sound: "default" } } },
+            apns: {
+              headers: { "apns-priority": "5", "apns-push-type": "background" },
+              payload: { aps: { "content-available": 1 } },
+            },
           },
         }),
       },
