@@ -942,12 +942,12 @@ function MembersSettings() {
     }
   }
 
+  // Le rôle "Administrateur" (rbac_role: 'admin') a les mêmes permissions qu'un DG
+  // (voir hasPermission dans lib/rbac.ts). Les comptes DG/Admin ne doivent être créés
+  // que depuis le back-office (bo-zoro-control-2026-secure), jamais par invitation.
   const availableRoles = (userRole: string) => {
-    if (userRole === "super_admin" || userRole === "admin") {
-      return ["Administrateur", "Chef de département", "Membre", "Invité"]
-    }
-    if (userRole === "executive") {
-      return ["Administrateur", "Chef de département", "Membre", "Invité"]
+    if (userRole === "super_admin" || userRole === "admin" || userRole === "executive") {
+      return ["Chef de département", "Membre", "Invité"]
     }
     return []
   }
@@ -974,8 +974,7 @@ function MembersSettings() {
           invite_code: inviteCode,
           organization_id: user?.organization_id,
           invited_email: inviteEmail,
-          rbac_role_assigned: inviteRole === "Administrateur" ? "admin" : 
-                              inviteRole === "Chef de département" ? "manager" : "member",
+          rbac_role_assigned: inviteRole === "Chef de département" ? "manager" : "member",
           role_assigned: inviteRole,
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 jours
           created_by: user?.id
