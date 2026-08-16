@@ -20,6 +20,24 @@ interface NotificationPayload {
   type: string;
 }
 
+// Mirrors NotificationService.channelForType in push_service.dart — the
+// channel must already exist on-device (created at app startup) or Android
+// silently drops the notification.
+function channelForType(type: string): string {
+  switch (type) {
+    case "message":
+      return "messages";
+    case "task":
+      return "tasks";
+    case "project":
+      return "projects";
+    case "event":
+      return "events";
+    default:
+      return "general";
+  }
+}
+
 let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 
 function base64url(input: ArrayBuffer | string): string {
@@ -114,23 +132,39 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           message: {
             token: profile.fcm_token,
-            // Data-only (no top-level `notification` block): the mobile app already
-            // owns notification display end-to-end (foreground via the Supabase
-            // Realtime subscription in NotificationService.show, background/terminated
-            // via firebaseBackgroundMessageHandler in push_service.dart calling
-            // NotificationService.showRaw). Including `notification` here would make
-            // Android/iOS display it automatically *in addition* to that, duplicating
-            // every push.
+            // We rely on the OS to display the notification natively via
+            // android.notification / apns.alert (channel_id matches the
+            // AndroidNotificationChannel ids created in notification_service.dart).
+            // Data-only pushes are not reliably delivered to a killed app's
+            // background isolate on aggressive OEM battery managers (MIUI/
+            // HyperOS in particular) — a native notification block is
+            // guaranteed to be shown by the OS regardless of app state.
+            // The Dart side (firebaseBackgroundMessageHandler) only handles
+            // deep-link taps here, it does not re-display the notification.
             data: {
               link: payload.link ?? "",
               type: payload.type,
               title: payload.title,
               content: payload.content,
             },
-            android: { priority: "high" },
+            android: {
+              priority: "high",
+              notification: {
+                title: payload.title,
+                body: payload.content,
+                channel_id: channelForType(payload.type),
+                sound: "notification",
+              },
+            },
             apns: {
-              headers: { "apns-priority": "5", "apns-push-type": "background" },
-              payload: { aps: { "content-available": 1 } },
+              headers: { "apns-priority": "10" },
+              payload: {
+                aps: {
+                  alert: { title: payload.title, body: payload.content },
+                  sound: "notification.wav",
+                  "mutable-content": 1,
+                },
+              },
             },
           },
         }),
