@@ -56,6 +56,7 @@ import { useUser } from "@/hooks/use-user";
 import { useSupabaseData } from "@/hooks/use-supabase";
 import { useDashboardMetrics, type DashboardMetrics } from "@/hooks/use-dashboard-metrics";
 import { WeeklySummary } from "./weekly-summary";
+import { MobileDashboard } from "./mobile/mobile-dashboard";
 
 // ─── UTILS ──────────────────────────────────────────────────────────────────
 
@@ -1478,23 +1479,26 @@ export function StrategicDashboard() {
   const userName = user?.name || "Invité";
   const orgName = user?.organization_name || "Zoro Pilot";
 
-  if (variant === "ai-productivity") {
-    return <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
-  }
+  const desktopDashboard =
+    variant === "ai-productivity" ? (
+      <AIProductivityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />
+    ) : variant === "executive-futurist" ? (
+      <ExecutiveFuturistDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />
+    ) : variant === "pmo-clarity" || variant === "strategic-notebook" ? (
+      <PMOClarityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />
+    ) : (
+      <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />
+    );
 
-  if (variant === "executive-futurist") {
-    return <ExecutiveFuturistDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
-  }
-
-  if (variant === "pmo-clarity") {
-    return <PMOClarityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
-  }
-
-  if (variant === "strategic-notebook") {
-    return <PMOClarityDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
-  }
-
-  return <CommandCenterDashboard addedWidgets={addedWidgets} onToggleWidget={handleToggleWidget} userName={userName} orgName={orgName} user={user} metrics={metrics} />;
+  // On mobile web the app always shows the Flutter-style dashboard,
+  // regardless of the desktop theme variant selected — desktop dashboards
+  // stay theme-dependent and are simply hidden under the `md` breakpoint.
+  return (
+    <>
+      <MobileDashboard userName={userName} metrics={metrics} />
+      <div className="hidden md:block">{desktopDashboard}</div>
+    </>
+  );
 }
 
 export default StrategicDashboard;

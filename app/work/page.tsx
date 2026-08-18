@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ChatPanel } from "@/components/chat-panel"
+import { MobileProjectsScreen } from "@/components/mobile/mobile-projects-screen"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { useUser } from "@/hooks/use-user"
 import { createClient } from "@/lib/supabase/client"
@@ -1049,30 +1050,37 @@ export default function WorkPage() {
     return <div className="flex items-center justify-center h-screen text-sm text-muted-foreground">Chargement des projets...</div>
   }
 
+  const mobileScreen = <MobileProjectsScreen projects={projects} tasks={tasks} />
+
   if (!selectedProject) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen gap-4">
-        <div className="h-16 w-16 bg-muted rounded-2xl flex items-center justify-center">
-          <FolderKanban className="h-8 w-8 text-muted-foreground" />
+      <>
+        {mobileScreen}
+        <div className="hidden md:flex flex-col items-center justify-center h-screen gap-4">
+          <div className="h-16 w-16 bg-muted rounded-2xl flex items-center justify-center">
+            <FolderKanban className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div className="text-center">
+            <h3 className="text-lg font-bold font-sans">Aucun projet trouvé</h3>
+            <p className="text-sm text-muted-foreground font-sans">Créez votre premier projet pour commencer.</p>
+          </div>
+          {isDG && (
+            <Button asChild className="h-11 rounded-xl font-bold font-sans gap-2 px-5 shadow-lg shadow-primary/20 mt-4">
+              <Link href="/create/project">
+              <Plus className="h-4 w-4" />
+              Nouveau Projet
+              </Link>
+            </Button>
+          )}
         </div>
-        <div className="text-center">
-          <h3 className="text-lg font-bold font-sans">Aucun projet trouvé</h3>
-          <p className="text-sm text-muted-foreground font-sans">Créez votre premier projet pour commencer.</p>
-        </div>
-        {isDG && (
-          <Button asChild className="h-11 rounded-xl font-bold font-sans gap-2 px-5 shadow-lg shadow-primary/20 mt-4">
-            <Link href="/create/project">
-            <Plus className="h-4 w-4" />
-            Nouveau Projet
-            </Link>
-          </Button>
-        )}
-      </div>
+      </>
     )
   }
 
   return (
-    <div className="flex h-screen flex-col bg-background">
+    <>
+      {mobileScreen}
+      <div className="hidden md:flex h-screen flex-col bg-background">
       {/* Header */}
       <header className="flex flex-col border-b bg-card">
         {/* Top Row: Breadcrumb & User */}
@@ -1204,7 +1212,8 @@ export default function WorkPage() {
         </main>
       </div>
       <QuickCreateBar projectId={selectedProject.id} onRefresh={refresh} />
-    </div>
+      </div>
+    </>
   )
 }
 
