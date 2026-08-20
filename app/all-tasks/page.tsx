@@ -56,7 +56,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { createTask, updateTaskStatus, updateTaskAssignees, deleteTask } from "@/app/actions"
+import { createTask, updateTaskStatus, updateTaskAssignees, deleteTask, addChecklistItem, toggleChecklistItem, deleteChecklistItem } from "@/app/actions"
 import { toast } from "sonner"
 import {
   DndContext,
@@ -729,12 +729,15 @@ function SortableTaskCard({ task, profiles, canAssignTasks, onRefresh }: { task:
             </div>
 
             {isOpen && (
-              <div className="pt-2 border-t mt-1 text-xs text-muted-foreground space-y-2">
-                {task.description ? (
-                  <div className="whitespace-pre-wrap">{task.description}</div>
-                ) : (
-                  <div className="italic">Aucune description</div>
-                )}
+              <div className="pt-2 border-t mt-1 space-y-3">
+                <div className="text-xs text-muted-foreground">
+                  {task.description ? (
+                    <div className="whitespace-pre-wrap">{task.description}</div>
+                  ) : (
+                    <div className="italic">Aucune description</div>
+                  )}
+                </div>
+                <TaskChecklist taskId={task.id} />
               </div>
             )}
           </div>
@@ -973,6 +976,175 @@ function AssignmentsView({ tasks, profiles }: { tasks: Task[]; profiles: any[] }
   )
 }
 
+function TaskChecklist({ taskId }: { taskId: string }) {
+  const [items, setItems] = React.useState<{ id: string; label: string; is_done: boolean }[] | null>(null)
+  const [newLabel, setNewLabel] = React.useState("")
+  const [submitting, setSubmitting] = React.useState(false)
+
+  const loadItems = React.useCallback(async () => {
+    const { createClient } = await import("@/lib/supabase/client")
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("task_checklist_items")
+      .select("id, label, is_done")
+      .eq("task_id", taskId)
+      .order("position", { ascending: true })
+    setItems(data || [])
+  }, [taskId])
+
+  React.useEffect(() => {
+    loadItems()
+  }, [loadItems])
+
+  const handleAdd = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!newLabel.trim() || submitting) return
+    setSubmitting(true)
+    const res = await addChecklistItem(taskId, newLabel.trim())
+    setSubmitting(false)
+    if (res.error) {
+      toast.error(res.error)
+      return
+    }
+    setNewLabel("")
+    loadItems()
+  }
+
+  const handleToggle = async (itemId: string, isDone: boolean) => {
+    setItems((prev) => prev && prev.map((item) => (item.id === itemId ? { ...item, is_done: isDone } : item)))
+    const res = await toggleChecklistItem(itemId, isDone)
+    if ('error' in res) {
+      toast.error(res.error)
+      loadItems()
+    }
+  }
+
+  const handleDelete = async (itemId: string) => {
+    setItems((prev) => prev && prev.filter((item) => item.id !== itemId))
+    const res = await deleteChecklistItem(itemId)
+    if ('error' in res) {
+      toast.error(res.error)
+      loadItems()
+    }
+  }
+
+  if (items === null) {
+    return <div className="text-xs text-muted-foreground">Chargement de la checklist...</div>
+  }
+
+  const doneCount = items.filter((item) => item.is_done).length
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-foreground">Checklist</span>
+        {items.length > 0 && (
+          <span className="text-[10px] text-muted-foreground">{doneCount}/{items.length}</span>
+        )}
+      </div>
+      <div className="space-y-1">
+        {items.map((item) => (
+          <div key={item.id} className="group flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={item.is_done}
+              onChange={(event) => handleToggle(item.id, event.target.checked)}
+              className="h-3.5 w-3.5 shrink-0"
+            />
+            <span className={cn("text-xs flex-1 truncate", item.is_done && "line-through text-muted-foreground")}>
+              {item.label}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleDelete(item.id)}
+              className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+            >
+              Retirer
+            </button>
+          </div>
+        ))}
+      </div>
+      <form onSubmit={handleAdd} className="flex items-center gap-2">
+        <Input
+          value={newLabel}
+          onChange={(event) => setNewLabel(event.target.value)}
+          placeholder="Ajouter un item..."
+          className="h-7 text-xs"
+        />
+        <Button type="submit" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={submitting || !newLabel.trim()}>
+          Ajouter
+        </Button>
+      </form>
+    </div>
+  )
+}
+
+function TaskSubtasks({ parentTask, subtasks, onRefresh }: { parentTask: Task; subtasks: Task[]; onRefresh?: () => void }) {
+  const [newTitle, setNewTitle] = React.useState("")
+  const [submitting, setSubmitting] = React.useState(false)
+
+  const handleAdd = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!newTitle.trim() || submitting) return
+    setSubmitting(true)
+    const formData = new FormData()
+    formData.set("title", newTitle.trim())
+    formData.set("parentTaskId", parentTask.id)
+    if (parentTask.projectId) formData.set("projectId", parentTask.projectId)
+    formData.set("assigneeId", parentTask.assigneeId)
+    const res = await createTask(formData)
+    setSubmitting(false)
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+    setNewTitle("")
+    if (onRefresh) onRefresh()
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-foreground">Sous-tâches</span>
+        {subtasks.length > 0 && (
+          <span className="text-[10px] text-muted-foreground">
+            {subtasks.filter((t) => t.status === 'done').length}/{subtasks.length}
+          </span>
+        )}
+      </div>
+      <div className="space-y-1">
+        {subtasks.map((subtask) => (
+          <div key={subtask.id} className="flex items-center gap-2">
+            <CheckCircle2
+              className={cn("h-3.5 w-3.5 shrink-0 cursor-pointer", subtask.status === 'done' ? 'text-green-500' : 'text-muted-foreground/40')}
+              onClick={async () => {
+                const newStatus = subtask.status === 'done' ? 'todo' : 'done'
+                const res = await updateTaskStatus(subtask.id, newStatus)
+                if (!res.error && onRefresh) onRefresh()
+              }}
+            />
+            <span className={cn("text-xs flex-1 truncate", subtask.status === 'done' && "line-through text-muted-foreground")}>
+              {subtask.title}
+            </span>
+            <Badge variant="outline" className="text-[9px] h-4 px-1">{getTaskStatusLabel(subtask.status)}</Badge>
+          </div>
+        ))}
+      </div>
+      <form onSubmit={handleAdd} className="flex items-center gap-2">
+        <Input
+          value={newTitle}
+          onChange={(event) => setNewTitle(event.target.value)}
+          placeholder="Ajouter une sous-tâche..."
+          className="h-7 text-xs"
+        />
+        <Button type="submit" size="sm" variant="outline" className="h-7 px-2 text-xs" disabled={submitting || !newTitle.trim()}>
+          Ajouter
+        </Button>
+      </form>
+    </div>
+  )
+}
+
 function CardList({ tasks, projects, profiles, canAssignTasks, onRefresh }: { tasks: Task[], projects: any[], profiles: any[], canAssignTasks: boolean, onRefresh?: () => void }) {
    const [openTaskId, setOpenTaskId] = React.useState<string | null>(null)
 
@@ -1107,12 +1279,22 @@ function CardList({ tasks, projects, profiles, canAssignTasks, onRefresh }: { ta
                      </div>
 
                      {isOpen && (
-                       <div className="mt-3 border-t pt-3 text-xs text-muted-foreground">
-                         {task.description ? (
-                           <div className="whitespace-pre-wrap">{task.description}</div>
-                         ) : (
-                           <div className="italic">Aucune description</div>
+                       <div className="mt-3 border-t pt-3 space-y-4">
+                         <div className="text-xs text-muted-foreground">
+                           {task.description ? (
+                             <div className="whitespace-pre-wrap">{task.description}</div>
+                           ) : (
+                             <div className="italic">Aucune description</div>
+                           )}
+                         </div>
+                         {!task.parentTaskId && (
+                           <TaskSubtasks
+                             parentTask={task}
+                             subtasks={tasks.filter((t) => t.parentTaskId === task.id)}
+                             onRefresh={onRefresh}
+                           />
                          )}
+                         <TaskChecklist taskId={task.id} />
                        </div>
                      )}
                   </div>
