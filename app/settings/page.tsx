@@ -71,6 +71,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { isOrgAdmin, isOrgAdminOrSuperAdmin, isOwnerOrSuperAdmin } from "@/lib/roles"
+import { createLicenseCheckoutSession } from "@/app/settings/billing-actions"
 import { toast } from "sonner"
 import { useThemeVariant, type ThemeVariant } from "@/components/theme/variant-provider"
 import { useUser } from "@/hooks/use-user"
@@ -798,38 +799,82 @@ function OrganizationSettings() {
   )
 }
 
+const LICENSE_STATUS_LABELS: Record<string, { label: string; tone: "good" | "neutral" | "bad" | "warn" }> = {
+  essai: { label: "Essai", tone: "neutral" },
+  active: { label: "Active", tone: "good" },
+  expire_bientot: { label: "Expire bientôt", tone: "warn" },
+  expiree: { label: "Expirée", tone: "bad" },
+  suspendue: { label: "Suspendue", tone: "bad" },
+}
+
+const RENEWABLE_LICENSE_TYPES: { value: "mensuelle" | "trimestrielle" | "semestrielle" | "annuelle"; label: string }[] = [
+  { value: "mensuelle", label: "Mensuelle" },
+  { value: "trimestrielle", label: "Trimestrielle" },
+  { value: "semestrielle", label: "Semestrielle" },
+  { value: "annuelle", label: "Annuelle" },
+]
+
 function BillingSettings() {
   const { user } = useUser()
   const supabase = createClient()
+  const searchParams = useSearchParams()
   const [billing, setBilling] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [renewing, setRenewing] = useState<string | null>(null)
+  const canRenew = isOwnerOrSuperAdmin(user?.rbac_role)
+
+  const loadBilling = async () => {
+    if (!user?.organization_id) return
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('organizations')
+      .select('license_type, license_status, expires_at, created_at')
+      .eq('id', user.organization_id)
+      .single()
+
+    if (!error) setBilling(data)
+    setLoading(false)
+  }
 
   useEffect(() => {
-    async function loadBilling() {
-      if (!user?.organization_id) return
-      setLoading(true)
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('license_type, expires_at, created_at')
-        .eq('id', user.organization_id)
-        .single()
-
-      if (!error) setBilling(data)
-      setLoading(false)
-    }
-
     loadBilling()
   }, [user?.organization_id])
+
+  useEffect(() => {
+    const checkout = searchParams.get('checkout')
+    if (checkout === 'success') {
+      toast.success("Paiement reçu. La licence sera mise à jour dans quelques instants.")
+      setTimeout(loadBilling, 3000)
+    } else if (checkout === 'cancelled') {
+      toast.info("Paiement annulé.")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  const handleRenew = async (licenseType: "mensuelle" | "trimestrielle" | "semestrielle" | "annuelle") => {
+    setRenewing(licenseType)
+    try {
+      const res = await createLicenseCheckoutSession(licenseType)
+      if (res.error || !res.checkoutUrl) {
+        toast.error(res.error || "Impossible de démarrer le paiement.")
+        return
+      }
+      window.location.href = res.checkoutUrl
+    } finally {
+      setRenewing(null)
+    }
+  }
 
   const expiresAt = billing?.expires_at
     ? new Date(billing.expires_at).toLocaleDateString('fr-FR')
     : "Non défini"
+  const statusInfo = LICENSE_STATUS_LABELS[billing?.license_status] || LICENSE_STATUS_LABELS.active
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">Abonnement & Facturation</h2>
-        <p className="text-muted-foreground">Consultez l'état de licence de votre organisation.</p>
+        <p className="text-muted-foreground">Consultez et renouvelez la licence de votre organisation.</p>
       </div>
       <Separator />
 
@@ -843,8 +888,8 @@ function BillingSettings() {
                 <p className="text-sm text-muted-foreground">Licence actuelle</p>
                 <p className="mt-1 text-lg font-semibold capitalize">{billing?.license_type || "mensuelle"}</p>
               </div>
-              <Badge tone={billing?.license_type === "definitive" ? "good" : "neutral"}>
-                {billing?.license_type === "definitive" ? "Définitive" : "Active"}
+              <Badge tone={billing?.license_type === "definitive" ? "good" : statusInfo.tone}>
+                {billing?.license_type === "definitive" ? "Définitive" : statusInfo.label}
               </Badge>
             </div>
           </div>
@@ -852,10 +897,34 @@ function BillingSettings() {
             <p className="text-sm text-muted-foreground">Expiration</p>
             <p className="mt-1 text-lg font-semibold">{billing?.license_type === "definitive" ? "Aucune expiration" : expiresAt}</p>
           </div>
-          <NotConfigured
-            title="Paiement non connecté"
-            description="La lecture de licence est branchée en base. Le paiement et les factures doivent rester gérés depuis le back-office tant qu'aucun prestataire de paiement n'est connecté."
-          />
+
+          {billing?.license_type !== "definitive" && (
+            <div className="rounded-lg border p-4 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Renouveler l'abonnement</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Le paiement est sécurisé par Stripe. Votre licence est étendue automatiquement dès confirmation du paiement.
+                </p>
+              </div>
+              {!canRenew ? (
+                <p className="text-xs text-muted-foreground italic">Seul le DG peut renouveler la licence de l'organisation.</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {RENEWABLE_LICENSE_TYPES.map((option) => (
+                    <Button
+                      key={option.value}
+                      variant="outline"
+                      size="sm"
+                      disabled={renewing !== null}
+                      onClick={() => handleRenew(option.value)}
+                    >
+                      {renewing === option.value ? "Redirection..." : option.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
