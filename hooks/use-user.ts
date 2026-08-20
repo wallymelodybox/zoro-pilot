@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
+import { isOrgAdmin } from '@/lib/roles'
 
 export interface UserProfile {
   id: string
@@ -72,7 +73,7 @@ export function useUser() {
           id: authUser.id,
           email: authUser.email!,
           name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Utilisateur',
-          role: rpcProfile?.rbac_role === 'admin' || rpcProfile?.rbac_role === 'executive'
+          role: isOrgAdmin(rpcProfile?.rbac_role)
             ? 'Directeur Général'
             : 'Membre',
           avatar_url: null,
@@ -129,7 +130,7 @@ export function useUser() {
           id: authUser.id,
           email: authUser.email!,
           name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Utilisateur',
-          role: rpcProfile?.rbac_role === 'admin' || rpcProfile?.rbac_role === 'executive'
+          role: isOrgAdmin(rpcProfile?.rbac_role)
             ? 'Directeur Général'
             : 'Membre',
           avatar_url: null,

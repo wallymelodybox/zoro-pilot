@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { isOrgAdmin } from '@/lib/roles'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 async function ensureProfile(supabase: SupabaseClient) {
@@ -43,7 +44,7 @@ async function ensureProfile(supabase: SupabaseClient) {
   }
 
   // Profil admin/executive sans organization_id : auto-réparation
-  if (existingProfile && (existingProfile.rbac_role === 'admin' || existingProfile.rbac_role === 'executive')) {
+  if (existingProfile && isOrgAdmin(existingProfile.rbac_role)) {
     const { data: orgId } = await supabase.rpc('get_my_org_from_members')
 
     if (orgId) {

@@ -1,4 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
+import { isOrgAdmin, isOrgAdminOrSuperAdmin, isOwner, isOwnerOrSuperAdmin, type RbacRole } from '@/lib/roles'
+
+export type { RbacRole }
+export { isOrgAdmin, isOrgAdminOrSuperAdmin, isOwner, isOwnerOrSuperAdmin }
 
 export type RoleScope = 'organization' | 'project'
 
@@ -55,10 +59,7 @@ export async function hasPermission(
     'view_data',
   ])
 
-  if (
-    organizationAdminActions.has(action) &&
-    ['super_admin', 'admin', 'executive'].includes(profileRole)
-  ) {
+  if (organizationAdminActions.has(action) && isOrgAdminOrSuperAdmin(profileRole)) {
     return true
   }
 

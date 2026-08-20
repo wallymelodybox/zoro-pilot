@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { assignRoleToUser, hasPermission } from '@/lib/rbac'
+import { assignRoleToUser, hasPermission, isOrgAdminOrSuperAdmin, isOwnerOrSuperAdmin } from '@/lib/rbac'
 
 async function getUserOrg(supabase: any) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -37,11 +37,11 @@ async function getCurrentProfile(supabase: any, userId: string) {
 }
 
 function canManageOrgTasks(role?: string | null) {
-  return role === 'super_admin' || role === 'admin' || role === 'executive'
+  return isOrgAdminOrSuperAdmin(role)
 }
 
 function canManageOrgProjects(role?: string | null) {
-  return role === 'super_admin' || role === 'admin' || role === 'executive'
+  return isOrgAdminOrSuperAdmin(role)
 }
 
 function uniqueIds(ids: string[]) {
@@ -374,7 +374,7 @@ export async function deleteProject(projectId: string) {
   const orgId = await getUserOrg(supabase)
   const profile = await getCurrentProfile(supabase, user.id)
   if (!orgId) return { error: 'Organisation introuvable.' }
-  if (!canManageOrgProjects(profile?.rbac_role)) {
+  if (!isOwnerOrSuperAdmin(profile?.rbac_role)) {
     return { error: 'Seul le DG peut supprimer un projet de l’organisation.' }
   }
 

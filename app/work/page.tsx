@@ -45,6 +45,7 @@ import {
   getPriorityColor,
   getTaskStatusColor,
 } from "@/lib/store"
+import { isOrgAdminOrSuperAdmin } from "@/lib/roles"
 import {
   List,
   Columns3,
@@ -1043,7 +1044,7 @@ export default function WorkPage() {
   const projectMembers = profiles.filter(profile => projectMemberIds.has(profile.id))
 
   // Check permissions
-  const isDG = user?.rbac_role === 'admin' || user?.rbac_role === 'executive' || user?.rbac_role === 'super_admin'
+  const isDG = isOrgAdminOrSuperAdmin(user?.rbac_role)
   const canEditProject = isDG
 
   if (loading) {

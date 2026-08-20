@@ -4,6 +4,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
 import { randomBytes } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
+import { isOrgAdmin } from '@/lib/roles'
 
 /**
  * Vérifie que l'appelant est bien le super admin.
@@ -202,7 +203,7 @@ export async function resetDGPassword(profileId: string) {
       return { error: "Profil introuvable." }
     }
 
-    if (profile.rbac_role !== 'admin' && profile.rbac_role !== 'executive') {
+    if (!isOrgAdmin(profile.rbac_role)) {
       return { error: "Ce profil n'est pas un Directeur Général." }
     }
 

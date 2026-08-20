@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useUser } from "@/hooks/use-user"
+import { isOrgAdmin } from "@/lib/roles"
 import { redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -537,7 +538,7 @@ export default function BackOfficePage() {
                           <span className="text-muted-foreground ml-2">{u.email}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {(u.rbac_role === 'admin' || u.rbac_role === 'executive') && (
+                          {isOrgAdmin(u.rbac_role) && (
                             <Button
                               variant="outline"
                               size="sm"

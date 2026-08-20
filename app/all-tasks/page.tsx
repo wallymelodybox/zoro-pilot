@@ -5,6 +5,7 @@ import { useState } from "react"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { useUser } from "@/hooks/use-user"
 import { getPriorityLabel, getTaskStatusLabel, getPriorityColor, type Task, type TaskStatus } from "@/lib/store"
+import { isOrgAdminOrSuperAdmin } from "@/lib/roles"
 import {
   List,
   Columns3,
@@ -136,7 +137,7 @@ export default function AllTasksPage() {
   const [createDueDate, setCreateDueDate] = React.useState("")
   const [createAssigneeIds, setCreateAssigneeIds] = React.useState<string[]>([])
   const [createVisibility, setCreateVisibility] = React.useState("private")
-  const canAssignTasks = user?.rbac_role === "super_admin" || user?.rbac_role === "admin" || user?.rbac_role === "executive"
+  const canAssignTasks = isOrgAdminOrSuperAdmin(user?.rbac_role)
   const selectedAssigneeIds = canAssignTasks ? createAssigneeIds : [user?.id || ""].filter(Boolean)
 
   if (loading) {

@@ -70,6 +70,7 @@ import {
   Edit2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { isOrgAdmin, isOrgAdminOrSuperAdmin, isOwnerOrSuperAdmin } from "@/lib/roles"
 import { toast } from "sonner"
 import { useThemeVariant, type ThemeVariant } from "@/components/theme/variant-provider"
 import { useUser } from "@/hooks/use-user"
@@ -87,11 +88,9 @@ type SettingsSection =
   | "integrations"
   | "permissions"
 
-const canManageOrgSettings = (role?: string | null) =>
-  role === "super_admin" || role === "admin" || role === "executive"
+const canManageOrgSettings = (role?: string | null) => isOrgAdminOrSuperAdmin(role)
 
-const canManageOrgMembers = (role?: string | null) =>
-  role === "super_admin" || role === "admin" || role === "executive"
+const canManageOrgMembers = (role?: string | null) => isOrgAdminOrSuperAdmin(role)
 
 function NotConfigured({
   title,
@@ -942,11 +941,15 @@ function MembersSettings() {
     }
   }
 
-  // Le rôle "Administrateur" (rbac_role: 'admin') a les mêmes permissions qu'un DG
-  // (voir hasPermission dans lib/rbac.ts). Les comptes DG/Admin ne doivent être créés
-  // que depuis le back-office (bo-zoro-control-2026-secure), jamais par invitation.
+  // Seul le DG peut déléguer le rôle "Administrateur" (Admin Organisation) —
+  // un admin existant ne peut pas en créer d'autres. Le compte DG/Owner
+  // lui-même n'est jamais créé par invitation, uniquement depuis le
+  // back-office (bo-zoro-control-2026-secure).
   const availableRoles = (userRole: string) => {
-    if (userRole === "super_admin" || userRole === "admin" || userRole === "executive") {
+    if (isOwnerOrSuperAdmin(userRole)) {
+      return ["Administrateur", "Chef de département", "Membre", "Invité"]
+    }
+    if (isOrgAdmin(userRole)) {
       return ["Chef de département", "Membre", "Invité"]
     }
     return []
@@ -974,7 +977,8 @@ function MembersSettings() {
           invite_code: inviteCode,
           organization_id: user?.organization_id,
           invited_email: inviteEmail,
-          rbac_role_assigned: inviteRole === "Chef de département" ? "manager" : "member",
+          rbac_role_assigned: inviteRole === "Administrateur" ? "admin" :
+                              inviteRole === "Chef de département" ? "manager" : "member",
           role_assigned: inviteRole,
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 jours
           created_by: user?.id
@@ -1259,7 +1263,7 @@ function MembersSettings() {
                           <div>
                              <span className={cn(
                                "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                               m.rbac_role === 'admin' || m.rbac_role === 'executive' || m.rbac_role === 'super_admin'
+                               isOrgAdminOrSuperAdmin(m.rbac_role)
                                  ? "bg-purple-100 text-purple-700"
                                  : "bg-blue-100 text-blue-700"
                              )}>
@@ -1415,7 +1419,7 @@ function MembersSettings() {
                           <div>
                              <span className={cn(
                                "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
-                               inv.rbac_role_assigned === 'admin' || inv.rbac_role_assigned === 'executive'
+                               isOrgAdmin(inv.rbac_role_assigned)
                                  ? "bg-purple-100 text-purple-700"
                                  : "bg-blue-100 text-blue-700"
                              )}>

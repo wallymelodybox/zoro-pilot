@@ -1,6 +1,7 @@
 "use client"
 
 import React from 'react'
+import { isOrgAdmin } from '@/lib/roles'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -84,7 +85,7 @@ export function WeeklySummary({ userId }: WeeklyReportProps) {
     )
   }
 
-  const isDG = currentUser?.rbac_role === 'admin' || currentUser?.rbac_role === 'executive'
+  const isDG = isOrgAdmin(currentUser?.rbac_role)
 
   return (
     <div className="space-y-6">

@@ -1,6 +1,7 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isOrgAdmin } from '@/lib/roles'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -53,7 +54,7 @@ export async function updateSession(request: NextRequest) {
         .eq('id', user.id)
         .single()
 
-      const isDG = profile?.rbac_role === 'admin' || profile?.rbac_role === 'executive'
+      const isDG = isOrgAdmin(profile?.rbac_role)
       const isEmployee = profile?.rbac_role === 'member' || profile?.rbac_role === 'manager'
 
       // Si le profil n'existe pas encore (cas rare post-auth), on considère qu'on doit onboarder

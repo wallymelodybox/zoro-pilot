@@ -9,6 +9,7 @@ import { createTask } from "@/app/actions"
 import { toast } from "sonner"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { useUser } from "@/hooks/use-user"
+import { isOrgAdminOrSuperAdmin } from "@/lib/roles"
 import {
   FolderKanban,
   Calendar,
@@ -40,7 +41,7 @@ export default function CreateTaskPage() {
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [visibility, setVisibility] = useState("private")
   const [progress, setProgress] = useState(0)
-  const canAssignTasks = user?.rbac_role === "super_admin" || user?.rbac_role === "admin" || user?.rbac_role === "executive"
+  const canAssignTasks = isOrgAdminOrSuperAdmin(user?.rbac_role)
   const selectedAssigneeIds = canAssignTasks ? (assigneeIds.length > 0 ? assigneeIds : [user?.id || ""]) : [user?.id || ""]
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
