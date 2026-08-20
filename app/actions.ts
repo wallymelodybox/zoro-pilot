@@ -426,6 +426,7 @@ export async function createTask(formData: FormData) {
   if (!user) return { error: 'Non autorisé' }
 
   const projectId = formData.get('projectId') as string
+  const parentTaskId = formData.get('parentTaskId') as string | null
   const title = formData.get('title') as string
   const description = formData.get('description') as string
   const priority = formData.get('priority') as string || 'medium'
@@ -462,6 +463,19 @@ export async function createTask(formData: FormData) {
     }
   }
 
+  if (parentTaskId) {
+    const { data: parentTask } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('id', parentTaskId)
+      .eq('organization_id', orgId)
+      .single()
+
+    if (!parentTask) {
+      return { error: 'Tâche parente introuvable dans votre organisation.' }
+    }
+  }
+
   let assigneeIds = [user.id]
   let visibility = 'private'
 
@@ -487,6 +501,7 @@ export async function createTask(formData: FormData) {
     title,
     description: description || null,
     project_id: projectId && projectId !== "none" ? projectId : null,
+    parent_task_id: parentTaskId || null,
     organization_id: orgId,
     created_by: user.id,
     visibility,
@@ -938,7 +953,13 @@ async function notifyOrganization(
 export async function updateTaskStatus(taskId: string, status: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const statusProgress = status === 'done' ? 100 : status === 'todo' ? 0 : status === 'in-progress' ? 50 : undefined
+  const statusProgress =
+    status === 'done' ? 100 :
+    status === 'cancelled' ? undefined :
+    status === 'todo' ? 0 :
+    status === 'in-progress' ? 50 :
+    status === 'to_validate' ? 90 :
+    undefined
   const updatePayload: Record<string, any> = { status }
   if (statusProgress !== undefined) updatePayload.progress = statusProgress
   
@@ -983,12 +1004,14 @@ export async function updateTaskStatus(taskId: string, status: string) {
       .select('status, progress')
       .eq('project_id', task.project_id)
 
-    if (!tasksError && tasks && tasks.length > 0) {
+    const activeTasks = (tasks || []).filter((item: any) => item.status !== 'cancelled')
+
+    if (!tasksError && activeTasks.length > 0) {
       const progress = Math.round(
-        tasks.reduce((sum: number, item: any) => {
+        activeTasks.reduce((sum: number, item: any) => {
           if (typeof item.progress === 'number') return sum + item.progress
           return sum + (item.status === 'done' ? 100 : 0)
-        }, 0) / tasks.length
+        }, 0) / activeTasks.length
       )
 
       const oldProgress = task.projects?.progress || 0
@@ -1105,9 +1128,11 @@ export async function updateTaskProgress(taskId: string, progress: number) {
       .select('status, progress')
       .eq('project_id', task.project_id)
 
-    if (tasks && tasks.length > 0) {
+    const activeTasks = (tasks || []).filter((item: any) => item.status !== 'cancelled')
+
+    if (activeTasks.length > 0) {
       const projectProgress = Math.round(
-        tasks.reduce((sum: number, item: any) => sum + Number(item.progress || (item.status === 'done' ? 100 : 0)), 0) / tasks.length
+        activeTasks.reduce((sum: number, item: any) => sum + Number(item.progress || (item.status === 'done' ? 100 : 0)), 0) / activeTasks.length
       )
 
       await supabase
@@ -1224,6 +1249,134 @@ export async function updateTaskAssignees(taskId: string, assigneeIds: string[])
   revalidatePath('/all-tasks')
   revalidatePath('/work')
   revalidatePath('/my-day')
+  return { success: true }
+}
+
+async function assertCanEditTaskChecklist(supabase: any, orgId: string, userId: string, taskId: string) {
+  const { data: task } = await supabase
+    .from('tasks')
+    .select('id, created_by, assignee_id')
+    .eq('id', taskId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!task) return { error: 'Tâche introuvable dans votre organisation.' }
+
+  const profile = await getCurrentProfile(supabase, userId)
+  const canEdit =
+    task.created_by === userId ||
+    task.assignee_id === userId ||
+    canManageOrgTasks(profile?.rbac_role)
+
+  if (!canEdit) return { error: 'Vous n’avez pas la permission de modifier la checklist de cette tâche.' }
+
+  return { task }
+}
+
+export async function addChecklistItem(taskId: string, label: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+  if (!label?.trim()) return { error: 'Le libellé de l’item est requis.' }
+
+  const orgId = await getUserOrg(supabase)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+
+  const access = await assertCanEditTaskChecklist(supabase, orgId, user.id, taskId)
+  if ('error' in access) return access
+
+  const { count } = await supabase
+    .from('task_checklist_items')
+    .select('id', { count: 'exact', head: true })
+    .eq('task_id', taskId)
+
+  const { error } = await supabase
+    .from('task_checklist_items')
+    .insert({
+      organization_id: orgId,
+      task_id: taskId,
+      label: label.trim(),
+      position: count || 0,
+      created_by: user.id,
+    })
+
+  if (error) {
+    console.error('Error adding checklist item:', error)
+    return { error: "Erreur lors de l’ajout de l’item." }
+  }
+
+  revalidatePath('/all-tasks')
+  revalidatePath('/work')
+  return { success: true }
+}
+
+export async function toggleChecklistItem(itemId: string, isDone: boolean) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+
+  const { data: item } = await supabase
+    .from('task_checklist_items')
+    .select('id, task_id')
+    .eq('id', itemId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!item) return { error: 'Item introuvable dans votre organisation.' }
+
+  const access = await assertCanEditTaskChecklist(supabase, orgId, user.id, item.task_id)
+  if ('error' in access) return access
+
+  const { error } = await supabase
+    .from('task_checklist_items')
+    .update({ is_done: isDone })
+    .eq('id', itemId)
+
+  if (error) {
+    console.error('Error toggling checklist item:', error)
+    return { error: "Erreur lors de la mise à jour de l’item." }
+  }
+
+  revalidatePath('/all-tasks')
+  revalidatePath('/work')
+  return { success: true }
+}
+
+export async function deleteChecklistItem(itemId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Non autorisé' }
+
+  const orgId = await getUserOrg(supabase)
+  if (!orgId) return { error: 'Organisation introuvable.' }
+
+  const { data: item } = await supabase
+    .from('task_checklist_items')
+    .select('id, task_id')
+    .eq('id', itemId)
+    .eq('organization_id', orgId)
+    .single()
+
+  if (!item) return { error: 'Item introuvable dans votre organisation.' }
+
+  const access = await assertCanEditTaskChecklist(supabase, orgId, user.id, item.task_id)
+  if ('error' in access) return access
+
+  const { error } = await supabase
+    .from('task_checklist_items')
+    .delete()
+    .eq('id', itemId)
+
+  if (error) {
+    console.error('Error deleting checklist item:', error)
+    return { error: "Erreur lors de la suppression de l’item." }
+  }
+
+  revalidatePath('/all-tasks')
+  revalidatePath('/work')
   return { success: true }
 }
 

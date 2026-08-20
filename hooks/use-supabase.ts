@@ -148,6 +148,7 @@ export function useSupabaseData() {
       const mappedTasks = tasksData ? tasksData.map((t: any) => ({
         id: t.id,
         projectId: t.project_id,
+        parentTaskId: t.parent_task_id,
         title: t.title,
         description: t.description,
         createdBy: t.created_by,
@@ -160,7 +161,8 @@ export function useSupabaseData() {
         priority: t.priority,
         progress: Number(t.progress || (t.status === 'done' ? 100 : 0)),
         dueDate: t.due_date,
-        linkedKRId: t.linked_kr_id
+        linkedKRId: t.linked_kr_id,
+        isOverdue: Boolean(t.is_overdue)
       })) : []
       setTasks(mappedTasks)
 

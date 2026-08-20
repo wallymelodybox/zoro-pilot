@@ -389,12 +389,12 @@ export function AppSidebar() {
           {!collapsed && variant === "ai-productivity" && (
             <div className="mb-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
               <div className="text-xs text-muted-foreground mb-1">Tâches terminées</div>
-              <div className="font-bold text-foreground">{tasks.filter(t => t.status === 'done').length} / {tasks.length}</div>
+              <div className="font-bold text-foreground">{tasks.filter(t => t.status === 'done').length} / {tasks.filter(t => t.status !== 'cancelled').length}</div>
               <div className="mt-2 h-1.5 w-full bg-accent/40 rounded-full overflow-hidden">
                 <div 
                   className={cn(
                     "h-full bg-primary rounded-full transition-all duration-500",
-                    `w-[${(tasks.filter(t => t.status === 'done').length / (tasks.length || 1)) * 100}%]`
+                    `w-[${(tasks.filter(t => t.status === 'done').length / (tasks.filter(t => t.status !== 'cancelled').length || 1)) * 100}%]`
                   )}
                 />
               </div>
@@ -432,12 +432,12 @@ export function AppSidebar() {
                 <span>Tâches terminées</span>
                 <span className="text-primary">☆</span>
               </div>
-              <div className="text-2xl font-semibold text-foreground">{tasks.filter(t => t.status === 'done').length} / {tasks.length}</div>
+              <div className="text-2xl font-semibold text-foreground">{tasks.filter(t => t.status === 'done').length} / {tasks.filter(t => t.status !== 'cancelled').length}</div>
               <div className="mt-2 h-1.5 w-full rounded-full bg-background overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full bg-primary transition-all duration-500",
-                    `w-[${(tasks.filter(t => t.status === 'done').length / (tasks.length || 1)) * 100}%]`
+                    `w-[${(tasks.filter(t => t.status === 'done').length / (tasks.filter(t => t.status !== 'cancelled').length || 1)) * 100}%]`
                   )}
                 />
               </div>

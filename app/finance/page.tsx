@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { useSupabaseData } from "@/hooks/use-supabase"
 import { useUser } from "@/hooks/use-user"
-import { formatCurrency } from "@/lib/store"
+import { formatCurrency, getTaskStatusLabel, getTaskStatusColor } from "@/lib/store"
+import { cn } from "@/lib/utils"
 import {
   DollarSign,
   TrendingUp,
@@ -294,15 +295,8 @@ export default function FinancePage() {
                         <TableCell className="font-medium">{task.title}</TableCell>
                         <TableCell>{project?.name || "—"}</TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className={
-                            task.status === 'done' ? "bg-emerald-500/10 text-emerald-500 border-none" : 
-                            task.status === 'in-progress' ? "bg-blue-500/10 text-blue-500 border-none" : 
-                            task.status === 'blocked' ? "bg-rose-500/10 text-rose-500 border-none" : 
-                            "bg-muted text-muted-foreground border-none"
-                          }>
-                            {task.status === 'todo' ? 'À faire' : 
-                             task.status === 'in-progress' ? 'En cours' : 
-                             task.status === 'blocked' ? 'Bloqué' : 'Terminé'}
+                          <Badge variant="secondary" className={cn(getTaskStatusColor(task.status), "border-none")}>
+                            {getTaskStatusLabel(task.status)}
                           </Badge>
                         </TableCell>
                         <TableCell>

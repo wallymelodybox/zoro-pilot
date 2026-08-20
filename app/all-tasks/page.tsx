@@ -374,7 +374,7 @@ function KanbanView({
   const [createPriority, setCreatePriority] = React.useState("medium")
   const [createDueDate, setCreateDueDate] = React.useState("")
   const [createAssigneeIds, setCreateAssigneeIds] = React.useState<string[]>([])
-  const statuses: TaskStatus[] = ["todo", "in-progress", "blocked", "done"]
+  const statuses: TaskStatus[] = ["todo", "in-progress", "blocked", "to_validate", "done", "cancelled"]
 
   React.useEffect(() => {
     setLocalTasks(tasks)
@@ -622,9 +622,11 @@ function KanbanColumn({
       <div className="p-4 flex items-center justify-between border-b bg-muted/5 rounded-t-xl">
         <h3 className="font-semibold text-sm capitalize flex items-center gap-2">
           <span className={cn("w-2 h-2 rounded-full",
-            status === 'todo' ? 'bg-slate-400' : 
-            status === 'in-progress' ? 'bg-blue-500' : 
-            status === 'blocked' ? 'bg-destructive' : 'bg-green-500'
+            status === 'todo' ? 'bg-slate-400' :
+            status === 'in-progress' ? 'bg-blue-500' :
+            status === 'blocked' ? 'bg-destructive' :
+            status === 'to_validate' ? 'bg-amber-500' :
+            status === 'cancelled' ? 'bg-slate-300' : 'bg-green-500'
           )} />
           {getTaskStatusLabel(status)}
           <Badge variant="secondary" className="ml-2 bg-muted-foreground/10 text-muted-foreground font-normal">
@@ -1027,8 +1029,8 @@ function CardList({ tasks, projects, profiles, canAssignTasks, onRefresh }: { ta
 
                         <div className="flex items-center gap-2 min-w-25">
                            {task.dueDate && (
-                              <span className={cn("text-xs flex items-center gap-1", 
-                                 new Date(task.dueDate) < new Date() && task.status !== 'done' ? 'text-destructive' : 'text-muted-foreground'
+                              <span className={cn("text-xs flex items-center gap-1",
+                                 task.isOverdue ? 'text-destructive' : 'text-muted-foreground'
                               )}>
                                  <Clock className="h-3.5 w-3.5" />
                                  {new Date(task.dueDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
@@ -1071,7 +1073,25 @@ function CardList({ tasks, projects, profiles, canAssignTasks, onRefresh }: { ta
                               }} disabled={task.status === 'in-progress'}>
                                  En cours
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={async () => {
+                                 const res = await updateTaskStatus(task.id, 'to_validate')
+                                 if (res.success) {
+                                    toast.success("Tâche à valider")
+                                    if (onRefresh) onRefresh()
+                                 }
+                              }} disabled={task.status === 'to_validate'}>
+                                 À valider
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={async () => {
+                                 const res = await updateTaskStatus(task.id, 'cancelled')
+                                 if (res.success) {
+                                    toast.success("Tâche annulée")
+                                    if (onRefresh) onRefresh()
+                                 }
+                              }} disabled={task.status === 'cancelled'}>
+                                 Annuler
+                              </DropdownMenuItem>
                               <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={async () => {
                                  const res = await deleteTask(task.id)
                                  if (res.success) {

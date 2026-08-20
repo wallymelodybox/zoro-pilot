@@ -3,7 +3,7 @@
 
 export type RAGStatus = "on-track" | "at-risk" | "off-track"
 export type Confidence = "on-track" | "at-risk" | "off-track"
-export type TaskStatus = "todo" | "in-progress" | "blocked" | "done"
+export type TaskStatus = "todo" | "in-progress" | "blocked" | "to_validate" | "done" | "cancelled"
 export type Priority = "low" | "medium" | "high" | "urgent"
 export type TaskVisibility = "private" | "organization"
 export type KRType = "metric" | "initiative" | "manual"
@@ -91,9 +91,18 @@ export interface Project {
   transactions?: FinancialTransaction[]
 }
 
+export interface ChecklistItem {
+  id: string
+  taskId: string
+  label: string
+  isDone: boolean
+  position: number
+}
+
 export interface Task {
   id: string
   projectId: string
+  parentTaskId?: string | null
   title: string
   description?: string
   createdBy?: string
@@ -106,6 +115,9 @@ export interface Task {
   dueDate: string
   linkedKRId?: string
   budget?: number | null
+  isOverdue?: boolean
+  checklist?: ChecklistItem[]
+  subtasks?: Task[]
 }
 
 export interface OKRCheckin {
@@ -690,7 +702,9 @@ export function getTaskStatusLabel(status: TaskStatus): string {
     case "todo": return "A faire"
     case "in-progress": return "En cours"
     case "blocked": return "Bloque"
+    case "to_validate": return "A valider"
     case "done": return "Termine"
+    case "cancelled": return "Annulee"
   }
 }
 
@@ -708,7 +722,9 @@ export function getTaskStatusColor(status: TaskStatus): string {
     case "done": return "bg-success/15 text-success"
     case "in-progress": return "bg-primary/15 text-primary"
     case "blocked": return "bg-destructive/15 text-destructive"
+    case "to_validate": return "bg-warning/15 text-warning"
     case "todo": return "bg-muted text-muted-foreground"
+    case "cancelled": return "bg-muted text-muted-foreground line-through"
   }
 }
 

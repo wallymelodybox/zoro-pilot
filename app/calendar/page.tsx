@@ -164,8 +164,8 @@ function MonthView({ currentDate, tasks, projects }: { currentDate: Date, tasks:
                   return (
                     <div key={task.id} className={cn(
                       "text-[10px] p-1 rounded border truncate cursor-pointer hover:brightness-95 transition-all shadow-sm",
-                      task.status === 'done' ? "bg-muted text-muted-foreground line-through border-transparent" : "bg-card border-border border-l-2",
-                      !task.status.includes('done') && (
+                      task.status === 'done' || task.status === 'cancelled' ? "bg-muted text-muted-foreground line-through border-transparent" : "bg-card border-border border-l-2",
+                      task.status !== 'done' && task.status !== 'cancelled' && (
                         task.priority === 'urgent' ? "border-l-destructive" :
                         task.priority === 'high' ? "border-l-orange-500" :
                         "border-l-blue-500"
@@ -233,7 +233,7 @@ function WeekView({ currentDate, tasks, projects }: { currentDate: Date, tasks: 
                     .map((task, idx) => (
                       <div key={task.id} className={cn(
                         "p-2 rounded border mb-1 pointer-events-auto cursor-pointer shadow-sm text-xs",
-                        task.status === 'done' ? "bg-muted/50 opacity-60" : "bg-card"
+                        task.status === 'done' || task.status === 'cancelled' ? "bg-muted/50 opacity-60" : "bg-card"
                       )}>
                         <div className="font-bold truncate">{task.title}</div>
                         <div className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">

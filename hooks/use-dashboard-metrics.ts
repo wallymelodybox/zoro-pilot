@@ -64,16 +64,18 @@ export function useDashboardMetrics(
     const activeProjects = projects.filter(p => p.status !== 'done' as any)
     const activeProjectsCount = activeProjects.length
 
-    // ── Task aggregations ──
-    const doneTasks = tasks.filter(t => t.status === 'done')
-    const todoTasks = tasks.filter(t => t.status === 'todo')
-    const inProgressTasks = tasks.filter(t => t.status === 'in-progress')
-    const blockedTasks = tasks.filter(t => t.status === 'blocked')
-    const todayTasks = tasks.filter(t => t.dueDate === todayStr || t.status === 'in-progress')
-    const urgentTasks = tasks.filter(t => t.priority === 'urgent' || t.priority === 'high')
+    // ── Task aggregations ── (cancelled tasks are excluded from all stats below:
+    // they were never completed but shouldn't count against execution either)
+    const scoredTasks = tasks.filter(t => t.status !== 'cancelled')
+    const doneTasks = scoredTasks.filter(t => t.status === 'done')
+    const todoTasks = scoredTasks.filter(t => t.status === 'todo')
+    const inProgressTasks = scoredTasks.filter(t => t.status === 'in-progress')
+    const blockedTasks = scoredTasks.filter(t => t.status === 'blocked')
+    const todayTasks = scoredTasks.filter(t => t.dueDate === todayStr || t.status === 'in-progress')
+    const urgentTasks = scoredTasks.filter(t => t.priority === 'urgent' || t.priority === 'high')
 
     // ── Execution score ──
-    const totalTasks = tasks.length
+    const totalTasks = scoredTasks.length
     const doneRatio = totalTasks > 0 ? doneTasks.length / totalTasks : 0
     const blockedPenalty = totalTasks > 0 ? (blockedTasks.length / totalTasks) * 30 : 0
     const avgProjectProgress = activeProjects.length > 0

@@ -99,14 +99,17 @@ import { cn } from "@/lib/utils"
 const STATUSES: { key: TaskStatus; label: string }[] = [
   { key: "todo", label: "A faire" },
   { key: "in-progress", label: "En cours" },
+  { key: "blocked", label: "Bloqué" },
+  { key: "to_validate", label: "A valider" },
   { key: "done", label: "Fait" },
+  { key: "cancelled", label: "Annulée" },
 ]
 
 const KANBAN_COLUMNS: { id: string; status?: TaskStatus; label: string; tone: string }[] = [
   { id: "backlog", status: "todo", label: "Backlog", tone: "bg-slate-500" },
   { id: "todo", status: "todo", label: "À faire", tone: "bg-blue-500" },
   { id: "in-progress", status: "in-progress", label: "En cours", tone: "bg-amber-500" },
-  { id: "validation", label: "Validation", tone: "bg-violet-500" },
+  { id: "validation", status: "to_validate", label: "Validation", tone: "bg-violet-500" },
   { id: "blocked", status: "blocked", label: "Bloqué", tone: "bg-red-500" },
   { id: "done", status: "done", label: "Terminé", tone: "bg-emerald-500" },
 ]
@@ -131,10 +134,7 @@ function formatDate(value?: string | null) {
 }
 
 function isOverdue(task: Task) {
-  if (!task.dueDate || task.status === "done") return false
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  return new Date(task.dueDate) < today
+  return Boolean(task.isOverdue)
 }
 
 function isThisWeek(value?: string | null) {
