@@ -29,6 +29,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -45,7 +56,7 @@ import {
   getPriorityColor,
   getTaskStatusColor,
 } from "@/lib/store"
-import { isOrgAdminOrSuperAdmin } from "@/lib/roles"
+import { isOrgAdminOrSuperAdmin, isOwnerOrSuperAdmin } from "@/lib/roles"
 import {
   List,
   Columns3,
@@ -88,7 +99,8 @@ import {
   CheckCircle,
   CircleAlert,
   CalendarClock,
-  NotebookPen
+  NotebookPen,
+  Trash2,
 } from "lucide-react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
@@ -708,7 +720,6 @@ function ProjectManageDialog({
   const [progress, setProgress] = useState(project.progress || 0)
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(memberIds)
   const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -741,20 +752,6 @@ function ProjectManageDialog({
     onRefresh()
   }
 
-  const remove = async () => {
-    if (!window.confirm(`Supprimer définitivement "${project.name}" ?`)) return
-    setDeleting(true)
-    const res = await deleteProject(project.id)
-    setDeleting(false)
-    if (res?.error) {
-      toast.error(res.error)
-      return
-    }
-    toast.success("Projet supprimé")
-    setOpen(false)
-    onRefresh()
-  }
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Button onClick={() => setOpen(true)} size="sm" variant="outline" className="h-8 gap-2">
@@ -764,7 +761,7 @@ function ProjectManageDialog({
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Modifier le projet</DialogTitle>
-          <DialogDescription>Seul le DG peut modifier les informations, les membres et supprimer le projet.</DialogDescription>
+          <DialogDescription>Modifiez les informations et les membres du projet.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
           <div className="grid gap-2">
@@ -831,10 +828,7 @@ function ProjectManageDialog({
             </div>
           </div>
         </div>
-        <DialogFooter className="gap-2 sm:justify-between">
-          <Button variant="destructive" onClick={remove} disabled={deleting || saving}>
-            {deleting ? "Suppression..." : "Supprimer"}
-          </Button>
+        <DialogFooter>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
             <Button onClick={submit} disabled={saving || !name.trim()}>
@@ -844,6 +838,67 @@ function ProjectManageDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function DeleteProjectButton({
+  project,
+  onDeleted,
+}: {
+  project: Project
+  onDeleted: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const remove = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    setDeleting(true)
+    const res = await deleteProject(project.id)
+    setDeleting(false)
+
+    if (res?.error) {
+      toast.error(res.error)
+      return
+    }
+
+    setOpen(false)
+    toast.success("Projet supprimé")
+    onDeleted()
+  }
+
+  return (
+    <AlertDialog open={open} onOpenChange={(nextOpen) => !deleting && setOpen(nextOpen)}>
+      <AlertDialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          aria-label={`Supprimer le projet ${project.name}`}
+          title="Supprimer le projet"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Supprimer « {project.name} » ?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Cette action est définitive. Les tâches, sous-projets et données associés seront également supprimés.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={remove}
+            disabled={deleting}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {deleting ? "Suppression..." : "Supprimer définitivement"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }
 
@@ -1045,6 +1100,7 @@ export default function WorkPage() {
 
   // Check permissions
   const isDG = isOrgAdminOrSuperAdmin(user?.rbac_role)
+  const canDeleteProject = isOwnerOrSuperAdmin(user?.rbac_role)
   const canEditProject = isDG
 
   if (loading) {
@@ -1157,6 +1213,15 @@ export default function WorkPage() {
                     memberIds={Array.from(projectMemberIds)}
                     onRefresh={refresh}
                   />
+                  {canDeleteProject && (
+                    <DeleteProjectButton
+                      project={selectedProject}
+                      onDeleted={() => {
+                        setSelectedProjectId(projects.find((project) => project.id !== selectedProject.id)?.id || "")
+                        refresh()
+                      }}
+                    />
+                  )}
                   <ProjectActionDialog
                     project={selectedProject}
                     profiles={profiles}

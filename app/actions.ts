@@ -378,15 +378,21 @@ export async function deleteProject(projectId: string) {
     return { error: 'Seul le DG peut supprimer un projet de l’organisation.' }
   }
 
-  const { error } = await supabase
+  const { data: deletedProject, error } = await supabase
     .from('projects')
     .delete()
     .eq('id', projectId)
     .eq('organization_id', orgId)
+    .select('id')
+    .maybeSingle()
 
   if (error) {
     console.error('Error deleting project:', error)
     return { error: 'Erreur lors de la suppression du projet.' }
+  }
+
+  if (!deletedProject) {
+    return { error: 'Projet introuvable ou suppression non autorisée.' }
   }
 
   revalidatePath('/work')
