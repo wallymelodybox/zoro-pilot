@@ -1103,6 +1103,11 @@ export default function WorkPage() {
   const canDeleteProject = isOwnerOrSuperAdmin(user?.rbac_role)
   const canEditProject = isDG
 
+  const handleProjectDeleted = (deletedProjectId: string) => {
+    setSelectedProjectId(projects.find((project) => project.id !== deletedProjectId)?.id || "")
+    refresh()
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen text-sm text-muted-foreground">Chargement des projets...</div>
   }
@@ -1216,10 +1221,7 @@ export default function WorkPage() {
                   {canDeleteProject && (
                     <DeleteProjectButton
                       project={selectedProject}
-                      onDeleted={() => {
-                        setSelectedProjectId(projects.find((project) => project.id !== selectedProject.id)?.id || "")
-                        refresh()
-                      }}
+                      onDeleted={() => handleProjectDeleted(selectedProject.id)}
                     />
                   )}
                   <ProjectActionDialog
@@ -1237,6 +1239,55 @@ export default function WorkPage() {
 
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
+        <aside className="w-64 shrink-0 overflow-y-auto border-r bg-card/60">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-card/95 px-3 py-3 backdrop-blur">
+            <div>
+              <h2 className="text-sm font-semibold">Projets</h2>
+              <p className="text-xs text-muted-foreground">{projects.length} au total</p>
+            </div>
+            {isDG && (
+              <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="Nouveau projet">
+                <Link href="/create/project"><Plus className="h-4 w-4" /></Link>
+              </Button>
+            )}
+          </div>
+          <nav className="p-2" aria-label="Liste des projets">
+            {projects.map((project) => {
+              const isSelected = project.id === selectedProject.id
+              return (
+                <div
+                  key={project.id}
+                  className={cn(
+                    "group mb-1 flex items-center gap-1 rounded-lg transition-colors",
+                    isSelected ? "bg-primary/10" : "hover:bg-muted/70",
+                    project.parentProjectId && "ml-4"
+                  )}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProjectId(project.id)}
+                    className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left"
+                    aria-current={isSelected ? "page" : undefined}
+                  >
+                    <span className={cn(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      project.status === "off-track" ? "bg-red-500" : project.status === "at-risk" ? "bg-amber-500" : "bg-emerald-500"
+                    )} />
+                    <span className={cn("truncate text-sm", isSelected && "font-semibold text-primary")}>{project.name}</span>
+                  </button>
+                  {canDeleteProject && (
+                    <div className="pr-1">
+                      <DeleteProjectButton
+                        project={project}
+                        onDeleted={() => handleProjectDeleted(project.id)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </nav>
+        </aside>
         {/* Right Board Area */}
         <main className="flex-1 min-w-0 overflow-y-auto bg-muted/30 p-6">
           <ProjectKpiStrip

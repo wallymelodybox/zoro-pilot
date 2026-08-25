@@ -110,7 +110,7 @@ export async function createDGAccount(formData: FormData) {
         email,
         name: dgName,
         role: 'Directeur Général',
-        rbac_role: 'admin',
+        rbac_role: 'executive',
         organization_id: org.id,
       }, { onConflict: 'id' })
 
