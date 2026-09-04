@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
-import { Shield, UserPlus, Key, Building, Activity, Clock, AlertCircle, LogOut, Users, Globe, Trash2, X, Eye, RotateCcw, Copy } from "lucide-react"
+import { Shield, UserPlus, Key, Building, Activity, Clock, AlertCircle, LogOut, Users, Globe, Trash2, X, Eye, RotateCcw, Copy, Star } from "lucide-react"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { createDGAccount, deleteOrganization, getDashboardStats, getOrganizationsWithDetails, resetDGPassword } from "./actions"
@@ -26,6 +26,7 @@ export default function BackOfficePage() {
   const [createdPassword, setCreatedPassword] = useState<string | null>(null)
   const [organizations, setOrganizations] = useState<any[]>([])
   const [totalProfiles, setTotalProfiles] = useState(0)
+  const [totalPremiumUsers, setTotalPremiumUsers] = useState(0)
   const [fetching, setFetching] = useState(true)
   const supabase = createClient()
 
@@ -68,6 +69,7 @@ export default function BackOfficePage() {
       }
       setOrganizations(res.organizations || [])
       setTotalProfiles(res.totalProfiles || 0)
+      setTotalPremiumUsers(res.totalPremiumUsers || 0)
     } catch (error) {
       console.error("Error fetching stats:", error)
     } finally {
@@ -269,15 +271,16 @@ export default function BackOfficePage() {
       </div>
 
       {/* Platform Metrics (cliquables) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           { key: 'orgs' as const, icon: <Building className="h-6 w-6" />, color: 'blue', label: 'Organisations', value: organizations.length },
           { key: 'users' as const, icon: <Users className="h-6 w-6" />, color: 'purple', label: 'Utilisateurs', value: totalProfiles },
+          { key: 'users' as const, icon: <Star className="h-6 w-6" />, color: 'amber', label: 'Premium mobile', value: totalPremiumUsers },
           { key: 'active' as const, icon: <Key className="h-6 w-6" />, color: 'emerald', label: 'Licences actives', value: organizations.filter(o => o.setup_completed).length },
-          { key: 'pending' as const, icon: <AlertCircle className="h-6 w-6" />, color: 'amber', label: 'En attente', value: organizations.filter(o => !o.setup_completed).length },
-        ].map(card => (
+          { key: 'pending' as const, icon: <AlertCircle className="h-6 w-6" />, color: 'orange', label: 'En attente', value: organizations.filter(o => !o.setup_completed).length },
+        ].map((card, idx) => (
           <Card
-            key={card.key}
+            key={`${card.key}-${idx}`}
             className="bg-card border-border shadow-sm cursor-pointer transition-all hover:scale-[1.02] hover:border-primary/30 hover:shadow-md"
             onClick={() => openDialog(card.key)}
           >
@@ -568,7 +571,9 @@ export default function BackOfficePage() {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background border-border shadow-2xl">
           <DialogHeader>
             <DialogTitle>Utilisateurs ({allProfiles.length})</DialogTitle>
-            <DialogDescription>Tous les utilisateurs de la plateforme</DialogDescription>
+            <DialogDescription>
+              Tous les utilisateurs de la plateforme — {allProfiles.filter((u: any) => u.is_premium).length} avec Premium mobile actif
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5">
             {allProfiles.map((u: any) => {
@@ -576,7 +581,14 @@ export default function BackOfficePage() {
               return (
                 <div key={u.id} className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
                   <div>
-                    <div className="font-medium text-sm">{u.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">{u.name}</span>
+                      {u.is_premium && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-bold text-amber-500">
+                          ★ Premium
+                        </span>
+                      )}
+                    </div>
                     <div className="text-xs text-muted-foreground">{u.email}</div>
                   </div>
                   <div className="text-right">
@@ -591,7 +603,10 @@ export default function BackOfficePage() {
                 <p className="text-xs font-bold text-amber-500 mb-2">⚠️ Profils sans organisation ({orphanProfiles.length})</p>
                 {orphanProfiles.map((u: any) => (
                   <div key={u.id} className="flex items-center justify-between rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-2 mb-1">
-                    <div className="text-sm">{u.name} <span className="text-muted-foreground">({u.email})</span></div>
+                    <div className="text-sm flex items-center gap-2">
+                      {u.name} <span className="text-muted-foreground">({u.email})</span>
+                      {u.is_premium && <span className="text-[10px] font-bold text-amber-500">★ Premium</span>}
+                    </div>
                     <span className="text-xs text-amber-500">{u.rbac_role}</span>
                   </div>
                 ))}

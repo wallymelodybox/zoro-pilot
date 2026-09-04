@@ -390,9 +390,22 @@ export async function getDashboardStats() {
       .from('profiles')
       .select('*', { count: 'exact', head: true })
 
+    // Compte les abonnements Premium mobile individuels ($2/mois, IAP) en
+    // cours — indépendant de la licence organisation Stripe listée ci-dessus.
+    const { data: premiumRows } = await supabaseAdmin
+      .from('premium_subscriptions')
+      .select('status, expires_at')
+      .in('status', ['active', 'grace_period'])
+
+    const now = new Date()
+    const totalPremiumUsers = (premiumRows || []).filter(
+      (row: any) => !row.expires_at || new Date(row.expires_at) >= now
+    ).length
+
     return {
       organizations: orgs || [],
       totalProfiles: count || 0,
+      totalPremiumUsers,
     }
   } catch (error: any) {
     console.error('Fetch Dashboard Stats Error:', error)
@@ -480,24 +493,50 @@ export async function getOrganizationsWithDetails() {
 
   if (profilesError) return { error: profilesError.message }
 
+  // Statut Premium individuel (mobile, $2/mois via IAP) — table indépendante
+  // de la licence organisation Stripe : un profil peut être Premium quelle
+  // que soit la licence de son organisation.
+  const { data: premiumRows, error: premiumError } = await supabaseAdmin
+    .from('premium_subscriptions')
+    .select('profile_id, status, store, expires_at')
+
+  if (premiumError) console.error('Fetch Premium Subscriptions Error:', premiumError)
+
+  const premiumByProfile = new Map((premiumRows || []).map(p => [p.profile_id, p]))
+  const isPremiumActive = (row: any) =>
+    row && (row.status === 'active' || row.status === 'grace_period') &&
+    (!row.expires_at || new Date(row.expires_at) >= new Date())
+
+  const profilesWithPremium = (profiles || []).map(p => {
+    const premium = premiumByProfile.get(p.id)
+    return {
+      ...p,
+      is_premium: isPremiumActive(premium),
+      premium_store: premium?.store ?? null,
+      premium_expires_at: premium?.expires_at ?? null,
+    }
+  })
+
   // Compter les utilisateurs par organisation
   const orgDetails = (orgs || []).map(org => {
-    const orgProfiles = (profiles || []).filter(p => p.organization_id === org.id)
+    const orgProfiles = profilesWithPremium.filter(p => p.organization_id === org.id)
     return {
       ...org,
       user_count: orgProfiles.length,
+      premium_count: orgProfiles.filter(p => p.is_premium).length,
       users: orgProfiles,
     }
   })
 
   // Profils sans organisation (orphelins)
-  const orphanProfiles = (profiles || []).filter(p => !p.organization_id)
+  const orphanProfiles = profilesWithPremium.filter(p => !p.organization_id)
 
     return {
       organizations: orgDetails,
-      allProfiles: profiles || [],
+      allProfiles: profilesWithPremium,
       orphanProfiles,
-      totalUsers: (profiles || []).length,
+      totalUsers: profilesWithPremium.length,
+      totalPremiumUsers: profilesWithPremium.filter(p => p.is_premium).length,
     }
   } catch (error: any) {
     console.error('Fetch Stats Error:', error)
