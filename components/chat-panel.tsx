@@ -248,6 +248,42 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
 
       setLocalMessages(mapped)
     })()
+
+    const messageChannel = supabase
+      .channel(`chat-panel-messages:${activeChannelId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `channel_id=eq.${activeChannelId}`,
+        },
+        (payload) => {
+          const data = payload.new as any
+          const incomingMessage: Message = {
+            id: data.id,
+            channelId: data.channel_id,
+            senderId: data.sender_id,
+            content: data.content,
+            timestamp: data.created_at,
+            type: data.type,
+            attachments: data.attachments ?? undefined,
+            entityRef: data.entity_type
+              ? { type: data.entity_type, id: data.entity_id, title: data.entity_title }
+              : undefined,
+          }
+
+          setLocalMessages((current) =>
+            current.some((message) => message.id === incomingMessage.id)
+              ? current
+              : [...current, incomingMessage]
+          )
+        }
+      )
+      .subscribe()
+
+    return () => { void supabase.removeChannel(messageChannel) }
   }, [activeChannelId, supabase])
 
   React.useEffect(() => {
@@ -308,7 +344,9 @@ export function ChatPanel({ contextId, trigger }: ChatPanelProps) {
           : undefined,
       }
 
-      setLocalMessages((prev) => [...prev, inserted])
+      setLocalMessages((prev) =>
+        prev.some((message) => message.id === inserted.id) ? prev : [...prev, inserted]
+      )
       setNewMessage("")
       setDraftAttachments([])
       setDraftEntityRef(null)
