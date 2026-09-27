@@ -734,6 +734,7 @@ export async function bootstrapChat() {
         name: "Général",
         type: "public",
         organization_id: orgId,
+        created_by: user.id,
         context_id: null,
         context_type: null,
       })
@@ -1399,12 +1400,18 @@ export async function createChannel(formData: FormData) {
     return { error: 'Le nom et l\'organisation sont requis.' }
   }
 
+  const orgId = await getUserOrg(supabase)
+  if (!orgId || organizationId !== orgId) {
+    return { error: 'Organisation non autorisée.' }
+  }
+
   const { data: channel, error: channelError } = await supabase
     .from('channels')
     .insert({
       name,
       type,
-      organization_id: organizationId
+      organization_id: orgId,
+      created_by: user.id
     })
     .select('id')
     .single()

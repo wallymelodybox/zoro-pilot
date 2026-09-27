@@ -24,25 +24,19 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
   useEffect(() => {
     async function validateInvite() {
-      const { data, error } = await supabase
-        .from('invites')
-        .select('*')
-        .or(`token.eq.${token},invite_code.eq.${token}`)
-        .maybeSingle()
+      const { data: previewRows, error } = await supabase.rpc('get_invite_preview', {
+        invite_token: token,
+      })
+      const preview = previewRows?.[0]
+      const data = preview ? {
+        ...preview,
+        organizations: { name: preview.organization_name },
+      } : null
 
       if (error || !data) {
         console.error('Invite lookup error:', error, 'token:', token)
         setStatus('invalid')
         return
-      }
-
-      if (data.organization_id) {
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('name')
-          .eq('id', data.organization_id)
-          .maybeSingle()
-        if (org) (data as any).organizations = org
       }
 
       if (data.is_used) {
@@ -99,15 +93,14 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
         return
       }
 
-      const finalizeResult = await finalizeInviteAcceptance(token, authData.user.id, inviteData.invited_email, name)
-      if (finalizeResult.error) {
-        toast.error(finalizeResult.error)
-        setLoading(false)
-        return
-      }
-
       const hasSession = !!authData.session
       if (hasSession) {
+        const finalizeResult = await finalizeInviteAcceptance(token, name)
+        if (finalizeResult.error) {
+          toast.error(finalizeResult.error)
+          setLoading(false)
+          return
+        }
         toast.success("Compte créé avec succès!")
         router.push('/')
       } else {
