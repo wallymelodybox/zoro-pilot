@@ -2,6 +2,15 @@
 -- A programme is only a grouping layer: attaching a project to one must not
 -- change who can see the project, its tasks, or its comments.
 
+-- Supabase SQL Editor can accidentally launch the same query twice. Serialize
+-- every execution of this migration: a second run waits here instead of each
+-- transaction locking projects/programs/tasks in a different phase and
+-- deadlocking. All statements below are idempotent and safe to retry after a
+-- previous 40P01 rollback.
+begin;
+select pg_advisory_xact_lock(hashtextextended('zoro:programs-member-visibility:20260927', 0));
+set local lock_timeout = '30s';
+
 create table if not exists public.programs (
   id uuid primary key default uuid_generate_v4(),
   organization_id uuid not null references public.organizations(id) on delete cascade,
@@ -18,7 +27,8 @@ alter table public.programs
   add column if not exists image_file_id text;
 
 alter table public.projects
-  add column if not exists program_id uuid references public.programs(id) on delete set null;
+  add column if not exists program_id uuid references public.programs(id) on delete set null,
+  add column if not exists image_file_id text;
 
 create index if not exists idx_programs_organization
   on public.programs(organization_id, created_at desc);
@@ -219,3 +229,5 @@ create policy "Task Comments Delete" on public.task_comments
       or public.can_manage_org_tasks()
     )
   );
+
+commit;
