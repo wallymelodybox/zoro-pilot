@@ -86,12 +86,21 @@ export default function LicensesPage() {
 
   const handleUpdateLicense = async () => {
     if (!selectedOrg) return
+    if (editLicenseType !== 'definitive' && !editExpiryDate) {
+      toast.error("Veuillez définir une date d'expiration")
+      return
+    }
     setSaving(true)
     
     try {
       const updates: any = {
         license_type: editLicenseType,
-        expires_at: editLicenseType === 'definitive' ? null : new Date(editExpiryDate).toISOString()
+        license_status: 'active',
+        // A selected calendar day remains valid through the end of that day
+        // instead of expiring at 00:00 UTC as soon as the date begins.
+        expires_at: editLicenseType === 'definitive'
+          ? null
+          : new Date(`${editExpiryDate}T23:59:59.999Z`).toISOString()
       }
 
       const { error } = await supabase

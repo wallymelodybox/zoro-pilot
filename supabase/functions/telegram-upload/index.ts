@@ -10,6 +10,10 @@ const ENTITY_TABLES: Record<string, string> = {
   project: 'projects',
   program: 'programs',
 }
+const COMMENT_TABLES: Record<string, { table: string; foreignKey: string }> = {
+  task_comment: { table: 'task_comments', foreignKey: 'task_comment_id' },
+  project_comment: { table: 'project_comments', foreignKey: 'project_comment_id' },
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -47,22 +51,24 @@ Deno.serve(async (request) => {
   const entityId = String(form.get('entityId') ?? '')
   const file = form.get('file')
   const table = ENTITY_TABLES[entityType]
-  if (!table || !entityId || !(file instanceof File)) {
+  const commentTarget = COMMENT_TABLES[entityType]
+  if ((!table && !commentTarget) || !entityId || !(file instanceof File)) {
     return json({ error: 'invalid_request' }, 400)
   }
   // Dart's MultipartFile.fromBytes may send application/octet-stream even
   // though ImagePicker produced an image; validate the filename as fallback.
   const imageName = file.name.toLowerCase()
-  const hasImageExtension = /\.(jpe?g|png|webp|gif|heic|heif)$/.test(imageName)
-  if (!file.type.startsWith('image/') && !hasImageExtension) {
+  const hasAllowedExtension = /\.(jpe?g|png|webp|gif|heic|heif|mp4|mov|m4v|webm)$/.test(imageName)
+  if (!file.type.startsWith('image/') && !file.type.startsWith('video/') && !hasAllowedExtension) {
     return json({ error: 'invalid_file_type' }, 415)
   }
   if (file.size > MAX_BYTES) return json({ error: 'file_too_large', maxBytes: MAX_BYTES }, 413)
 
   // This SELECT intentionally uses the caller JWT. Existing RLS decides
   // whether the user may access this project/sub-project/programme.
+  const targetTable = table ?? commentTarget!.table
   const { data: entity, error: entityError } = await userClient
-    .from(table)
+    .from(targetTable)
     .select('id,organization_id')
     .eq('id', entityId)
     .maybeSingle()
@@ -89,6 +95,28 @@ Deno.serve(async (request) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
+  if (commentTarget) {
+    const mediaType = file.type.startsWith('video/') || /\.(mp4|mov|m4v|webm)$/.test(imageName)
+      ? 'video'
+      : 'image'
+    const { data: attachment, error: insertError } = await adminClient
+      .from('comment_attachments')
+      .insert({
+        organization_id: entity.organization_id,
+        [commentTarget.foreignKey]: entityId,
+        uploader_id: authData.user.id,
+        telegram_file_id: fileId,
+        media_type: mediaType,
+        file_name: file.name || `${mediaType}-${Date.now()}`,
+        mime_type: file.type || null,
+        byte_size: file.size,
+      })
+      .select()
+      .single()
+    if (insertError) return json({ error: 'db_insert_failed', detail: insertError.message }, 500)
+    return json({ fileId, attachment })
+  }
+
   const { error: updateError } = await adminClient
     .from(table)
     .update({ image_file_id: fileId, image_url: null })
